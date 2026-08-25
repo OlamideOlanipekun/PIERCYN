@@ -78,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <>
       <header
         id="main-navbar"
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 font-sans ease-[cubic-bezier(0.16,1,0.3,1)] h-14 sm:h-16 flex items-center ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 font-sans ease-[cubic-bezier(0.16,1,0.3,1)] h-[58px] flex items-center ${
           isScrolled
             ? 'bg-[#F2F0EB]/95 backdrop-blur-md text-[#141414] border-b border-[#DAD8D1]/80 shadow-xs'
             : isDarkHero
@@ -86,17 +86,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             : 'bg-[#F2F0EB]/85 backdrop-blur-sm text-[#141414] border-b border-[#DAD8D1]/60'
         }`}
       >
-        <div className="piercyn-container flex justify-between items-center text-[12px] sm:text-[13px] font-medium tracking-[0.08em] font-sans">
-          {/* Left: PIERCYN Brand Logo */}
+        <div className="piercyn-container flex justify-between items-center text-[12px] sm:text-[13px] font-medium tracking-[0.08em] font-sans h-full w-full">
+          {/* Left: PIERCYN Brand Logo (Min 44x44px touch area) */}
           <button
             id="brand-logo-btn"
             onClick={() => {
               if (onSelectPage) onSelectPage('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`cursor-pointer text-left hover:opacity-70 transition-opacity duration-300 min-h-[44px] flex items-center pr-4 ${
+            className={`cursor-pointer text-left hover:opacity-70 transition-opacity duration-300 min-h-[44px] min-w-[44px] flex items-center justify-start pr-2 ${
               isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
             }`}
+            aria-label="Piercyn Home"
           >
             <PiercynLogo size={24} />
           </button>
@@ -199,8 +200,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Right: Actions - SEARCH, ACCOUNT, SAVED, BAG, MENU */}
-          <div className="flex items-center gap-3.5 sm:gap-4 lg:gap-6 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
+          {/* Right: Actions in Order (SEARCH -> WISHLIST -> BAG -> MENU) with 16-20px spacing */}
+          <div className="flex items-center gap-4 sm:gap-4.5 lg:gap-6 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
             {/* Currency Selector (Desktop) */}
             <div className="relative group hidden lg:block">
               <button 
@@ -226,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* SEARCH */}
+            {/* SEARCH ICON (Min 44x44px padded hit area) */}
             <button
               id="search-trigger-btn"
               onClick={() => setIsSearchOpen(true)}
@@ -235,11 +236,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               aria-label="Search Collection"
             >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline text-[12px] font-semibold">SEARCH</span>
+              <Search className="w-[21px] h-[21px] stroke-[1.75]" />
+              <span className="hidden sm:inline text-[12px] font-semibold uppercase">SEARCH</span>
             </button>
 
-            {/* ACCOUNT / ATELIER */}
+            {/* ACCOUNT / ATELIER (Desktop) */}
             <button
               id="nav-account-btn"
               onClick={() => setIsAuthOpen(true)}
@@ -250,7 +251,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {user ? `ACCOUNT (${user.firstName})` : 'ACCOUNT'}
             </button>
 
-            {/* SAVED / WISHLIST */}
+            {/* WISHLIST ICON (Min 44x44px padded hit area) */}
             <button
               id="wishlist-drawer-trigger-btn"
               onClick={() => setIsWishlistOpen(true)}
@@ -259,41 +260,40 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               aria-label="Saved Pieces"
             >
-              <Heart className={`w-4 h-4 ${wishlist.length > 0 ? (isDarkHero ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'fill-[#141414] text-[#141414]') : ''}`} />
-              <span className="hidden sm:inline text-[12px] font-semibold">SAVED</span>
+              <Heart className={`w-[21px] h-[21px] stroke-[1.75] ${wishlist.length > 0 ? (isDarkHero ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'fill-[#141414] text-[#141414]') : ''}`} />
+              <span className="hidden sm:inline text-[12px] font-semibold uppercase">SAVED</span>
               {wishlist.length > 0 && (
-                <span className="font-sans text-[11px] font-semibold">({wishlist.length})</span>
+                <span className="hidden sm:inline font-sans text-[11px] font-semibold">({wishlist.length})</span>
               )}
             </button>
 
-            {/* BAG */}
+            {/* BAG BUTTON (44px Height, 20-24px padding, Rounded Pill) */}
             <button
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
-              className={`h-[44px] min-h-[44px] min-w-[44px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-2.5 sm:px-3.5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1 sm:gap-1.5 ${
+              className={`h-[44px] min-h-[44px] min-w-[44px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-5 sm:px-6 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 ${
                 isDarkHero
                   ? 'text-[#141414] bg-[#F2F0EB] hover:bg-white'
                   : 'text-[#F2F0EB] bg-[#141414] hover:bg-black'
               }`}
               aria-label="Shopping Bag"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
+              <ShoppingBag className="w-4 h-4 stroke-[1.75]" />
               <span className="font-sans font-semibold">
                 BAG ({cartCount})
               </span>
             </button>
 
-            {/* MENU (Mobile & Tablet) */}
+            {/* MENU ICON (Hamburger 3 lines, 44x44px hit area, right-aligned) */}
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`md:hidden px-3 py-1.5 min-h-[38px] sm:min-h-[44px] rounded-full border border-current/30 text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.1em] font-sans flex items-center justify-center gap-1.5 transition-all active:scale-95 hover:bg-current/10 cursor-pointer ${
+              className={`md:hidden w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer active:scale-95 ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
               aria-label="Open Mobile Menu"
             >
-              <span>MENU</span>
-              <Menu className="w-3.5 h-3.5 hidden sm:inline" />
+              <Menu className="w-[21px] h-[21px] stroke-[1.75]" />
             </button>
           </div>
         </div>
