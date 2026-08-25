@@ -211,10 +211,10 @@ export const ThePieceSection: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 w-full sm:w-auto pt-1 sm:pt-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2 sm:pt-0">
             <button
               onClick={() => addToCart(signatureHoodie, currentColor.name, selectedSize)}
-              className="flex-1 sm:flex-initial min-h-[48px] px-7 py-3 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] tracking-[0.18em] uppercase font-semibold hover:bg-black transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.98]"
+              className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] tracking-[0.18em] uppercase font-semibold hover:bg-black transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <span>ADD TO BAG</span>
               <Plus className="w-3.5 h-3.5" />
@@ -222,9 +222,10 @@ export const ThePieceSection: React.FC = () => {
 
             <button
               onClick={() => setIsCraftsmanshipOpen(true)}
-              className="min-h-[48px] px-4 text-[12px] tracking-[0.15em] uppercase text-[#141414] font-semibold editorial-link cursor-pointer flex items-center"
+              className="w-full sm:w-auto min-h-[48px] px-6 rounded-full border border-[#141414]/40 hover:border-[#141414] text-[12px] tracking-[0.15em] uppercase text-[#141414] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
             >
-              SPEC SHEET →
+              <span>SPEC SHEET</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 

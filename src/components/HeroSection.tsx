@@ -55,7 +55,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none concrete-pattern" />
 
       {/* Foreground Container aligned to Global Grid */}
-      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-20 sm:pt-24 pb-8 sm:pb-12 pointer-events-none">
+      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-20 sm:pt-24 pb-16 sm:pb-12 pointer-events-none">
         
         {/* Top Spacer / Tag alignment */}
         <div className="hidden sm:flex items-center justify-between pointer-events-auto">

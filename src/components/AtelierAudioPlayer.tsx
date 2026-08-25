@@ -145,15 +145,15 @@ export const AtelierAudioPlayer: React.FC = () => {
   return (
     <div 
       id="atelier-audio-player-pill"
-      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 sm:left-6 z-40 font-mono select-none"
+      className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 sm:left-6 z-40 font-mono select-none"
     >
       <div className="relative group">
         {/* Main Floating Capsule Pill */}
-        <div className="flex items-center gap-2 px-3.5 h-11 min-h-[44px] rounded-full bg-[#141414]/90 backdrop-blur-md text-[#F2F0EB] border border-white/15 shadow-xl text-[10px] tracking-wider transition-all duration-300 hover:bg-[#141414]">
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-9 sm:h-11 min-h-[36px] sm:min-h-[44px] rounded-full bg-[#141414]/90 backdrop-blur-md text-[#F2F0EB] border border-white/15 shadow-xl text-[10px] tracking-wider transition-all duration-300 hover:bg-[#141414]">
           {/* Animated Equalizer Soundwave Indicator */}
           <button 
-            onClick={togglePlay}
-            className="flex items-center gap-1 cursor-pointer min-h-[40px] pr-1"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 cursor-pointer min-h-[36px] sm:min-h-[40px] pr-1"
             title={isPlaying ? 'Pause Atelier Audio' : 'Play Runway Soundscape'}
           >
             {isPlaying ? (
@@ -168,10 +168,10 @@ export const AtelierAudioPlayer: React.FC = () => {
             )}
           </button>
 
-          {/* Track Name or Mode Info */}
+          {/* Track Name or Mode Info (Hidden on mobile, visible on sm and up) */}
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-left flex flex-col text-[9.5px] cursor-pointer min-h-[40px] justify-center"
+            className="hidden sm:flex text-left flex-col text-[9.5px] cursor-pointer min-h-[40px] justify-center"
           >
             <span className="font-semibold text-[#F2F0EB] uppercase tracking-[0.15em] line-clamp-1 max-w-[130px] sm:max-w-none">
               {isPlaying ? tracks[currentTrackIndex].title : 'ATELIER RUNWAY RADIO'}
@@ -184,10 +184,10 @@ export const AtelierAudioPlayer: React.FC = () => {
           {/* Play/Pause Toggle */}
           <button
             onClick={togglePlay}
-            className="w-7 h-7 min-w-[28px] rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-white"
+            className="w-6 h-6 sm:w-7 sm:h-7 min-w-[24px] rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-white"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+            {isPlaying ? <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-0.5" />}
           </button>
         </div>
 

@@ -270,7 +270,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
-              className={`h-[44px] min-h-[44px] min-w-[44px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3.5 rounded-full shadow-xs active:scale-95 text-[12px] font-semibold tracking-[0.08em] gap-1.5 ${
+              className={`h-[44px] min-h-[44px] min-w-[44px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-2.5 sm:px-3.5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1 sm:gap-1.5 ${
                 isDarkHero
                   ? 'text-[#141414] bg-[#F2F0EB] hover:bg-white'
                   : 'text-[#F2F0EB] bg-[#141414] hover:bg-black'
