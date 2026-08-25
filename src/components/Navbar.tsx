@@ -200,7 +200,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right: Actions - SEARCH, ACCOUNT, SAVED, BAG, MENU */}
-          <div className="flex items-center gap-1 sm:gap-4 lg:gap-6 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
+          <div className="flex items-center gap-3.5 sm:gap-4 lg:gap-6 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
             {/* Currency Selector (Desktop) */}
             <div className="relative group hidden lg:block">
               <button 
@@ -287,13 +287,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer tracking-wider text-[12px] font-semibold font-sans ${
+              className={`md:hidden px-3 py-1.5 min-h-[38px] sm:min-h-[44px] rounded-full border border-current/30 text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.1em] font-sans flex items-center justify-center gap-1.5 transition-all active:scale-95 hover:bg-current/10 cursor-pointer ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
               aria-label="Open Mobile Menu"
             >
-              <span className="sm:hidden tracking-[0.1em]">MENU</span>
-              <Menu className="w-4 h-4 hidden sm:inline" />
+              <span>MENU</span>
+              <Menu className="w-3.5 h-3.5 hidden sm:inline" />
             </button>
           </div>
         </div>

@@ -37,7 +37,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
 
         {/* Feature Portrait Visual Layer (Mobile & Desktop Art-Directed) */}
         <div 
-          className={`absolute right-[0%] sm:right-[6%] lg:right-[14%] bottom-0 w-[86vw] sm:w-[380px] lg:w-[460px] h-[78svh] sm:h-[88%] lg:h-[90%] bg-cover bg-center z-10 rounded-t-[8px] overflow-hidden transition-all duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
+          className={`absolute right-[0%] sm:right-[6%] lg:right-[14%] bottom-0 w-[78vw] sm:w-[380px] lg:w-[460px] h-[78svh] sm:h-[88%] lg:h-[90%] bg-cover bg-center z-10 rounded-t-[8px] overflow-hidden transition-all duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
             isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.04]'
           }`}
           style={{ 
@@ -46,8 +46,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
             transform: `translate3d(${mousePos.x * 0.35}px, ${mousePos.y * 0.35}px, 0) scale(${isLoaded ? 1 : 1.04})`
           }}
         >
-          {/* Subtle vignette gradient so headline remains razor-sharp and model stays illuminated */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#F2F0EB]/60 via-transparent to-transparent pointer-events-none" />
+          {/* Vignette & Mobile Horizontal Fade Gradient so left side text is always crisp */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#F2F0EB]/90 via-[#F2F0EB]/40 to-transparent sm:bg-none pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#F2F0EB]/80 via-transparent to-transparent pointer-events-none" />
         </div>
       </div>
 
@@ -69,7 +70,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
 
         {/* Interlocking Editorial Serif Typography with Line-by-Line Masked Clipping Reveal */}
         <div className="my-auto py-2 sm:py-4 pointer-events-none">
-          <h1 className="font-editorial italic leading-[0.86] text-[#141414] tracking-[-0.03em]">
+          <h1 className="font-editorial italic leading-[0.86] text-[#141414] tracking-[-0.03em] [text-shadow:_0_1px_8px_rgba(242,240,235,0.8)]">
             {/* Line 1: MADE */}
             <div className="overflow-hidden py-0.5 sm:py-1">
               <span 
@@ -105,7 +106,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
             {/* Line 3: OUT. */}
             <div className="overflow-hidden -mt-2 sm:-mt-6 lg:-mt-8 py-0.5 sm:py-1 relative z-[15]">
               <span 
-                className={`block text-[clamp(58px,11.5vw,140px)] ml-10 sm:ml-28 lg:ml-40 opacity-95 transition-transform duration-[1300ms] delay-[320ms] ease-[cubic-bezier(0.16,1,0.3,1)] font-medium ${
+                className={`block text-[clamp(58px,11.5vw,140px)] ml-4 sm:ml-28 lg:ml-40 opacity-95 transition-transform duration-[1300ms] delay-[320ms] ease-[cubic-bezier(0.16,1,0.3,1)] font-medium ${
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
                 style={{

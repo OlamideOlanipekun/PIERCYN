@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Radio, Sparkles, Play, Pause } from 'lucide-react';
+import { Volume2, VolumeX, Radio, Sparkles, Play, Pause, X } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 
 export const AtelierAudioPlayer: React.FC = () => {
@@ -7,6 +7,7 @@ export const AtelierAudioPlayer: React.FC = () => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [volume, setVolume] = useState(0.25);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const { showToast } = useShop();
 
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -142,12 +143,26 @@ export const AtelierAudioPlayer: React.FC = () => {
     };
   }, []);
 
+  if (isDismissed) {
+    return (
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 sm:left-6 z-40 font-mono select-none pointer-events-none">
+        <button
+          onClick={() => setIsDismissed(false)}
+          className="pointer-events-auto w-8 h-8 rounded-full bg-[#141414]/90 backdrop-blur-md text-[#A48B71] hover:text-white border border-white/15 shadow-lg flex items-center justify-center cursor-pointer transition-all hover:scale-105"
+          title="Restore Atelier Soundscape"
+        >
+          <Radio className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div 
       id="atelier-audio-player-pill"
-      className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 sm:left-6 z-40 font-mono select-none"
+      className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 sm:left-6 z-40 font-mono select-none pointer-events-none"
     >
-      <div className="relative group">
+      <div className="relative group pointer-events-auto">
         {/* Main Floating Capsule Pill */}
         <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-9 sm:h-11 min-h-[36px] sm:min-h-[44px] rounded-full bg-[#141414]/90 backdrop-blur-md text-[#F2F0EB] border border-white/15 shadow-xl text-[10px] tracking-wider transition-all duration-300 hover:bg-[#141414]">
           {/* Animated Equalizer Soundwave Indicator */}
@@ -189,11 +204,23 @@ export const AtelierAudioPlayer: React.FC = () => {
           >
             {isPlaying ? <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 ml-0.5" />}
           </button>
+
+          {/* Dismiss button */}
+          <button
+            onClick={() => {
+              setIsDismissed(true);
+              setIsExpanded(false);
+            }}
+            className="w-5 h-5 min-w-[20px] rounded-full text-white/50 hover:text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5"
+            title="Dismiss widget"
+          >
+            <X className="w-3 h-3" />
+          </button>
         </div>
 
         {/* Expanded Track Controller Card */}
         {isExpanded && (
-          <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#141414] text-[#F2F0EB] p-4 rounded-xl border border-white/20 shadow-2xl space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#141414] text-[#F2F0EB] p-4 rounded-xl border border-white/20 shadow-2xl space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200 pointer-events-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <span className="text-[9px] uppercase tracking-[0.25em] text-[#A48B71]">
                 LAGOS ATELIER SOUNDSCAPE
