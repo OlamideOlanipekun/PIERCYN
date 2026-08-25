@@ -1,0 +1,6 @@
+{
+  "name": "PIERCYN — Contemporary Nigerian Fashion",
+  "description": "Editorial menswear collection page for contemporary Nigerian label PIERCYN. Modern silhouettes, heavyweight 450 GSM essentials, and campaign visuals from Lagos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
