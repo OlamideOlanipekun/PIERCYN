@@ -40,7 +40,7 @@ export const WishlistDrawer: React.FC = () => {
           {/* Top Header */}
           <div className="h-14 sm:h-16 px-4 sm:px-6 border-b border-[#E3DEC3] flex items-center justify-between font-sans shrink-0">
             <div className="flex items-center gap-3">
-              <span className="font-editorial text-xl sm:text-2xl uppercase tracking-tight">SAVED ARCHIVE</span>
+              <span className="font-editorial text-xl sm:text-2xl uppercase tracking-tight">SAVED PIECES</span>
               <span className="text-[10px] font-sans font-bold tracking-wider bg-[#141414] text-[#F2F0EB] px-2.5 sm:px-3 py-1 rounded-full">
                 {wishlistedProducts.length} {wishlistedProducts.length === 1 ? 'PIECE' : 'PIECES'}
               </span>
@@ -61,16 +61,16 @@ export const WishlistDrawer: React.FC = () => {
               <div className="py-16 sm:py-20 text-center space-y-4 font-sans">
                 <Heart className="w-8 h-8 opacity-40 mx-auto text-[#141414]" />
                 <p className="font-editorial text-xl sm:text-2xl uppercase tracking-[-0.02em] text-[#141414]">
-                  NO PIECES SAVED YET
+                  YOUR WISHLIST IS EMPTY
                 </p>
-                <p className="text-[12px] sm:text-[13px] text-[#7A7771] uppercase tracking-[0.12em] max-w-xs mx-auto leading-relaxed">
-                  Click the heart on any garment in the catalog to curate your private wardrobe.
+                <p className="text-[12px] sm:text-[13px] text-[#7A7771] font-normal max-w-xs mx-auto leading-relaxed">
+                  Click the heart on any item to save it for later.
                 </p>
                 <button
                   onClick={() => setIsWishlistOpen(false)}
-                  className="mt-4 h-11 min-h-[44px] px-7 rounded-full border border-[#141414] text-[#141414] text-[11px] uppercase tracking-[0.2em] font-semibold hover:bg-[#141414] hover:text-[#F2F0EB] transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center"
+                  className="mt-4 h-11 min-h-[44px] px-7 rounded-full border border-[#141414] bg-[#141414] text-[#F2F0EB] text-[11px] uppercase tracking-[0.2em] font-semibold hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95 inline-flex items-center justify-center"
                 >
-                  EXPLORE DROP 26.1
+                  SHOP NOW
                 </button>
               </div>
             ) : (

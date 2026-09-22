@@ -70,7 +70,7 @@ export const ManifestoSection: React.FC = () => {
             <div className="max-w-md space-y-4 sm:space-y-6 font-sans">
               <p className="text-[14px] sm:text-[16px] leading-[1.65] text-[#3D3A36] font-normal tracking-[0.01em]">
                 PIERCYN creates modern clothing for people who refuse to disappear into the crowd.
-                Born from the restless creative energy of Lagos, we merge architectural tailoring with unyielding 450 GSM heavyweight cottons.
+                Born from Lagos, we make high-quality pieces with custom cuts and heavyweight cottons.
               </p>
 
               <p className="text-[13px] sm:text-[14px] leading-[1.6] text-[#6E6B65] font-normal">
@@ -84,7 +84,7 @@ export const ManifestoSection: React.FC = () => {
                   onClick={() => setIsStoryOpen(true)}
                   className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-full border border-[#141414]/80 text-[12px] sm:text-[13px] uppercase tracking-[0.18em] text-[#141414] font-semibold hover:bg-[#141414] hover:text-[#F2F0EB] transition-all duration-300 inline-flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
                 >
-                  <span>READ OUR FULL PHILOSOPHY</span>
+                  <span>OUR STORY</span>
                   <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </button>
               </div>

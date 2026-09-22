@@ -40,9 +40,19 @@ export type SortOption =
   | 'PRICE — HIGH TO LOW' 
   | 'BEST SELLING';
 
+export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'about';
+
+export interface ProductColor {
+  name: string;
+  hex: string;
+  image: string;
+  altImage?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
+  slug: string;
   category: ProductCategory;
   collection: 'everyday' | 'after-dark' | 'essentials' | 'the-drop';
   priceNGN: number;
@@ -54,14 +64,12 @@ export interface Product {
   fit: string;
   fabric: string;
   origin: string;
-  colors: {
-    name: string;
-    hex: string;
-    image: string;
-    altImage?: string;
-  }[];
+  colors: ProductColor[];
   sizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL')[];
   images: string[];
+  stock: number;
+  status: 'active' | 'draft' | 'archived';
+  createdAt: string;
   isNewDrop?: boolean;
   isBestSeller?: boolean;
   isSoldOut?: boolean;
@@ -74,6 +82,81 @@ export interface CartItem {
   selectedColor: string;
   selectedSize: string;
   quantity: number;
+}
+
+export interface CustomerInfo {
+  fullName: string;
+  email: string;
+  phone: string;
+  state: string;
+  city: string;
+  address: string;
+  orderNote?: string;
+}
+
+export interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  priceNGN: number;
+  estimatedTime: string;
+}
+
+export interface OrderItem {
+  productId: string;
+  productName: string;
+  category: string;
+  color: string;
+  size: string;
+  quantity: number;
+  unitPriceNGN: number;
+  totalPriceNGN: number;
+  image: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customer: CustomerInfo;
+  items: OrderItem[];
+  subtotalNGN: number;
+  deliveryFeeNGN: number;
+  totalNGN: number;
+  shippingMethod: string;
+  paymentMethod: string;
+  paymentStatus: 'PAID' | 'PENDING' | 'FAILED';
+  orderStatus: 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  createdAt: string;
+}
+
+export interface PaymentDetails {
+  orderNumber: string;
+  amountNGN: number;
+  customerEmail: string;
+  customerName: string;
+  customerPhone: string;
+}
+
+export interface PaymentResult {
+  success: boolean;
+  transactionReference: string;
+  message?: string;
+  paidAt?: string;
+}
+
+export interface AnalyticsEvent {
+  eventName: 
+    | 'page_view'
+    | 'product_view'
+    | 'search'
+    | 'filter_used'
+    | 'add_to_cart'
+    | 'remove_from_cart'
+    | 'checkout_started'
+    | 'payment_started'
+    | 'purchase';
+  data: Record<string, any>;
+  timestamp: string;
 }
 
 export interface LookbookLook {
@@ -138,6 +221,7 @@ export interface UserProfile {
   city?: string;
   ordersCount?: number;
 }
+
 
 
 

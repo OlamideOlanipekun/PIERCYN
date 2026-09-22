@@ -50,7 +50,7 @@ export const SearchModal: React.FC = () => {
               autoFocus
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="SEARCH SILHOUETTES, 450 GSM..."
+              placeholder="SEARCH HOODIES, TEES, DENIM..."
               className="w-full h-11 min-h-[44px] bg-transparent text-base sm:text-2xl font-editorial uppercase tracking-wider text-[#141414] placeholder-[#8C8A84] focus:outline-none"
             />
           </div>
@@ -59,7 +59,7 @@ export const SearchModal: React.FC = () => {
           {!searchTerm && (
             <div className="mt-6 sm:mt-8">
               <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.25em] uppercase text-[#7A7771] block mb-2.5 sm:mb-3">
-                FREQUENT ARCHIVES & SEARCHES:
+                POPULAR SEARCHES:
               </span>
               <div className="flex flex-wrap gap-2">
                 {popularSearches.map((term) => (
@@ -83,8 +83,8 @@ export const SearchModal: React.FC = () => {
               </span>
 
               {results.length === 0 ? (
-                <div className="py-10 text-center text-[#7A7771] font-editorial text-lg sm:text-xl uppercase">
-                  No matching silhouettes found for "{searchTerm}"
+                <div className="py-10 text-center text-[#7A7771] font-sans text-sm uppercase font-medium">
+                  Nothing here yet for "{searchTerm}". Try another search or explore what's new.
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5 max-h-[450px] overflow-y-auto pr-1">

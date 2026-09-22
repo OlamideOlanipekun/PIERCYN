@@ -23,10 +23,10 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
           {/* Eyebrow Label */}
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-sans font-semibold">
-              01 / NEW DROP
+              JUST DROPPED
             </span>
             <span className="hidden sm:inline-block text-[11px] uppercase tracking-[0.2em] text-[#141414]/60 font-sans font-medium">
-              ARCHITECTURAL STREETWEAR • RELEASE 26.1
+              Fresh pieces, ready for you.
             </span>
           </div>
 

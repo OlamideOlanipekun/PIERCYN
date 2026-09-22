@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { Currency } from '../types';
+import { Currency, ActivePageView } from '../types';
 import { Search, ShoppingBag, Menu, X, Heart, Sparkles, MapPin } from 'lucide-react';
 import { PiercynMonogram, PiercynLogo } from './PiercynLogo';
 
+
 interface NavbarProps {
   onNavigateSection: (sectionId: string) => void;
-  activePage?: 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'home';
-  onSelectPage?: (page: 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'home') => void;
+  activePage?: ActivePageView;
+  onSelectPage?: (page: ActivePageView) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -72,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     onNavigateSection(sectionId);
   };
 
-  const isDarkHero = !isScrolled && (activePage === 'men' || activePage === 'women');
+  const isDarkHero = !isScrolled && (activePage === 'home' || activePage === 'men' || activePage === 'women');
 
   return (
     <>
@@ -102,8 +103,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             <PiercynLogo size={22} />
           </button>
 
-          {/* Center: Desktop Navigation Links (MEN, WOMEN, NEW, COLLECTIONS, LOOKBOOK) */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
+            {/* Center: Desktop Navigation Links (SHOP, MEN, WOMEN, NEW, COLLECTIONS, LOOKBOOK) */}
+          <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-[12px] sm:text-[13px] font-medium tracking-[0.08em]">
+            <button
+              id="nav-shop"
+              onClick={() => handleNavClick('products-section', 'shop')}
+              className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
+                activePage === 'shop'
+                  ? isDarkHero
+                    ? 'font-bold text-[#F2F0EB]'
+                    : 'font-bold text-[#141414]'
+                  : isDarkHero
+                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
+                  : 'text-[#6E6B65] hover:text-[#141414]'
+              }`}
+            >
+              <span>SHOP</span>
+              {activePage === 'shop' && (
+                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+              )}
+            </button>
+
             <button
               id="nav-men"
               onClick={() => handleNavClick('piercyn-men-collection-page', 'men')}
@@ -155,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-[#6E6B65] hover:text-[#141414]'
               }`}
             >
-              <span>NEW</span>
+              <span>NEW ARRIVALS</span>
               {activePage === 'new' && (
                 <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
               )}
@@ -176,25 +196,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <span>COLLECTIONS</span>
               {activePage === 'collections' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
-              )}
-            </button>
-
-            <button
-              id="nav-lookbook"
-              onClick={() => handleNavClick('lookbook-section', 'lookbook')}
-              className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
-                activePage === 'lookbook'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
-              }`}
-            >
-              <span>LOOKBOOK</span>
-              {activePage === 'lookbook' && (
                 <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
               )}
             </button>

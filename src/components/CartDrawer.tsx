@@ -14,15 +14,13 @@ export const CartDrawer: React.FC = () => {
     cartSubtotal,
     currency,
     clearCart,
-    showToast
+    showToast,
+    setIsCheckoutOpen,
   } = useShop();
 
   const [promoCode, setPromoCode] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [checkoutComplete, setCheckoutComplete] = useState(false);
 
-  // Free shipping threshold: ₦100,000 / $120
   const freeShippingThreshold = 100000;
   const currentTotalNGN = cart.reduce((acc, item) => acc + item.product.priceNGN * item.quantity, 0);
   const progressPercent = Math.min(100, (currentTotalNGN / freeShippingThreshold) * 100);
@@ -41,12 +39,8 @@ export const CartDrawer: React.FC = () => {
   const finalSubtotal = cartSubtotal * (1 - discountPercent / 100);
 
   const handleSimulatedCheckout = () => {
-    setIsCheckingOut(true);
-    setTimeout(() => {
-      setIsCheckingOut(false);
-      setCheckoutComplete(true);
-      clearCart();
-    }, 1200);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
   };
 
   if (!isCartOpen) return null;
@@ -85,7 +79,7 @@ export const CartDrawer: React.FC = () => {
             {remainingForFreeShipping > 0 ? (
               <div className="flex flex-col space-y-1.5">
                 <div className="flex items-center justify-between text-[#4A4844] font-semibold">
-                  <span>COMPLIMENTARY SHIPPING</span>
+                  <span>FREE DELIVERY</span>
                   <span>{Math.round(progressPercent)}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-[#D5CFBF] rounded-full overflow-hidden">
@@ -101,7 +95,7 @@ export const CartDrawer: React.FC = () => {
             ) : (
               <div className="flex items-center gap-2 text-emerald-800 font-bold">
                 <Truck className="w-3.5 h-3.5 shrink-0" />
-                <span>YOU QUALIFY FOR FREE EXPRESS SHIPPING</span>
+                <span>YOU QUALIFY FOR FREE DELIVERY</span>
               </div>
             )}
           </div>
@@ -135,14 +129,14 @@ export const CartDrawer: React.FC = () => {
                 <p className="font-editorial text-xl sm:text-2xl uppercase tracking-[-0.02em] text-[#141414]">
                   YOUR BAG IS EMPTY
                 </p>
-                <p className="text-[11px] sm:text-[12px] text-[#7A7771] uppercase tracking-[0.15em] max-w-xs mx-auto">
-                  Explore the 450 GSM heavyweight essentials and new architectural drops.
+                <p className="text-[12px] sm:text-[13px] text-[#7A7771] font-normal max-w-xs mx-auto">
+                  Let's find you something good.
                 </p>
                 <button
                   onClick={() => setIsCartOpen(false)}
-                  className="mt-4 min-h-[44px] px-7 py-3 rounded-full border border-[#141414] text-[#141414] text-[11px] uppercase tracking-[0.25em] font-medium hover:bg-[#141414] hover:text-[#F2F0EB] transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="mt-4 min-h-[44px] px-7 py-3 rounded-full border border-[#141414] bg-[#141414] text-[#F2F0EB] text-[11px] uppercase tracking-[0.25em] font-medium hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95"
                 >
-                  BROWSE COLLECTION
+                  SHOP NOW
                 </button>
               </div>
             ) : (
@@ -218,7 +212,7 @@ export const CartDrawer: React.FC = () => {
           </div>
 
           {/* Bottom Summary & Checkout with safe area bottom padding */}
-          {cart.length > 0 && !checkoutComplete && (
+          {cart.length > 0 && (
             <div className="p-4 sm:p-6 bg-[#EBE7DF] border-t border-[#E3DEC3] space-y-3 sm:space-y-4 font-sans pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               
               {/* Promo Code Form */}
@@ -255,22 +249,15 @@ export const CartDrawer: React.FC = () => {
               {/* Checkout Button */}
               <button
                 onClick={handleSimulatedCheckout}
-                disabled={isCheckingOut}
-                className="group w-full h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] uppercase tracking-[0.16em] font-bold hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs active:scale-[0.98]"
+                className="group w-full h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] uppercase tracking-[0.16em] font-bold hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
               >
-                {isCheckingOut ? (
-                  <span>PROCESSING ATELIER ORDER...</span>
-                ) : (
-                  <>
-                    <span>PROCEED TO CHECKOUT</span>
-                    <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
-                  </>
-                )}
+                <span>CHECKOUT</span>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
 
               <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-[#6E6B65] font-sans pt-0.5 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 opacity-70" />
-                <span>SECURE CHECKOUT • LAGOS & GLOBAL EXPRESS</span>
+                <span>SECURE CHECKOUT • FAST & RELIABLE DELIVERY</span>
               </div>
             </div>
           )}

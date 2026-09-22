@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
-import { PRODUCTS } from './data/products';
-import { Product, LookbookLook } from './types';
+import { ALL_PRODUCTS } from './data/allProducts';
+import { Product, LookbookLook, ActivePageView } from './types';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Navbar } from './components/Navbar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
@@ -13,6 +13,8 @@ import { NewDropSection } from './components/NewDropSection';
 import { ManifestoSection } from './components/ManifestoSection';
 import { CollectionsGrid } from './components/CollectionsGrid';
 import { ProductCatalogSection } from './components/ProductCatalogSection';
+import { EditorialSections } from './components/EditorialSections';
+import { ShopPage } from './components/ShopPage';
 import { FromLagosSection } from './components/FromLagosSection';
 import { LookbookSection } from './components/LookbookSection';
 import { ThePieceSection } from './components/ThePieceSection';
@@ -30,10 +32,11 @@ import { SizeGuideModal } from './components/SizeGuideModal';
 import { CraftsmanshipModal } from './components/CraftsmanshipModal';
 import { ConciergeModal } from './components/ConciergeModal';
 import { AuthModal } from './components/AuthModal';
-import { AtelierAudioPlayer } from './components/AtelierAudioPlayer';
+import { CheckoutModal } from './components/CheckoutModal';
+import { OrderConfirmationModal } from './components/OrderConfirmationModal';
+import { WhatsAppButton } from './components/WhatsAppButton';
+import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
-
-type ActivePageView = 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'home';
 
 const MainLayout: React.FC = () => {
   const { setQuickViewProduct, setActiveLook } = useShop();
@@ -61,7 +64,13 @@ const MainLayout: React.FC = () => {
   };
 
   const handleExploreHero = (category?: string) => {
-    if (category === 'men') {
+    if (category === 'shop') {
+      setActivePage('shop');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (category === 'new') {
+      setActivePage('new');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (category === 'men') {
       setActivePage('men');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -72,7 +81,7 @@ const MainLayout: React.FC = () => {
 
   const handleSelectCollection = (collectionId: string) => {
     if (collectionId === 'everyday' || collectionId === 'essentials') {
-      setActivePage('men');
+      setActivePage('shop');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       if (collectionId === 'after-dark') setSelectedCategoryFilter('outerwear');
@@ -91,18 +100,24 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans selection:bg-[#141414] selection:text-[#F2F0EB] relative">
-      {/* Top Luxury Live Ticker & Dispatch Bar */}
+      {/* Announcement & Top Dispatch Bar */}
       <AnnouncementBar />
 
-      {/* Navigation Overlay with active MEN state */}
+      {/* Primary Header Navigation */}
       <Navbar 
         onNavigateSection={handleNavigateSection}
         activePage={activePage}
         onSelectPage={handleSelectPage}
       />
 
-      {/* Main Page Content Render */}
-      {activePage === 'men' ? (
+      {/* Main View Router */}
+      {activePage === 'shop' ? (
+        <ShopPage
+          products={ALL_PRODUCTS}
+          onViewProduct={handleViewProduct}
+          initialCategory={selectedCategoryFilter}
+        />
+      ) : activePage === 'men' ? (
         <MenCollectionPage onNavigateSection={handleNavigateSection} />
       ) : activePage === 'women' ? (
         <WomenCollectionPage onNavigateSection={handleNavigateSection} />
@@ -112,13 +127,22 @@ const MainLayout: React.FC = () => {
         <CollectionsPage onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
       ) : (
         <>
-          {/* General Homepage / Collections View */}
+          {/* Main Homepage Flow */}
           <HeroSection onExplore={handleExploreHero} />
-          <NewDropSection products={PRODUCTS} onViewProduct={handleViewProduct} />
+          <NewDropSection products={ALL_PRODUCTS} onViewProduct={handleViewProduct} />
           <ManifestoSection />
           <CollectionsGrid onSelectCollection={handleSelectCollection} />
+          <EditorialSections
+            products={ALL_PRODUCTS}
+            onViewProduct={handleViewProduct}
+            onSelectCategory={(cat) => {
+              setSelectedCategoryFilter(cat);
+              setActivePage('shop');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
           <ProductCatalogSection
-            products={PRODUCTS}
+            products={ALL_PRODUCTS}
             selectedCategoryFilter={selectedCategoryFilter}
             onViewProduct={handleViewProduct}
           />
@@ -134,8 +158,9 @@ const MainLayout: React.FC = () => {
       {/* Global Luxury Footer */}
       <Footer onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
 
-      {/* Ambient Runway Soundscape Player */}
-      <AtelierAudioPlayer />
+
+      {/* Subtle Floating WhatsApp Concierge Button */}
+      <WhatsAppButton />
 
       {/* Interactive Drawers & Modals */}
       <CartDrawer />
@@ -148,6 +173,9 @@ const MainLayout: React.FC = () => {
       <CraftsmanshipModal />
       <ConciergeModal />
       <AuthModal />
+      <CheckoutModal />
+      <OrderConfirmationModal />
+      <AdminDrawer />
       <Toast />
     </div>
   );
@@ -160,4 +188,5 @@ export default function App() {
     </ShopProvider>
   );
 }
+
 

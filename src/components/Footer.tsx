@@ -3,13 +3,15 @@ import { useShop } from '../context/ShopContext';
 import { ArrowUp } from 'lucide-react';
 import { PiercynMonogram } from './PiercynLogo';
 
+import { ActivePageView } from '../types';
+
 interface FooterProps {
   onNavigateSection: (sectionId: string) => void;
-  onSelectPage?: (page: 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'home') => void;
+  onSelectPage?: (page: ActivePageView) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage }) => {
-  const { setIsSizeGuideOpen, setIsStoryOpen } = useShop();
+  const { setIsSizeGuideOpen, setIsStoryOpen, setIsAdminOpen } = useShop();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -189,11 +191,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
           </div>
 
           <div className="font-editorial italic text-[#141414] text-[16px] sm:text-[17px] tracking-normal font-normal">
-            MADE TO STAND OUT.
+            LOOK GOOD. SPEND LESS.
           </div>
 
-          <div>
-            LAGOS • WORLDWIDE
+          <div className="flex items-center gap-4">
+            <span>LAGOS • WORLDWIDE</span>
+            <span>•</span>
+            <button
+              onClick={() => setIsAdminOpen(true)}
+              className="underline hover:text-[#141414] cursor-pointer"
+            >
+              STORE ADMIN
+            </button>
           </div>
         </div>
 

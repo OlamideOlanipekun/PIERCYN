@@ -14,7 +14,7 @@ export const NewsletterSection: React.FC = () => {
       return;
     }
     setIsSubmitted(true);
-    showToast('You are now subscribed to PIERCYN private dispatches.');
+    showToast("You're on the list!");
   };
 
   return (
@@ -26,7 +26,7 @@ export const NewsletterSection: React.FC = () => {
         
         {/* Eyebrow */}
         <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-semibold block mb-3 sm:mb-4">
-          PRIVATE COMMUNICATIONS
+          STAY IN TOUCH
         </span>
 
         {/* Serif Headline: STAY CLOSE. */}
@@ -37,7 +37,7 @@ export const NewsletterSection: React.FC = () => {
 
         {/* Supporting Copy */}
         <p className="text-[14px] sm:text-[15px] text-[#4A4844] font-normal max-w-md mx-auto leading-[1.6] mb-8 sm:mb-12 tracking-[0.01em]">
-          New drops, limited releases and the next chapter of PIERCYN. Strictly essential dispatches from our Lagos atelier.
+          Be the first to know when new pieces drop.
         </p>
 
         {/* Underline Email Input */}
@@ -67,7 +67,7 @@ export const NewsletterSection: React.FC = () => {
         ) : (
           <div className="flex items-center gap-3 text-[#141414] text-[12px] sm:text-[13px] uppercase tracking-[0.15em] font-semibold border border-[#141414] px-6 py-3 rounded-full bg-[#E8E6E1]">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>WELCOME TO THE INNER CIRCLE OF PIERCYN</span>
+            <span>YOU'RE ON THE LIST</span>
           </div>
         )}
 

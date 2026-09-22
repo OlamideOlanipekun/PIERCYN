@@ -21,7 +21,7 @@ export const ProductCatalogSection: React.FC<ProductCatalogSectionProps> = ({
   const [hoveredColorIndex, setHoveredColorIndex] = useState<{ [productId: string]: number }>({});
 
   const categories = [
-    { id: 'all', label: 'ALL ARCHIVES' },
+    { id: 'all', label: 'ALL PIECES' },
     { id: 'hoodies', label: 'HOODIES & SWEATS' },
     { id: 'trousers', label: 'TROUSERS & DENIM' },
     { id: 'tees', label: 'TEES' },
@@ -64,7 +64,7 @@ export const ProductCatalogSection: React.FC<ProductCatalogSectionProps> = ({
         {/* Large Centered Serif Title Overlapping Product Area */}
         <div className="relative text-center mb-10 sm:mb-14 lg:mb-16">
           <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-sans font-semibold block mb-2 sm:mb-3">
-            04 / PERMANENT & SEASONAL CATALOG
+            POPULAR PIECES
           </span>
           <h2 className="font-editorial text-[13vw] sm:text-[9vw] lg:text-[7vw] xl:text-[110px] leading-[0.88] tracking-[-0.03em] uppercase text-[#141414] select-none">
             <div>CURRENTLY</div>

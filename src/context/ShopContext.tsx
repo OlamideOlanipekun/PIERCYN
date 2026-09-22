@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, CartItem, LookbookLook, Currency, UserProfile } from '../types';
-import { PRODUCTS } from '../data/products';
+import { Product, CartItem, LookbookLook, Currency, UserProfile, Order } from '../types';
+import { eventTracker } from '../services/eventTracker';
 
 interface ShopContextType {
   cart: CartItem[];
@@ -19,6 +19,20 @@ interface ShopContextType {
   isWishlisted: (productId: string) => boolean;
   isWishlistOpen: boolean;
   setIsWishlistOpen: (open: boolean) => void;
+
+  // Checkout & Orders
+  isCheckoutOpen: boolean;
+  setIsCheckoutOpen: (open: boolean) => void;
+  isOrderConfirmedOpen: boolean;
+  setIsOrderConfirmedOpen: (open: boolean) => void;
+  lastCreatedOrder: Order | null;
+  setLastCreatedOrder: (order: Order | null) => void;
+  orders: Order[];
+  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>) => Order;
+
+  // Admin Drawer
+  isAdminOpen: boolean;
+  setIsAdminOpen: (open: boolean) => void;
 
   // Modals & Drawers
   quickViewProduct: Product | null;
@@ -79,9 +93,23 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem('piercyn_orders');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [currency, setCurrency] = useState<Currency>('NGN');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isOrderConfirmedOpen, setIsOrderConfirmedOpen] = useState(false);
+  const [lastCreatedOrder, setLastCreatedOrder] = useState<Order | null>(null);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [activeLook, setActiveLook] = useState<LookbookLook | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -90,6 +118,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCraftsmanshipOpen, setIsCraftsmanshipOpen] = useState(false);
   const [isConciergeOpen, setIsConciergeOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('piercyn_user');
@@ -111,6 +140,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // storage unavailable
     }
   }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('piercyn_orders', JSON.stringify(orders));
+    } catch {
+      // storage unavailable
+    }
+  }, [orders]);
 
   const login = (email: string, _password?: string, firstName?: string, lastName?: string) => {
     const fName = firstName || email.split('@')[0];
@@ -176,17 +213,40 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    eventTracker.track('add_to_cart', {
+      productId: product.id,
+      productName: product.name,
+      priceNGN: product.priceNGN,
+      selectedColor,
+      selectedSize,
+      quantity,
+    });
+
     showToast(`Added ${product.name} (${selectedSize}) to bag`);
     setIsCartOpen(true);
   };
 
   const removeFromCart = (productId: string, colorName: string, size: string) => {
-    setCart((prev) =>
-      prev.filter(
+    setCart((prev) => {
+      const itemToRemove = prev.find(
+        (item) =>
+          item.product.id === productId &&
+          item.selectedColor === colorName &&
+          item.selectedSize === size
+      );
+      if (itemToRemove) {
+        eventTracker.track('remove_from_cart', {
+          productId: itemToRemove.product.id,
+          productName: itemToRemove.product.name,
+          color: colorName,
+          size,
+        });
+      }
+      return prev.filter(
         (item) =>
           !(item.product.id === productId && item.selectedColor === colorName && item.selectedSize === size)
-      )
-    );
+      );
+    });
   };
 
   const updateQuantity = (productId: string, colorName: string, size: string, delta: number) => {
@@ -209,6 +269,29 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setCart([]);
+  };
+
+  const createOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>): Order => {
+    const orderNum = `PCY-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newOrder: Order = {
+      ...orderData,
+      id: `ord-${Date.now()}`,
+      orderNumber: orderNum,
+      createdAt: new Date().toISOString(),
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    setLastCreatedOrder(newOrder);
+
+    eventTracker.track('purchase', {
+      orderNumber: orderNum,
+      totalNGN: newOrder.totalNGN,
+      itemCount: newOrder.items.length,
+      customerEmail: newOrder.customer.email,
+    });
+
+    clearCart();
+    return newOrder;
   };
 
   const toggleWishlist = (productId: string) => {
@@ -253,6 +336,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isWishlisted,
         isWishlistOpen,
         setIsWishlistOpen,
+        isCheckoutOpen,
+        setIsCheckoutOpen,
+        isOrderConfirmedOpen,
+        setIsOrderConfirmedOpen,
+        lastCreatedOrder,
+        setLastCreatedOrder,
+        orders,
+        createOrder,
+        isAdminOpen,
+        setIsAdminOpen,
         quickViewProduct,
         setQuickViewProduct,
         activeLook,
@@ -290,3 +383,4 @@ export const useShop = () => {
   }
   return context;
 };
+
