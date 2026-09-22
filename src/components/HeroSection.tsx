@@ -5,15 +5,29 @@ interface HeroSectionProps {
   onExplore: (category?: string) => void;
 }
 
-const HERO_VIDEO_BLOB_URL = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Model_walking_on_street_20260922160521.mp4';
+// Configurable Vercel Blob URLs
+const HERO_VIDEO_DESKTOP = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Model_walking_on_street_20260922160521.mp4';
+const HERO_VIDEO_MOBILE = ''; // Graceful fallback to HERO_VIDEO_DESKTOP when empty
+const HERO_POSTER_IMAGE = 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop';
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 80);
-    return () => clearTimeout(timer);
+    
+    // Check user accessibility preference for reduced motion
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+
+    return () => {
+      clearTimeout(timer);
+      mediaQuery.removeEventListener('change', handler);
+    };
   }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -29,27 +43,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
     <section
       id="hero-section"
       onMouseMove={handleMouseMove}
-      className="relative w-full h-[85vh] min-h-[600px] max-h-[960px] bg-[#141414] text-[#F2F0EB] font-sans overflow-hidden select-none"
+      className="relative w-full h-[78svh] min-h-[520px] max-h-[720px] sm:h-[85vh] sm:min-h-[600px] sm:max-h-[960px] bg-[#141414] text-[#F2F0EB] font-sans overflow-hidden select-none"
     >
-      {/* Layer 1: Vercel Blob Cinematic Video Background */}
+      {/* Layer 1: Responsive Background (Video or Static Poster for Reduced Motion) */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#141414]">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="w-full h-full object-cover object-center filter brightness-[0.92] contrast-[1.05] transition-opacity duration-1000"
-        >
-          <source src={HERO_VIDEO_BLOB_URL} type="video/mp4" />
-        </video>
+        {prefersReducedMotion ? (
+          <img
+            src={HERO_POSTER_IMAGE}
+            alt="PIERCYN Campaign"
+            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.90] contrast-[1.05]"
+          />
+        ) : (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={HERO_POSTER_IMAGE}
+            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.90] contrast-[1.05] transition-opacity duration-1000"
+          >
+            {HERO_VIDEO_MOBILE && (
+              <source media="(max-width: 767px)" src={HERO_VIDEO_MOBILE} type="video/mp4" />
+            )}
+            <source src={HERO_VIDEO_DESKTOP} type="video/mp4" />
+          </video>
+        )}
       </div>
 
-      {/* Layer 2: Readability Overlay (Subtle Gradient for Crisp Text Legibility) */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/85 via-black/35 to-black/50 pointer-events-none" />
+      {/* Top Navbar Area Gradient Protection */}
+      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/75 via-black/30 to-transparent pointer-events-none z-[2]" />
 
-      {/* Layer 3: Hero Content */}
-      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-24 sm:pt-28 pb-12 sm:pb-14 pointer-events-none">
+      {/* Layer 2: Readability Overlay (Enhanced Bottom & Center Gradient for Mobile Framing) */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/40 to-black/60 sm:from-black/85 sm:via-black/35 sm:to-black/50 pointer-events-none" />
+
+      {/* Layer 3: Hero Content within Mobile Safe Area */}
+      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-20 sm:pt-28 pb-8 sm:pb-14 pointer-events-none">
         
         {/* Top Tagline */}
         <div className="hidden sm:flex items-center justify-between pointer-events-auto">
@@ -62,11 +91,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
         </div>
 
         {/* Editorial Campaign Typography: LOOK GOOD. SPEND LESS. */}
-        <div className="my-auto py-2 sm:py-4 pointer-events-none">
+        <div className="my-auto py-1 sm:py-4 pointer-events-none">
           <h1 className="font-editorial italic leading-[0.88] text-[#F2F0EB] tracking-[-0.03em] drop-shadow-sm">
             <div className="overflow-hidden py-0.5 sm:py-1">
               <span 
-                className={`block text-[clamp(48px,9.5vw,120px)] ml-1 sm:ml-4 transition-transform duration-[1000ms] ease-[cubic-bezier(0.16,1,0.3,1)] font-medium ${
+                className={`block text-[clamp(38px,9vw,64px)] sm:text-[clamp(48px,9.5vw,120px)] ml-0.5 sm:ml-4 transition-transform duration-[1000ms] ease-[cubic-bezier(0.16,1,0.3,1)] font-medium ${
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
                 style={{
@@ -79,9 +108,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
               </span>
             </div>
 
-            <div className="overflow-hidden -mt-1 sm:-mt-4 lg:-mt-6 py-0.5 sm:py-1 relative z-[18]">
+            <div className="overflow-hidden -mt-0.5 sm:-mt-4 lg:-mt-6 py-0.5 sm:py-1 relative z-[18]">
               <span 
-                className={`block text-[clamp(52px,10.5vw,135px)] ml-4 sm:ml-20 lg:ml-32 font-normal transition-transform duration-[1100ms] delay-[140ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                className={`block text-[clamp(42px,10vw,72px)] sm:text-[clamp(52px,10.5vw,135px)] ml-2 sm:ml-20 lg:ml-32 font-normal transition-transform duration-[1100ms] delay-[140ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
                 style={{
@@ -99,19 +128,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
         {/* Bottom Action Bar */}
         <div className="flex items-end justify-between w-full pointer-events-auto">
           <div 
-            className={`max-w-[440px] transition-all duration-[900ms] delay-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`w-full sm:max-w-[440px] transition-all duration-[900ms] delay-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
             }`}
           >
-            <p className="font-sans text-[13px] sm:text-[14.5px] leading-[1.6] tracking-[0.03em] uppercase text-[#F2F0EB]/95 mb-4 sm:mb-6 font-medium drop-shadow-xs">
+            <p className="font-sans text-[12px] sm:text-[14.5px] leading-[1.5] sm:leading-[1.6] tracking-[0.03em] uppercase text-[#F2F0EB]/95 mb-3 sm:mb-6 font-medium drop-shadow-xs">
               Good-looking fashion at prices that make sense.
             </p>
 
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto font-sans">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto font-sans">
               <button
                 id="hero-shop-now-btn"
                 onClick={() => onExplore('shop')}
-                className="group h-12 px-6 rounded-full bg-[#F2F0EB] text-[#141414] hover:bg-white transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.98] text-[12px] sm:text-[13px] font-bold tracking-[0.16em] uppercase whitespace-nowrap"
+                className="group h-11 sm:h-12 px-6 rounded-full bg-[#F2F0EB] text-[#141414] hover:bg-white transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.98] text-[12px] sm:text-[13px] font-bold tracking-[0.16em] uppercase whitespace-nowrap"
               >
                 <span>SHOP NOW</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
@@ -120,7 +149,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
               <button
                 id="hero-new-arrivals-btn"
                 onClick={() => onExplore('new')}
-                className="group h-12 px-6 rounded-full border border-[#F2F0EB]/70 bg-black/40 backdrop-blur-xs text-[#F2F0EB] hover:bg-[#F2F0EB] hover:text-[#141414] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] text-[12px] sm:text-[13px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap"
+                className="group h-11 sm:h-12 px-5 sm:px-6 rounded-full border border-[#F2F0EB]/70 bg-black/40 backdrop-blur-xs text-[#F2F0EB] hover:bg-[#F2F0EB] hover:text-[#141414] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] text-[11.5px] sm:text-[13px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap"
               >
                 <span>EXPLORE NEW ARRIVALS</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
