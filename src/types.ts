@@ -36,8 +36,8 @@ export type WomenCategory =
 export type SortOption = 
   | 'FEATURED' 
   | 'NEWEST' 
-  | 'PRICE — LOW TO HIGH' 
-  | 'PRICE — HIGH TO LOW' 
+  | 'PRICE: LOW TO HIGH' 
+  | 'PRICE: HIGH TO LOW' 
   | 'BEST SELLING';
 
 export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product';
@@ -47,6 +47,8 @@ export interface ProductColor {
   hex: string;
   image: string;
   altImage?: string;
+  imageType?: 'product' | 'model' | 'lifestyle';
+  objectPosition?: string;
 }
 
 export interface Product {
@@ -67,6 +69,10 @@ export interface Product {
   colors: ProductColor[];
   sizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL')[];
   images: string[];
+  // Garment photography metadata
+  imageType?: 'product' | 'model' | 'lifestyle';
+  objectPosition?: string;
+  productShotUrl?: string;
   stock?: number;
   status?: 'active' | 'draft' | 'archived';
   createdAt?: string;
@@ -75,6 +81,8 @@ export interface Product {
   isSoldOut?: boolean;
   isLimited?: boolean;
   tag?: string;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export interface CartItem {

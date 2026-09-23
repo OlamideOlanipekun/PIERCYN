@@ -34,8 +34,8 @@ const AVAILABLE_COLORS = [
 const SORT_OPTIONS: SortOption[] = [
   'FEATURED',
   'NEWEST',
-  'PRICE — LOW TO HIGH',
-  'PRICE — HIGH TO LOW',
+  'PRICE: LOW TO HIGH',
+  'PRICE: HIGH TO LOW',
   'BEST SELLING'
 ];
 

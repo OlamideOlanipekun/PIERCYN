@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { Product } from '../types';
 import { formatPrice } from '../utils/currency';
-import { Heart, Plus, Eye } from 'lucide-react';
+import { ProductImage } from './ProductImage';
+import { Heart, Plus, Eye, Star } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -20,10 +21,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
 
   const activeColor = product.colors[selectedColorIdx] || product.colors[0];
+  
+  // Prefer garment-first photography if available
   const displayImage =
     isHovered && activeColor?.altImage
       ? activeColor.altImage
-      : activeColor?.image || product.images[0];
+      : product.productShotUrl || activeColor?.image || product.images[0];
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -42,13 +45,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       className="group flex flex-col cursor-pointer select-none text-left"
     >
-      {/* Product Image Container */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#E8E4DA] rounded-xl mb-2.5 sm:mb-3 shadow-2xs">
-        <img
+      {/* Product Image Container with 4:5 Ratio */}
+      <div className="relative w-full overflow-hidden rounded-xl mb-2.5 sm:mb-3 shadow-2xs">
+        <ProductImage
           src={displayImage}
-          alt={product.name}
-          loading={priority ? 'eager' : 'lazy'}
-          className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          productName={product.name}
+          colorName={activeColor?.name}
+          aspectRatio="4/5"
+          objectPosition={product.objectPosition || activeColor?.objectPosition || 'center 20%'}
+          priority={priority}
+          imgClassName="transition-transform duration-700 ease-out group-hover:scale-[1.03]"
         />
 
         {/* Wishlist Button */}
@@ -86,11 +92,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
         </div>
 
-        {/* GSM / Fabric Micro Tag */}
-        {product.gsm && (
-          <div className="absolute bottom-2.5 left-2.5 sm:group-hover:opacity-0 transition-opacity">
-            <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#141414]/80 text-[#F2F0EB] backdrop-blur-xs">
-              {product.gsm}
+        {/* GSM / Fabric or Tag */}
+        {(product.tag || product.gsm) && (
+          <div className="absolute bottom-2.5 left-2.5 sm:group-hover:opacity-0 transition-opacity z-10">
+            <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#141414]/85 text-[#F2F0EB] backdrop-blur-xs">
+              {product.tag || product.gsm}
             </span>
           </div>
         )}
@@ -125,12 +131,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.name}
         </h3>
 
+        {/* Show ratings only if genuine reviews exist */}
+        {product.rating && product.reviewCount ? (
+          <div className="flex items-center gap-1 text-[11px] text-[#7A7771]">
+            <Star className="w-3 h-3 fill-[#141414] text-[#141414]" />
+            <span className="font-mono text-[#141414] font-medium">{product.rating}</span>
+            <span className="font-mono">({product.reviewCount})</span>
+          </div>
+        ) : null}
+
         <div className="flex items-baseline justify-between mt-0.5">
           <span className="font-mono text-xs sm:text-sm font-bold text-[#141414]">
             {formatPrice(product, currency)}
           </span>
           <span className="text-[10px] font-mono text-[#7A7771] uppercase">
-            {product.origin.includes('Lagos') ? 'LAGOS' : 'ATELIER'}
+            {product.origin && product.origin.includes('Lagos') ? 'LAGOS' : 'ATELIER'}
           </span>
         </div>
       </div>

@@ -166,9 +166,9 @@ export const WomenCollectionPage: React.FC<WomenCollectionPageProps> = ({ onNavi
     // 6. Sorting
     if (sortBy === 'NEWEST') {
       result.sort((a, b) => (b.isNewDrop ? 1 : 0) - (a.isNewDrop ? 1 : 0));
-    } else if (sortBy === 'PRICE — LOW TO HIGH') {
+    } else if (sortBy === 'PRICE: LOW TO HIGH') {
       result.sort((a, b) => a.priceNGN - b.priceNGN);
-    } else if (sortBy === 'PRICE — HIGH TO LOW') {
+    } else if (sortBy === 'PRICE: HIGH TO LOW') {
       result.sort((a, b) => b.priceNGN - a.priceNGN);
     } else if (sortBy === 'BEST SELLING') {
       result.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));

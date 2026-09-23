@@ -5,6 +5,7 @@ import { ALL_PRODUCTS } from '../data/allProducts';
 import { Product } from '../types';
 import { Plus, Check, ShoppingBag, ArrowRight } from 'lucide-react';
 import { formatNGN } from '../utils/currency';
+import { ProductImage } from './ProductImage';
 
 interface BuildTheLookSectionProps {
   onViewProduct?: (product: Product) => void;
@@ -67,11 +68,13 @@ export const BuildTheLookSection: React.FC<BuildTheLookSectionProps> = ({ onView
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* Left: Model Showcase */}
           <div className="lg:col-span-6 xl:col-span-7">
-            <div className="relative aspect-[3/4] sm:aspect-[4/5] w-full rounded-2xl overflow-hidden bg-[#ECE8E1] shadow-sm group">
-              <img
+            <div className="relative w-full rounded-2xl overflow-hidden bg-[#ECE8E1] shadow-sm group">
+              <ProductImage
                 src={outfit.modelImage}
                 alt={outfit.title}
-                className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+                aspectRatio="4/5"
+                objectPosition="center 15%"
+                imgClassName="transition-transform duration-700 group-hover:scale-[1.02]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
@@ -119,12 +122,13 @@ export const BuildTheLookSection: React.FC<BuildTheLookSectionProps> = ({ onView
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
                           onClick={() => product && onViewProduct?.(product)}
-                          className="w-14 h-18 rounded-lg overflow-hidden bg-[#ECE8E1] shrink-0 cursor-pointer"
+                          className="w-14 rounded-lg overflow-hidden bg-[#ECE8E1] shrink-0 cursor-pointer"
                         >
-                          <img
+                          <ProductImage
                             src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
+                            productName={item.name}
+                            aspectRatio="4/5"
+                            objectPosition="center 15%"
                           />
                         </div>
                         <div className="min-w-0">

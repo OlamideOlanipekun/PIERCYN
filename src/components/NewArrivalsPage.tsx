@@ -16,8 +16,8 @@ type SortKey = 'FEATURED' | 'NEWEST' | 'PRICE_ASC' | 'PRICE_DESC';
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'FEATURED', label: 'FEATURED' },
   { key: 'NEWEST', label: 'NEWEST FIRST' },
-  { key: 'PRICE_ASC', label: 'PRICE — LOW TO HIGH' },
-  { key: 'PRICE_DESC', label: 'PRICE — HIGH TO LOW' },
+  { key: 'PRICE_ASC', label: 'PRICE: LOW TO HIGH' },
+  { key: 'PRICE_DESC', label: 'PRICE: HIGH TO LOW' },
 ];
 
 // Maps NewCategory → ProductCategory array for filtering

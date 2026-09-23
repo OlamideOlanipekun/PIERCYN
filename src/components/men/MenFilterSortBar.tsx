@@ -34,8 +34,8 @@ const AVAILABLE_COLORS = [
 const SORT_OPTIONS: SortOption[] = [
   'FEATURED',
   'NEWEST',
-  'PRICE — LOW TO HIGH',
-  'PRICE — HIGH TO LOW',
+  'PRICE: LOW TO HIGH',
+  'PRICE: HIGH TO LOW',
   'BEST SELLING'
 ];
 
@@ -228,7 +228,7 @@ export const MenFilterSortBar: React.FC<MenFilterSortBarProps> = ({
               className="flex-1 h-12 min-h-[48px] px-4 rounded-full border border-[#141414] bg-transparent text-[#141414] text-[12px] uppercase font-sans font-semibold tracking-[0.14em] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all truncate"
             >
               <ArrowUpDown className="w-4 h-4 shrink-0" />
-              <span className="truncate">{sortBy.replace('PRICE — ', '')}</span>
+              <span className="truncate">{sortBy.replace('PRICE: ', '')}</span>
             </button>
 
           </div>
