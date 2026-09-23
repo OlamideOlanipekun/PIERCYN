@@ -7,9 +7,15 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   EUR: '€'
 };
 
+const ngnFormatter = new Intl.NumberFormat('en-NG', {
+  style: 'currency',
+  currency: 'NGN',
+  maximumFractionDigits: 0,
+});
+
 export function formatPrice(productOrNumber: Product | number | undefined | null, currency: Currency = 'NGN'): string {
   if (!productOrNumber) {
-    return currency === 'NGN' ? '₦0' : currency === 'USD' ? '$0' : currency === 'GBP' ? '£0' : '€0';
+    return currency === 'NGN' ? formatNGN(0) : currency === 'USD' ? '$0' : currency === 'GBP' ? '£0' : '€0';
   }
 
   if (typeof productOrNumber === 'number') {
@@ -19,7 +25,7 @@ export function formatPrice(productOrNumber: Product | number | undefined | null
   const product = productOrNumber;
   switch (currency) {
     case 'NGN':
-      return `₦${(product.priceNGN ?? 0).toLocaleString('en-NG')}`;
+      return formatNGN(product.priceNGN ?? 0);
     case 'USD':
       return `$${product.priceUSD ?? Math.round((product.priceNGN ?? 0) / 820)}`;
     case 'GBP':
@@ -27,7 +33,7 @@ export function formatPrice(productOrNumber: Product | number | undefined | null
     case 'EUR':
       return `€${product.priceEUR ?? Math.round((product.priceNGN ?? 0) / 890)}`;
     default:
-      return `₦${(product.priceNGN ?? 0).toLocaleString('en-NG')}`;
+      return formatNGN(product.priceNGN ?? 0);
   }
 }
 
@@ -42,7 +48,7 @@ export function formatNumericPrice(priceNGN: number | undefined | null, currency
 
   switch (currency) {
     case 'NGN':
-      return `₦${safePrice.toLocaleString('en-NG')}`;
+      return formatNGN(safePrice);
     case 'USD':
       return `$${Math.round(safePrice * rates.USD)}`;
     case 'GBP':
@@ -50,11 +56,11 @@ export function formatNumericPrice(priceNGN: number | undefined | null, currency
     case 'EUR':
       return `€${Math.round(safePrice * rates.EUR)}`;
     default:
-      return `₦${safePrice.toLocaleString('en-NG')}`;
+      return formatNGN(safePrice);
   }
 }
 
 export function formatNGN(priceNGN: number | undefined | null): string {
   const safePrice = typeof priceNGN === 'number' && !isNaN(priceNGN) ? priceNGN : 0;
-  return `₦${safePrice.toLocaleString('en-NG')}`;
+  return ngnFormatter.format(safePrice);
 }
