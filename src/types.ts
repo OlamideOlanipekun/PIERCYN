@@ -40,7 +40,7 @@ export type SortOption =
   | 'PRICE — HIGH TO LOW' 
   | 'BEST SELLING';
 
-export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'collections' | 'lookbook' | 'about';
+export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about';
 
 export interface ProductColor {
   name: string;
@@ -52,7 +52,7 @@ export interface ProductColor {
 export interface Product {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
   category: ProductCategory;
   collection: 'everyday' | 'after-dark' | 'essentials' | 'the-drop';
   priceNGN: number;
@@ -67,9 +67,9 @@ export interface Product {
   colors: ProductColor[];
   sizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL')[];
   images: string[];
-  stock: number;
-  status: 'active' | 'draft' | 'archived';
-  createdAt: string;
+  stock?: number;
+  status?: 'active' | 'draft' | 'archived';
+  createdAt?: string;
   isNewDrop?: boolean;
   isBestSeller?: boolean;
   isSoldOut?: boolean;

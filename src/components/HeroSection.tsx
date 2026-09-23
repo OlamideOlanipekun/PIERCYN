@@ -12,11 +12,10 @@ const HERO_POSTER_IMAGE = 'https://images.unsplash.com/photo-1552374196-1ab2a1c5
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 80);
+    const timer = setTimeout(() => setIsLoaded(true), 60);
     
     // Check user accessibility preference for reduced motion
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,20 +29,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
     };
   }, []);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (window.innerWidth < 768) return;
-    const { clientX, clientY, currentTarget } = e;
-    const { width, height } = currentTarget.getBoundingClientRect();
-    const x = (clientX / width - 0.5) * 8;
-    const y = (clientY / height - 0.5) * 8;
-    setMousePos({ x, y });
-  };
-
   return (
     <section
       id="hero-section"
-      onMouseMove={handleMouseMove}
-      className="relative w-full h-[78svh] min-h-[520px] max-h-[720px] sm:h-[85vh] sm:min-h-[600px] sm:max-h-[960px] bg-[#141414] text-[#F2F0EB] font-sans overflow-hidden select-none"
+      className="relative w-full h-[80svh] min-h-[520px] max-h-[760px] sm:h-[86vh] sm:min-h-[620px] sm:max-h-[960px] bg-[#141414] text-[#F2F0EB] font-sans overflow-hidden select-none"
     >
       {/* Layer 1: Responsive Background (Video or Static Poster for Reduced Motion) */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#141414]">
@@ -61,7 +50,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
             playsInline
             preload="metadata"
             poster={HERO_POSTER_IMAGE}
-            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.90] contrast-[1.05] transition-opacity duration-1000"
+            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.88] contrast-[1.05] transition-opacity duration-1000"
           >
             {HERO_VIDEO_MOBILE && (
               <source media="(max-width: 767px)" src={HERO_VIDEO_MOBILE} type="video/mp4" />
@@ -72,52 +61,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
       </div>
 
       {/* Top Navbar Area Gradient Protection */}
-      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/75 via-black/30 to-transparent pointer-events-none z-[2]" />
+      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/80 via-black/35 to-transparent pointer-events-none z-[2]" />
 
-      {/* Layer 2: Readability Overlay (Enhanced Bottom & Center Gradient for Mobile Framing) */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/40 to-black/60 sm:from-black/85 sm:via-black/35 sm:to-black/50 pointer-events-none" />
+      {/* Layer 2: Readability Overlay */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/40 to-black/55 sm:from-black/85 sm:via-black/35 sm:to-black/50 pointer-events-none" />
 
-      {/* Layer 3: Hero Content within Mobile Safe Area */}
-      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-20 sm:pt-28 pb-8 sm:pb-14 pointer-events-none">
+      {/* Layer 3: Hero Content */}
+      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between pt-20 sm:pt-28 pb-8 sm:pb-12 pointer-events-none">
         
         {/* Top Tagline */}
-        <div className="hidden sm:flex items-center justify-between pointer-events-auto">
-          <span className="text-[11px] font-sans font-semibold tracking-[0.25em] uppercase text-[#F2F0EB]/85">
-            RELEASE 26.1 • LAGOS ATELIER
+        <div className="flex items-center justify-between pointer-events-auto">
+          <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.25em] uppercase text-[#F2F0EB]/90">
+            LAGOS, NIGERIA • 2026
           </span>
-          <span className="text-[11px] font-sans font-medium tracking-[0.2em] uppercase text-[#F2F0EB]/60 hidden lg:inline-block">
-            LAGOS — NIGERIA — 2026
+          <span className="text-[10px] sm:text-[11px] font-sans font-medium tracking-[0.2em] uppercase text-[#F2F0EB]/60 hidden md:inline-block">
+            STREETWEAR & MODERN READY-TO-WEAR
           </span>
         </div>
 
         {/* Editorial Campaign Typography: LOOK GOOD. SPEND LESS. */}
-        <div className="my-auto py-1 sm:py-4 pointer-events-none">
+        <div className="my-auto py-2 sm:py-4 pointer-events-none">
           <h1 className="font-editorial italic leading-[0.88] text-[#F2F0EB] tracking-[-0.03em] drop-shadow-sm">
             <div className="overflow-hidden py-0.5 sm:py-1">
               <span 
-                className={`block text-[clamp(38px,9vw,64px)] sm:text-[clamp(48px,9.5vw,120px)] ml-0.5 sm:ml-4 transition-transform duration-[1000ms] ease-[cubic-bezier(0.16,1,0.3,1)] font-medium ${
+                className={`block text-[clamp(42px,10vw,70px)] sm:text-[clamp(54px,9.5vw,120px)] ml-0.5 sm:ml-4 font-medium transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
-                style={{
-                  transform: isLoaded 
-                    ? `translate3d(${mousePos.x * -0.2}px, ${mousePos.y * -0.2}px, 0)` 
-                    : 'translateY(115%)'
-                }}
               >
                 LOOK GOOD.
               </span>
             </div>
 
-            <div className="overflow-hidden -mt-0.5 sm:-mt-4 lg:-mt-6 py-0.5 sm:py-1 relative z-[18]">
+            <div className="overflow-hidden -mt-1 sm:-mt-4 lg:-mt-6 py-0.5 sm:py-1 relative z-[18]">
               <span 
-                className={`block text-[clamp(42px,10vw,72px)] sm:text-[clamp(52px,10.5vw,135px)] ml-2 sm:ml-20 lg:ml-32 font-normal transition-transform duration-[1100ms] delay-[140ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                className={`block text-[clamp(46px,11vw,78px)] sm:text-[clamp(58px,10.5vw,135px)] ml-3 sm:ml-20 lg:ml-28 font-normal transition-transform duration-1100 delay-150 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
-                style={{
-                  transform: isLoaded 
-                    ? `translate3d(${mousePos.x * -0.4}px, ${mousePos.y * -0.4}px, 0)` 
-                    : 'translateY(115%)'
-                }}
               >
                 SPEND LESS.
               </span>
@@ -128,19 +107,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
         {/* Bottom Action Bar */}
         <div className="flex items-end justify-between w-full pointer-events-auto">
           <div 
-            className={`w-full sm:max-w-[440px] transition-all duration-[900ms] delay-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`w-full sm:max-w-[480px] transition-all duration-900 delay-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
             }`}
           >
-            <p className="font-sans text-[12px] sm:text-[14.5px] leading-[1.5] sm:leading-[1.6] tracking-[0.03em] uppercase text-[#F2F0EB]/95 mb-3 sm:mb-6 font-medium drop-shadow-xs">
-              Good-looking fashion at prices that make sense.
+            <p className="font-sans text-[12px] sm:text-[14px] leading-relaxed tracking-[0.02em] text-[#F2F0EB]/95 mb-4 sm:mb-6 font-medium">
+              Good-looking fashion at prices that make sense. Crafted in Lagos.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto font-sans">
               <button
                 id="hero-shop-now-btn"
                 onClick={() => onExplore('shop')}
-                className="group h-11 sm:h-12 px-6 rounded-full bg-[#F2F0EB] text-[#141414] hover:bg-white transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.98] text-[12px] sm:text-[13px] font-bold tracking-[0.16em] uppercase whitespace-nowrap"
+                className="group h-12 px-7 rounded-full bg-[#F2F0EB] text-[#141414] hover:bg-white transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.98] text-[12px] sm:text-[13px] font-bold tracking-[0.16em] uppercase whitespace-nowrap"
               >
                 <span>SHOP NOW</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
@@ -149,20 +128,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
               <button
                 id="hero-new-arrivals-btn"
                 onClick={() => onExplore('new')}
-                className="group h-11 sm:h-12 px-5 sm:px-6 rounded-full border border-[#F2F0EB]/70 bg-black/40 backdrop-blur-xs text-[#F2F0EB] hover:bg-[#F2F0EB] hover:text-[#141414] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] text-[11.5px] sm:text-[13px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap"
+                className="group h-12 px-6 rounded-full border border-[#F2F0EB]/70 bg-black/40 backdrop-blur-xs text-[#F2F0EB] hover:bg-[#F2F0EB] hover:text-[#141414] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] text-[12px] sm:text-[13px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap"
               >
-                <span>EXPLORE NEW ARRIVALS</span>
+                <span>NEW ARRIVALS</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </div>
           </div>
 
           <div 
-            className={`hidden sm:flex flex-col items-end cursor-pointer transition-all duration-[900ms] delay-[750ms] ease-[cubic-bezier(0.16,1,0.3,1)] group ${
+            className={`hidden sm:flex flex-col items-end cursor-pointer transition-all duration-900 delay-500 ease-[cubic-bezier(0.16,1,0.3,1)] group ${
               isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
             }`}
             onClick={() => {
-              document.getElementById('new-drop-section')?.scrollIntoView({ behavior: 'smooth' });
+              const target = document.getElementById('category-rail-section') || document.getElementById('new-drop-section');
+              target?.scrollIntoView({ behavior: 'smooth' });
             }}
           >
             <div className="text-[10px] tracking-[0.4em] uppercase mb-3 text-[#F2F0EB]/70 font-medium group-hover:text-[#F2F0EB] transition-colors">
@@ -176,3 +156,4 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
     </section>
   );
 };
+

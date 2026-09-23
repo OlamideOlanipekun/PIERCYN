@@ -1,45 +1,45 @@
 import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
-import { Product } from '../types';
+import { Product, ActivePageView } from '../types';
 import { formatPrice } from '../utils/currency';
-import { Eye, Plus, Heart, ArrowRight } from 'lucide-react';
+import { Plus, Heart, ArrowRight } from 'lucide-react';
 
 interface NewDropSectionProps {
   products: Product[];
   onViewProduct: (product: Product) => void;
+  onSelectPage?: (page: ActivePageView) => void;
 }
 
-export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onViewProduct }) => {
+export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onViewProduct, onSelectPage }) => {
   const { currency, addToCart, toggleWishlist, isWishlisted } = useShop();
   const [hoveredProductId, setHoveredProductId] = useState<string | null>(null);
 
   const newDropProducts = products.filter((p) => p.isNewDrop).slice(0, 4);
 
   return (
-    <section id="new-drop-section" className="relative w-full bg-[#F2F0EB] py-20 sm:py-28 lg:py-32 overflow-hidden border-b border-[#E3DEC3]/70">
+    <section id="new-drop-section" className="relative w-full bg-[#F2F0EB] py-14 sm:py-24 lg:py-28 overflow-hidden border-b border-[#DAD8D1]/70">
       <div className="piercyn-container">
-        {/* Top Editorial Header & Overlapping Typography */}
-        <div className="relative mb-10 sm:mb-14 lg:mb-16">
+        {/* Top Header */}
+        <div className="relative mb-6 sm:mb-12">
           {/* Eyebrow Label */}
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-sans font-semibold">
-              JUST DROPPED
+            <span className="section-eyebrow text-[#141414]/70">
+              NEW DROP
             </span>
-            <span className="hidden sm:inline-block text-[11px] uppercase tracking-[0.2em] text-[#141414]/60 font-sans font-medium">
-              Fresh pieces, ready for you.
+            <span className="hidden sm:inline-block text-[12px] uppercase tracking-[0.14em] text-[#6E6B65] font-sans font-medium">
+              Fresh pieces. Easy to wear.
             </span>
           </div>
 
-          {/* Large Serif Text */}
-          <div className="font-editorial text-[14vw] sm:text-[11vw] lg:text-[8.5vw] xl:text-[125px] leading-[0.86] tracking-[-0.03em] uppercase text-[#141414] select-none">
-            <div>THE NEW</div>
-            <div className="italic font-light sm:pl-16 lg:pl-32">STANDARD<span className="not-italic text-[#141414]/40">.</span></div>
-          </div>
+          {/* Large Serif Title */}
+          <h2 className="font-editorial text-[12vw] sm:text-[9vw] lg:text-[7vw] xl:text-[96px] leading-[0.9] tracking-[-0.03em] uppercase text-[#141414] select-none">
+            NEW DROP<span className="italic font-light text-[#A48B71]">.</span>
+          </h2>
         </div>
 
-        {/* Mobile: Horizontal Product Carousel (72vw peek) | Desktop: 4-Column Grid */}
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-x-visible pb-4 sm:pb-0 scrollbar-none snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
-          {newDropProducts.map((product, idx) => {
+        {/* Product Grid / Horizontal Scroll on Mobile */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-6 lg:gap-8 overflow-x-auto sm:overflow-x-visible pb-4 sm:pb-0 no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
+          {newDropProducts.map((product) => {
             const isHovered = hoveredProductId === product.id;
             const currentImg = isHovered && product.colors[0]?.altImage 
               ? product.colors[0].altImage 
@@ -49,26 +49,19 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
               <div
                 key={product.id}
                 id={`new-drop-item-${product.id}`}
-                className="group relative flex flex-col cursor-pointer w-[72vw] max-w-[280px] sm:w-auto shrink-0 snap-start select-none"
+                className="group relative flex flex-col cursor-pointer w-[76vw] max-w-[300px] sm:w-auto shrink-0 snap-start select-none"
                 onMouseEnter={() => setHoveredProductId(product.id)}
                 onMouseLeave={() => setHoveredProductId(null)}
                 onClick={() => onViewProduct(product)}
               >
-                {/* Product Image Container with strict 4:5 aspect ratio */}
-                <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#E7E2D6] mb-3 sm:mb-4 rounded-lg shadow-2xs">
+                {/* Product Image Container */}
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#E8E4DA] mb-3 sm:mb-4 rounded-xl shadow-2xs">
                   <img
                     src={currentImg}
                     alt={product.name}
-                    className="w-full h-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-[1.025]"
+                    className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     loading="lazy"
                   />
-
-                  {/* Micro Index Tag Pill */}
-                  <div className="absolute top-3 left-3 z-10">
-                    <span className="text-[9px] font-mono tracking-[0.25em] uppercase px-2.5 py-0.5 rounded-full bg-[#141414]/85 text-[#F2F0EB] backdrop-blur-xs">
-                      {product.gsm || `0${idx + 1}`}
-                    </span>
-                  </div>
 
                   {/* Wishlist Button */}
                   <button
@@ -80,20 +73,20 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
                     aria-label="Save to Wishlist"
                   >
                     <Heart
-                      className={`w-3.5 h-3.5 ${
+                      className={`w-4 h-4 ${
                         isWishlisted(product.id) ? 'fill-[#141414] text-[#141414]' : 'text-[#141414]'
                       }`}
                     />
                   </button>
 
-                  {/* Desktop Hover Overlay: Quick View and Add Action Pills */}
-                  <div className="hidden sm:flex absolute inset-x-3 bottom-3 z-10 p-1 items-center justify-between gap-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                  {/* Desktop Hover Overlay */}
+                  <div className="hidden sm:flex absolute inset-x-3 bottom-3 z-10 p-1 items-center justify-between gap-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewProduct(product);
                       }}
-                      className="flex-1 py-2 px-3 rounded-full bg-[#F2F0EB]/95 backdrop-blur-md text-[#141414] text-[10px] tracking-[0.2em] uppercase font-medium hover:bg-[#141414] hover:text-[#F2F0EB] transition-colors shadow-sm text-center"
+                      className="flex-1 py-2 px-3 rounded-full bg-[#F2F0EB]/95 backdrop-blur-md text-[#141414] text-[11px] tracking-[0.16em] uppercase font-semibold hover:bg-[#141414] hover:text-[#F2F0EB] transition-colors shadow-sm text-center"
                     >
                       QUICK VIEW
                     </button>
@@ -103,21 +96,21 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
                         e.stopPropagation();
                         addToCart(product);
                       }}
-                      className="w-8 h-8 rounded-full bg-[#141414] text-[#F2F0EB] hover:bg-black transition-colors shadow-sm flex items-center justify-center cursor-pointer active:scale-95"
+                      className="w-9 h-9 rounded-full bg-[#141414] text-[#F2F0EB] hover:bg-black transition-colors shadow-sm flex items-center justify-center cursor-pointer active:scale-95"
                       title="Add to Bag"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Minimal Metadata Beneath with consistent baseline heights */}
+                {/* Metadata */}
                 <div className="flex flex-col space-y-1 font-sans">
-                  <h3 className="text-[13px] sm:text-[14px] uppercase tracking-[0.06em] font-semibold text-[#141414] leading-snug line-clamp-1 min-h-[1.4rem]">
+                  <h3 className="text-[13px] sm:text-[14px] uppercase tracking-[0.04em] font-semibold text-[#141414] leading-snug line-clamp-1">
                     {product.name}
                   </h3>
 
-                  <div className="flex items-center justify-between text-[13px] sm:text-[14px] tracking-[0.02em] text-[#6E6B65]">
+                  <div className="flex items-center justify-between text-[13px] sm:text-[14px] tracking-[0.02em]">
                     <span className="font-sans text-[#141414] font-semibold">
                       {formatPrice(product, currency)}
                     </span>
@@ -140,20 +133,27 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
           })}
         </div>
 
-        {/* Mobile Swipe Hint and View All Button */}
-        <div className="mt-8 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="sm:hidden text-[10px] font-mono uppercase tracking-[0.25em] text-[#8C8A84] flex items-center gap-1.5">
-            <span>← SWIPE DROP</span>
+        {/* Footer Action */}
+        <div className="mt-6 sm:mt-12 flex items-center justify-between gap-4">
+          <div className="sm:hidden flex items-center gap-1.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#141414]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#141414]/30" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#141414]/30" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#141414]/30" />
           </div>
 
-          <div className="w-full sm:w-auto text-center sm:text-right">
+          <div className="w-full sm:w-auto text-right">
             <button
               onClick={() => {
-                document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
+                if (onSelectPage) {
+                  onSelectPage('new');
+                } else {
+                  document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
+                }
               }}
               className="w-full sm:w-auto h-12 min-h-[48px] px-7 rounded-full border border-[#141414]/80 text-[12px] sm:text-[13px] uppercase tracking-[0.16em] text-[#141414] font-semibold hover:bg-[#141414] hover:text-[#F2F0EB] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
-              <span>VIEW ALL NEW PIECES</span>
+              <span>SHOP NEW IN</span>
               <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
@@ -162,3 +162,4 @@ export const NewDropSection: React.FC<NewDropSectionProps> = ({ products, onView
     </section>
   );
 };
+

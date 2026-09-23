@@ -26,7 +26,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
           <PiercynMonogram size={56} className="text-[#141414]" />
           <p 
             onClick={scrollToTop}
-            className="font-editorial text-[21vw] leading-[0.75] tracking-[-0.04em] uppercase text-[#141414] cursor-pointer hover:opacity-80 transition-opacity select-none text-center sm:text-left font-normal italic"
+            className="font-editorial text-[clamp(60px,18vw,200px)] leading-[0.75] tracking-[-0.04em] uppercase text-[#141414] cursor-pointer hover:opacity-80 transition-opacity select-none text-center sm:text-left font-normal italic"
           >
             PIERCYN
           </p>
@@ -41,6 +41,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               01 / SHOP
             </span>
             <div className="flex flex-col space-y-2 font-medium">
+              <button
+                onClick={() => {
+                  if (onSelectPage) onSelectPage('shop');
+                }}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                ALL APPAREL
+              </button>
               <button
                 onClick={() => {
                   if (onSelectPage) onSelectPage('men');
@@ -67,6 +75,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               </button>
               <button
                 onClick={() => {
+                  if (onSelectPage) onSelectPage('accessories');
+                }}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                ACCESSORIES (SOON)
+              </button>
+              <button
+                onClick={() => {
                   if (onSelectPage) onSelectPage('home');
                   onNavigateSection('lookbook-section');
                 }}
@@ -76,12 +92,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               </button>
               <button
                 onClick={() => {
-                  if (onSelectPage) onSelectPage('home');
-                  onNavigateSection('the-piece-section');
+                  if (onSelectPage) onSelectPage('collections');
+                  onNavigateSection('collections-hero');
                 }}
                 className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
               >
-                THE 450 GSM PIECE
+                COLLECTIONS
               </button>
             </div>
           </div>

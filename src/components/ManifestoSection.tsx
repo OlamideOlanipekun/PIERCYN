@@ -14,8 +14,8 @@ export const ManifestoSection: React.FC = () => {
         
         {/* Section Identifier */}
         <div className="mb-2 sm:mb-3">
-          <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-sans font-semibold">
-            02 / MANIFESTO
+          <span className="section-eyebrow text-[#A48B71]">
+            OUR PHILOSOPHY
           </span>
         </div>
 

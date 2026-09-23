@@ -102,28 +102,7 @@ export const CartDrawer: React.FC = () => {
 
           {/* Bag Items List */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-            {checkoutComplete ? (
-              <div className="py-12 sm:py-16 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full border-2 border-[#141414] flex items-center justify-center mx-auto text-[#141414]">
-                  ✓
-                </div>
-                <h3 className="font-editorial text-2xl sm:text-3xl uppercase tracking-[-0.02em]">
-                  ORDER RECEIVED
-                </h3>
-                <p className="text-[12px] sm:text-[13px] text-[#5C5954] font-light max-w-xs mx-auto leading-relaxed">
-                  Thank you for entering the world of PIERCYN. A private confirmation has been dispatched.
-                </p>
-                <button
-                  onClick={() => {
-                    setCheckoutComplete(false);
-                    setIsCartOpen(false);
-                  }}
-                  className="mt-4 sm:mt-6 min-h-[44px] px-7 py-3 rounded-full bg-[#141414] text-[#F2F0EB] text-[11px] uppercase tracking-[0.25em] font-medium hover:bg-black transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  CONTINUE EXPLORING
-                </button>
-              </div>
-            ) : cart.length === 0 ? (
+            {cart.length === 0 ? (
               <div className="py-16 sm:py-20 text-center space-y-4">
                 <ShoppingBag className="w-8 h-8 opacity-40 mx-auto text-[#141414]" />
                 <p className="font-editorial text-xl sm:text-2xl uppercase tracking-[-0.02em] text-[#141414]">

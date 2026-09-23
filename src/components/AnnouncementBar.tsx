@@ -41,37 +41,37 @@ export const AnnouncementBar: React.FC = () => {
 
         {/* Center: Running Editorial Marquee / Ticker Message */}
         <div className="flex-1 flex items-center justify-center overflow-hidden mx-2 sm:mx-6">
-          <div className="flex items-center gap-6 whitespace-nowrap text-[#F2F0EB]/90">
+          <div className="flex items-center gap-4 sm:gap-6 whitespace-nowrap text-[#F2F0EB]/90">
             <span className="flex items-center gap-2">
-              <span className="text-[#A48B71] font-bold">DROP 26.1</span>
-              <span>— HEAVYWEIGHT 450 GSM RESTOCKED</span>
+              <span className="text-[#A48B71] font-bold">JUST DROPPED</span>
+              <span>— NEW HEAVYWEIGHT PIECES</span>
             </span>
             <span className="text-white/30 hidden sm:inline">•</span>
             <span className="hidden sm:inline">
-              COMPLIMENTARY WORLDWIDE DELIVERY ON ORDERS OVER {currency === 'NGN' ? '₦150,000' : '$200 / €180'}
+              FREE DELIVERY ON ORDERS OVER {currency === 'NGN' ? '₦100,000' : '$150 / €140'}
             </span>
             <span className="text-white/30 hidden lg:inline">•</span>
             <button 
               onClick={() => setIsConciergeOpen(true)}
               className="hidden lg:inline-flex items-center gap-1 text-[#E3DEC3] underline hover:text-white transition-colors cursor-pointer"
             >
-              <span>PRIVATE FITTINGS IN VICTORIA ISLAND</span>
+              <span>CHAT WITH US ON WHATSAPP</span>
               <ArrowRight className="w-2.5 h-2.5" />
             </button>
           </div>
         </div>
 
-        {/* Right: Atelier Appointment & Close Button */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Right: WhatsApp Help & Close Button */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setIsConciergeOpen(true)}
-            className="sm:hidden text-[9px] text-[#A48B71] underline cursor-pointer"
+            className="sm:hidden text-[9px] text-[#A48B71] underline cursor-pointer py-1"
           >
-            BOOK FITTING
+            NEED HELP?
           </button>
           <button
             onClick={() => setIsVisible(false)}
-            className="opacity-50 hover:opacity-100 transition-opacity min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
+            className="opacity-50 hover:opacity-100 transition-opacity min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
             aria-label="Dismiss Announcement"
           >
             <X className="w-3.5 h-3.5" />

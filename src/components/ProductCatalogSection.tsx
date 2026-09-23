@@ -61,20 +61,20 @@ export const ProductCatalogSection: React.FC<ProductCatalogSectionProps> = ({
     >
       <div className="piercyn-container">
         
-        {/* Large Centered Serif Title Overlapping Product Area */}
-        <div className="relative text-center mb-10 sm:mb-14 lg:mb-16">
-          <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] text-[#141414]/70 font-sans font-semibold block mb-2 sm:mb-3">
-            POPULAR PIECES
+        {/* Header Title */}
+        <div className="relative text-center mb-8 sm:mb-12 lg:mb-14">
+          <span className="section-eyebrow text-[#A48B71] block mb-2 sm:mb-3">
+            THE FULL COLLECTION
           </span>
-          <h2 className="font-editorial text-[13vw] sm:text-[9vw] lg:text-[7vw] xl:text-[110px] leading-[0.88] tracking-[-0.03em] uppercase text-[#141414] select-none">
-            <div>CURRENTLY</div>
-            <div className="italic font-light">IN PIERCYN<span className="not-italic text-[#A48B71]">.</span></div>
+          <h2 className="font-editorial text-[11vw] sm:text-[8vw] lg:text-[6vw] xl:text-[84px] leading-[0.9] tracking-[-0.03em] uppercase text-[#141414] select-none">
+            <div>SHOP ALL</div>
+            <div className="italic font-light">PIECES<span className="not-italic text-[#A48B71]">.</span></div>
           </h2>
 
           {/* Controls Bar: Category Pills + Sort Dropdown */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-6 sm:mt-10 border-b border-[#E3DEC3] pb-4 font-sans">
             {/* Filter Navigation with Horizontally Scrollable Pill Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 text-[11px] sm:text-[12px] tracking-[0.12em] uppercase font-semibold">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 text-[11px] sm:text-[12px] tracking-[0.12em] uppercase font-semibold">
               {categories.map((cat) => {
                 const count = getCategoryCount(cat.id);
                 return (
@@ -106,8 +106,8 @@ export const ProductCatalogSection: React.FC<ProductCatalogSectionProps> = ({
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="h-11 min-h-[44px] bg-[#EAE5DA] border border-[#D5CFBF] rounded-full px-4 text-[11px] font-sans font-semibold uppercase tracking-wider focus:outline-none focus:border-[#141414] cursor-pointer"
               >
-                <option value="featured">EDITORIAL ORDER</option>
-                <option value="gsm">HEAVIEST GSM FIRST</option>
+                <option value="featured">FEATURED</option>
+                <option value="gsm">HEAVYWEIGHT FIRST</option>
                 <option value="price-asc">PRICE: LOW TO HIGH</option>
                 <option value="price-desc">PRICE: HIGH TO LOW</option>
               </select>
@@ -139,11 +139,13 @@ export const ProductCatalogSection: React.FC<ProductCatalogSectionProps> = ({
                   />
 
                   {/* Top Left: Tag or GSM Pill */}
-                  <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10">
-                    <span className="text-[8px] sm:text-[9px] font-mono tracking-[0.2em] uppercase px-2.5 py-0.5 rounded-full bg-[#141414]/90 text-[#F2F0EB] backdrop-blur-xs border border-white/10">
-                      {product.gsm || product.tag || 'LAGOS'}
-                    </span>
-                  </div>
+                  {(product.gsm || product.tag) && (
+                    <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10">
+                      <span className="text-[8px] sm:text-[9px] font-mono tracking-[0.2em] uppercase px-2.5 py-0.5 rounded-full bg-[#141414]/90 text-[#F2F0EB] backdrop-blur-xs border border-white/10">
+                        {product.gsm || product.tag}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Top Right: Wishlist Heart Icon with min 44px hit target */}
                   <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-10">

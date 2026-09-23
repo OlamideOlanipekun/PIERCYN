@@ -2,24 +2,25 @@ import React, { useState } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { ALL_PRODUCTS } from './data/allProducts';
 import { Product, LookbookLook, ActivePageView } from './types';
-import { AnnouncementBar } from './components/AnnouncementBar';
 import { Navbar } from './components/Navbar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { WomenCollectionPage } from './components/women/WomenCollectionPage';
 import { CollectionsPage } from './components/collections/CollectionsPage';
 import { HeroSection } from './components/HeroSection';
+import { CategoryRailSection } from './components/CategoryRailSection';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
+import { AccessoriesPage } from './components/AccessoriesPage';
 import { NewDropSection } from './components/NewDropSection';
+import { FeaturedCampaignSection } from './components/FeaturedCampaignSection';
+import { TrendingNowSection } from './components/TrendingNowSection';
 import { ManifestoSection } from './components/ManifestoSection';
-import { CollectionsGrid } from './components/CollectionsGrid';
 import { ProductCatalogSection } from './components/ProductCatalogSection';
-import { EditorialSections } from './components/EditorialSections';
+import { PiercynPicksSection } from './components/PiercynPicksSection';
+import { StyleEditorialSection } from './components/StyleEditorialSection';
 import { ShopPage } from './components/ShopPage';
 import { FromLagosSection } from './components/FromLagosSection';
 import { LookbookSection } from './components/LookbookSection';
-import { ThePieceSection } from './components/ThePieceSection';
-import { WornByYouSection } from './components/WornByYouSection';
-import { SocialSection } from './components/SocialSection';
+import { WhatsAppCTASection } from './components/WhatsAppCTASection';
 import { NewsletterSection } from './components/NewsletterSection';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -79,17 +80,6 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const handleSelectCollection = (collectionId: string) => {
-    if (collectionId === 'everyday' || collectionId === 'essentials') {
-      setActivePage('shop');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      if (collectionId === 'after-dark') setSelectedCategoryFilter('outerwear');
-      else if (collectionId === 'the-drop') setSelectedCategoryFilter('all');
-      handleNavigateSection('products-section');
-    }
-  };
-
   const handleViewProduct = (product: Product) => {
     setQuickViewProduct(product);
   };
@@ -100,8 +90,6 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans selection:bg-[#141414] selection:text-[#F2F0EB] relative">
-      {/* Announcement & Top Dispatch Bar */}
-      <AnnouncementBar />
 
       {/* Primary Header Navigation */}
       <Navbar 
@@ -123,34 +111,73 @@ const MainLayout: React.FC = () => {
         <WomenCollectionPage onNavigateSection={handleNavigateSection} />
       ) : activePage === 'new' ? (
         <NewArrivalsPage onSelectPage={handleSelectPage} />
+      ) : activePage === 'accessories' ? (
+        <AccessoriesPage onSelectPage={handleSelectPage} />
       ) : activePage === 'collections' ? (
         <CollectionsPage onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
       ) : (
         <>
-          {/* Main Homepage Flow */}
+          {/* 1. Hero Campaign Section */}
           <HeroSection onExplore={handleExploreHero} />
-          <NewDropSection products={ALL_PRODUCTS} onViewProduct={handleViewProduct} />
-          <ManifestoSection />
-          <CollectionsGrid onSelectCollection={handleSelectCollection} />
-          <EditorialSections
-            products={ALL_PRODUCTS}
-            onViewProduct={handleViewProduct}
-            onSelectCategory={(cat) => {
-              setSelectedCategoryFilter(cat);
-              setActivePage('shop');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+
+          {/* 2. Rapid Category Navigation Rail */}
+          <CategoryRailSection 
+            onSelectPage={handleSelectPage} 
+            onNavigateSection={handleNavigateSection} 
           />
+
+          {/* 3. Just Dropped Pieces */}
+          <NewDropSection 
+            products={ALL_PRODUCTS} 
+            onViewProduct={handleViewProduct} 
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 4. Large Visual Editorial Campaign */}
+          <FeaturedCampaignSection 
+            onExplore={handleExploreHero}
+            onSelectPage={handleSelectPage}
+            onNavigateSection={handleNavigateSection}
+          />
+
+          {/* 5. Trending Rail */}
+          <TrendingNowSection 
+            products={ALL_PRODUCTS} 
+            onViewProduct={handleViewProduct} 
+          />
+
+          {/* 6. Brand Philosophy & Lagos Roots */}
+          <ManifestoSection />
+
+          {/* 7. Full Product Catalog with Filters & Sort */}
           <ProductCatalogSection
             products={ALL_PRODUCTS}
             selectedCategoryFilter={selectedCategoryFilter}
             onViewProduct={handleViewProduct}
           />
+
+          {/* 8. From Lagos Editorial Heritage */}
           <FromLagosSection />
+
+          {/* 9. Piercyn Picks Curated Selection */}
+          <PiercynPicksSection 
+            products={ALL_PRODUCTS} 
+            onViewProduct={handleViewProduct} 
+          />
+
+          {/* 10. Style Editorial Guide */}
+          <StyleEditorialSection 
+            onSelectPage={handleSelectPage}
+            onNavigateSection={handleNavigateSection}
+          />
+
+          {/* 11. Interactive Lookbook */}
           <LookbookSection onSelectLook={handleSelectLook} />
-          <ThePieceSection />
-          <WornByYouSection />
-          <SocialSection />
+
+          {/* 12. Direct Customer Care & WhatsApp Break */}
+          <WhatsAppCTASection />
+
+          {/* 13. Newsletter */}
           <NewsletterSection />
         </>
       )}

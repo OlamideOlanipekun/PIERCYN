@@ -8,7 +8,7 @@ export const FromLagosSection: React.FC = () => {
   return (
     <section
       id="from-lagos-section"
-      className="relative w-full min-h-[580px] sm:min-h-[650px] max-h-[1100px] h-[88svh] overflow-hidden bg-[#121212] select-none border-b border-[#E3DEC3]/70"
+      className="relative w-full min-h-[460px] sm:min-h-[600px] max-h-[1000px] h-[65svh] sm:h-[80svh] overflow-hidden bg-[#121212] select-none border-b border-[#E3DEC3]/70"
     >
       {/* Cinematic Portrait Campaign Background */}
       <div className="absolute inset-0 z-0">
@@ -24,11 +24,11 @@ export const FromLagosSection: React.FC = () => {
       </div>
 
       {/* Global Grid Container */}
-      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between py-10 sm:py-14 lg:py-16">
+      <div className="piercyn-container relative z-10 h-full flex flex-col justify-between py-8 sm:py-14 lg:py-16">
         {/* Top Header Tag */}
         <div className="flex items-center justify-between text-[#F2F0EB]">
-          <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.25em] font-sans font-semibold opacity-90">
-            05 / ORIGIN & SOUL
+          <span className="text-[10px] sm:text-[12px] uppercase tracking-[0.25em] font-sans font-semibold opacity-90">
+            ORIGIN & SOUL
           </span>
           <span className="hidden sm:inline-block text-[11px] uppercase tracking-[0.2em] font-sans font-medium opacity-70">
             6.5244° N, 3.3792° E • ATLANTIC COAST
@@ -36,20 +36,20 @@ export const FromLagosSection: React.FC = () => {
         </div>
 
         {/* Serif Typography Overlaid Directly Across Viewport */}
-        <div className="my-auto py-4">
+        <div className="my-auto py-2 sm:py-4">
           <div className="font-editorial leading-[0.84] tracking-[-0.03em] uppercase text-[#F2F0EB]">
             {/* FROM */}
-            <div className="text-[14vw] sm:text-[11vw] lg:text-[7.5vw] xl:text-[105px] font-normal tracking-[0.01em] opacity-95">
+            <div className="text-[clamp(32px,12vw,105px)] font-normal tracking-[0.01em] opacity-95">
               FROM
             </div>
 
             {/* LAGOS. */}
-            <div className="text-[20vw] sm:text-[16vw] lg:text-[13vw] xl:text-[190px] font-normal italic -mt-2 sm:-mt-6 lg:-mt-8 drop-shadow-2xl">
+            <div className="text-[clamp(50px,18vw,190px)] font-normal italic -mt-1 sm:-mt-6 lg:-mt-8 drop-shadow-2xl">
               LAGOS<span className="not-italic text-[#E3DEC3]">.</span>
             </div>
 
             {/* FOR EVERYWHERE. */}
-            <div className="text-[8.5vw] sm:text-[5.5vw] lg:text-[3.2vw] xl:text-[46px] font-normal tracking-[0.03em] text-[#E3DEC3]/90 mt-1 sm:mt-2">
+            <div className="text-[clamp(18px,6.8vw,46px)] font-normal tracking-[0.03em] text-[#E3DEC3]/90 mt-1 sm:mt-2">
               FOR EVERYWHERE.
             </div>
           </div>

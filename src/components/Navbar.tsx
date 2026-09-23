@@ -65,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  const handleNavClick = (sectionId: string, pageKey?: 'men' | 'women' | 'new' | 'collections' | 'lookbook') => {
+  const handleNavClick = (sectionId: string, pageKey?: ActivePageView) => {
     setIsMobileMenuOpen(false);
     if (pageKey && onSelectPage) {
       onSelectPage(pageKey);
@@ -232,16 +232,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="search-trigger-btn"
               onClick={() => setIsSearchOpen(true)}
-              className={`w-9 h-9 sm:w-11 sm:h-11 min-h-[36px] sm:min-h-[44px] min-w-[36px] sm:min-w-[44px] flex items-center justify-center hover:opacity-75 transition-opacity duration-300 uppercase cursor-pointer gap-1.5 ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center hover:opacity-75 transition-opacity duration-300 cursor-pointer ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
               aria-label="Search Collection"
             >
-              <Search className="w-5 h-5 sm:w-[21px] sm:h-[21px] stroke-[1.75]" />
-              <span className="hidden sm:inline text-[12px] font-semibold uppercase">SEARCH</span>
+              <Search className="w-5 h-5 stroke-[1.75]" />
             </button>
 
-            {/* ACCOUNT / ATELIER (Desktop) */}
+            {/* ACCOUNT (Desktop) */}
             <button
               id="nav-account-btn"
               onClick={() => setIsAuthOpen(true)}
@@ -252,19 +251,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               {user ? `ACCOUNT (${user.firstName})` : 'ACCOUNT'}
             </button>
 
-            {/* 2. WISHLIST ICON */}
+            {/* 2. WISHLIST ICON (Desktop & Tablet) */}
             <button
               id="wishlist-drawer-trigger-btn"
               onClick={() => setIsWishlistOpen(true)}
-              className={`w-9 h-9 sm:w-11 sm:h-11 min-h-[36px] sm:min-h-[44px] min-w-[36px] sm:min-w-[44px] flex items-center justify-center hover:opacity-75 transition-opacity duration-300 uppercase cursor-pointer gap-1.5 ${
+              className={`hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] relative items-center justify-center hover:opacity-75 transition-opacity duration-300 cursor-pointer ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
               aria-label="Saved Pieces"
             >
-              <Heart className={`w-5 h-5 sm:w-[21px] sm:h-[21px] stroke-[1.75] ${wishlist.length > 0 ? (isDarkHero ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'fill-[#141414] text-[#141414]') : ''}`} />
-              <span className="hidden sm:inline text-[12px] font-semibold uppercase">SAVED</span>
+              <Heart className={`w-5 h-5 stroke-[1.75] ${wishlist.length > 0 ? (isDarkHero ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'fill-[#141414] text-[#141414]') : ''}`} />
               {wishlist.length > 0 && (
-                <span className="hidden sm:inline font-sans text-[11px] font-semibold">({wishlist.length})</span>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#141414] text-[#F2F0EB] text-[9px] font-bold flex items-center justify-center">
+                  {wishlist.length}
+                </span>
               )}
             </button>
 
@@ -272,7 +272,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
-              className={`h-[38px] sm:h-[44px] min-h-[38px] sm:min-h-[44px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3.5 sm:px-6 rounded-full shadow-xs active:scale-95 text-[10.5px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1 sm:gap-1.5 ${
+              className={`h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3 sm:px-5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 ${
                 isDarkHero
                   ? 'text-[#141414] bg-[#F2F0EB] hover:bg-white'
                   : 'text-[#F2F0EB] bg-[#141414] hover:bg-black'
@@ -289,12 +289,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`md:hidden w-9 h-9 sm:w-11 sm:h-11 min-h-[36px] sm:min-h-[44px] min-w-[36px] sm:min-w-[44px] flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer active:scale-95 ${
+              className={`md:hidden w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer active:scale-95 ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
               aria-label="Open Mobile Menu"
             >
-              <Menu className="w-5 h-5 sm:w-[21px] sm:h-[21px] stroke-[1.75]" />
+              <Menu className="w-5 h-5 stroke-[1.75]" />
             </button>
           </div>
         </div>
@@ -304,7 +304,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {isMobileMenuOpen && (
         <div 
           id="mobile-editorial-menu"
-          className="fixed inset-0 z-[100] bg-[#F2F0EB] text-[#141414] flex flex-col justify-between p-6 sm:p-10 lg:p-12 animate-in fade-in duration-500 overflow-y-auto"
+          className="fixed inset-0 z-[100] bg-[#F2F0EB] text-[#141414] flex flex-col justify-between p-6 sm:p-10 lg:p-12 animate-in fade-in duration-300 overflow-y-auto"
         >
           {/* Top Bar: PIERCYN and Close icon × */}
           <div className="flex items-center justify-between border-b border-[#DAD8D1]/80 pb-5 pt-1">
@@ -319,16 +319,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Large Editorial Menu Navigation Links */}
-          <div className="flex flex-col space-y-4 sm:space-y-6 my-auto py-6 font-serif text-[8vw] sm:text-4xl italic">
+          <div className="flex flex-col space-y-3 sm:space-y-5 my-auto py-6 font-serif text-[6.8vw] sm:text-3xl lg:text-4xl italic">
             {[
+              { label: 'NEW IN', id: 'piercyn-new-arrivals-page', pageKey: 'new' as const, badge: 'HOT' },
+              { label: 'SHOP ALL', id: 'products-section', pageKey: 'shop' as const },
               { label: 'MEN', id: 'piercyn-men-collection-page', pageKey: 'men' as const },
               { label: 'WOMEN', id: 'piercyn-women-collection-page', pageKey: 'women' as const },
-              { label: 'NEW ARRIVALS', id: 'piercyn-new-arrivals-page', pageKey: 'new' as const },
-              { label: '450 GSM HOODIES', id: 'men-category-navigation', pageKey: 'men' as const },
-              { label: 'SAVED ARCHIVE', id: 'wishlist-drawer' },
+              { label: 'ACCESSORIES', id: 'accessories-page', pageKey: 'accessories' as const, badge: 'SOON' },
               { label: 'COLLECTIONS', id: 'collections-hero', pageKey: 'collections' as const },
               { label: 'LOOKBOOK', id: 'lookbook-section' },
-              { label: 'BOOK ATELIER FITTING', id: 'concierge-modal' },
+              { label: 'SAVED PIECES', id: 'wishlist-drawer' },
               { label: 'ABOUT PIERCYN', id: 'story-modal' }
             ].map((link, idx) => (
               <button
@@ -340,17 +340,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   } else if (link.id === 'wishlist-drawer') {
                     setIsMobileMenuOpen(false);
                     setIsWishlistOpen(true);
-                  } else if (link.id === 'concierge-modal') {
-                    setIsMobileMenuOpen(false);
-                    setIsConciergeOpen(true);
                   } else {
                     handleNavClick(link.id, link.pageKey);
                   }
                 }}
                 className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#141414] flex items-center justify-between group py-1 min-h-[44px]"
               >
-                <span className="tracking-tight">{link.label}</span>
-                <span className="text-[12px] font-mono font-normal not-italic tracking-[0.25em] text-[#8C8A84] group-hover:text-[#141414]">
+                <span className="tracking-tight flex items-center gap-2.5">
+                  <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="not-italic text-[9px] font-sans font-bold px-2 py-0.5 rounded-full bg-[#141414] text-[#F2F0EB] tracking-widest">
+                      {link.badge}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[11px] font-mono font-normal not-italic tracking-[0.25em] text-[#8C8A84] group-hover:text-[#141414]">
                   0{idx + 1}
                 </span>
               </button>
