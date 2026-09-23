@@ -2,6 +2,281 @@ import { Product } from '../types';
 
 export const PRODUCTS: Product[] = [
   {
+    id: 'oversized-tee',
+    slug: 'oversized-tee',
+    name: 'OVERSIZED TEE',
+    category: 'tees',
+    collection: 'essentials',
+    priceNGN: 23200,
+    priceUSD: 30,
+    priceGBP: 24,
+    priceEUR: 28,
+    description: 'Signature drop-shoulder oversized streetwear tee cut from 280 GSM heavyweight organic cotton. Designed with structured silhouette, dense high-rib collar, and relaxed boxy drape.',
+    gsm: '280 GSM',
+    fit: 'Boxy Oversized Fit',
+    fabric: '100% Combed Heavy Cotton',
+    origin: 'Handmade in Lagos, Nigeria',
+    stock: 45,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isNewDrop: true,
+    isBestSeller: true,
+    tag: 'NEW IN',
+    colors: [
+      {
+        name: 'Pitch Black',
+        hex: '#111111',
+        image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Washed Sand',
+        hex: '#D7CFC0',
+        image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Raw Bone',
+        hex: '#EBE7DF',
+        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Slate Grey',
+        hex: '#696E75',
+        image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    images: [
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'cargo-pant',
+    slug: 'cargo-pant',
+    name: 'CARGO PANT',
+    category: 'trousers',
+    collection: 'everyday',
+    priceNGN: 35000,
+    priceUSD: 45,
+    priceGBP: 36,
+    priceEUR: 42,
+    description: 'Brutalist relaxed wide-leg cargo pants tailored in ultra-durable high-density structured cotton twill. Features origami cargo utility pockets, concealed snap hems, and adjustable waist tabs for versatile silhouettes.',
+    gsm: '340 GSM',
+    fit: 'Relaxed Wide-Leg Stance',
+    fabric: '100% High-Density Cotton Twill',
+    origin: 'Crafted in Lagos Atelier',
+    stock: 32,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isNewDrop: true,
+    isBestSeller: true,
+    tag: 'NEW IN',
+    colors: [
+      {
+        name: 'Pitch Black',
+        hex: '#121212',
+        image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Washed Olive',
+        hex: '#4A5340',
+        image: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Cement Stone',
+        hex: '#A6A29A',
+        image: 'https://images.unsplash.com/photo-1542272604-780c96856592?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1475178626620-a4d074967452?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    images: [
+      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'graphic-hoodie',
+    slug: 'graphic-hoodie',
+    name: 'GRAPHIC HOODIE',
+    category: 'hoodies',
+    collection: 'the-drop',
+    priceNGN: 38200,
+    priceUSD: 49,
+    priceGBP: 39,
+    priceEUR: 45,
+    description: 'Architectural 450 GSM luxury brushed heavyweight hoodie featuring subtle tonal PIERCYN screenprint typography on the back. Double-layered crossover hood without drawstrings for a clean architectural neckline.',
+    gsm: '450 GSM',
+    fit: 'Architectural Oversized',
+    fabric: '100% French Terry Cotton',
+    origin: 'Lagos, Nigeria',
+    stock: 20,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isNewDrop: true,
+    tag: 'NEW IN',
+    colors: [
+      {
+        name: 'Washed Obsidian',
+        hex: '#1A1A1A',
+        image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: [
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1516257984-b1b4d707412e?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'utility-jacket',
+    slug: 'utility-jacket',
+    name: 'UTILITY JACKET',
+    category: 'jackets',
+    collection: 'everyday',
+    priceNGN: 45200,
+    priceUSD: 58,
+    priceGBP: 46,
+    priceEUR: 54,
+    description: 'Modular heavy canvas utility jacket equipped with 4 3D flap cargo pockets, hidden internal storm placket, gunmetal two-way zipper, and reinforced elbow patches.',
+    gsm: '380 GSM Canvas',
+    fit: 'Relaxed Structured Box Cut',
+    fabric: '100% Waxed Heavy Canvas',
+    origin: 'Crafted in Lagos Atelier',
+    stock: 18,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isNewDrop: true,
+    tag: 'NEW IN',
+    colors: [
+      {
+        name: 'Waxed Onyx Black',
+        hex: '#131313',
+        image: 'https://images.unsplash.com/photo-1544441893-675973e31985?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Raw Umber Brown',
+        hex: '#4E382A',
+        image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: [
+      'https://images.unsplash.com/photo-1544441893-675973e31985?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'denim-shirt',
+    slug: 'denim-shirt',
+    name: 'DENIM SHIRT',
+    category: 'jackets',
+    collection: 'everyday',
+    priceNGN: 38000,
+    priceUSD: 49,
+    priceGBP: 39,
+    priceEUR: 45,
+    description: 'Heavyweight 10oz washed indigo overshirt with double chest patch pockets, tonal pearl snaps, and an articulated relaxed collar.',
+    gsm: '10 oz Denim',
+    fit: 'Overshirt Relaxed Fit',
+    fabric: '100% Selvedge Indigo Denim',
+    origin: 'Lagos Atelier',
+    stock: 24,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isNewDrop: true,
+    tag: 'TRENDING',
+    colors: [
+      {
+        name: 'Raw Indigo',
+        hex: '#2B394A',
+        image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: [
+      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'heavyweight-tee',
+    slug: 'heavyweight-tee',
+    name: 'HEAVYWEIGHT TEE',
+    category: 'tees',
+    collection: 'essentials',
+    priceNGN: 22000,
+    priceUSD: 28,
+    priceGBP: 22,
+    priceEUR: 26,
+    description: '300 GSM dense organic cotton tee featuring sharp boxy drape, thick reinforced 1.5" collar, and blind-stitched hem.',
+    gsm: '300 GSM',
+    fit: 'Boxy Heavy Stance',
+    fabric: '100% Ring-spun Heavy Cotton',
+    origin: 'Lagos, Nigeria',
+    stock: 40,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    isBestSeller: true,
+    tag: 'TRENDING',
+    colors: [
+      {
+        name: 'Heavy Obsidian',
+        hex: '#111111',
+        image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    images: [
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'straight-leg-trousers',
+    slug: 'straight-leg-trousers',
+    name: 'STRAIGHT-LEG TROUSERS',
+    category: 'trousers',
+    collection: 'everyday',
+    priceNGN: 35000,
+    priceUSD: 45,
+    priceGBP: 36,
+    priceEUR: 42,
+    description: 'Minimalist clean-crease straight-leg trousers tailored in premium fluid wool-cotton blend with hidden waistband adjuster.',
+    gsm: '290 GSM',
+    fit: 'Clean Straight Cut',
+    fabric: '70% Cotton, 30% Virgin Wool',
+    origin: 'Lagos Atelier',
+    stock: 25,
+    status: 'active',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    tag: 'BUILD THE LOOK',
+    colors: [
+      {
+        name: 'Pitch Black',
+        hex: '#141414',
+        image: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: [
+      'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
     id: 'piercyn-sig-hoodie',
     slug: 'piercyn-signature-450gsm-hoodie',
     name: 'PIERCYN SIGNATURE 450GSM HOODIE',

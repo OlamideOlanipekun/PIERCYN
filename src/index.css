@@ -21,7 +21,7 @@
     
     --color-accent: #A48B71;
     --color-cream: #F2F0EB;
-    --color-black: #141414;
+    --color-black: #0A0A0A;
     
     --button-height: 48px;
     --header-height: 64px;
@@ -30,8 +30,8 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #F2F0EB;
-    color: #141414;
+    background-color: #0A0A0A;
+    color: #F2F0EB;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -46,7 +46,7 @@
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: #7A7771;
+  color: #A48B71;
 }
 
 @keyframes fadeUp {
@@ -109,7 +109,7 @@
   }
 }
 
-/* Unified Mobile & Desktop Button System */
+/* Unified Mobile & Desktop Button System — Dark Theme */
 .btn-primary {
   height: 48px;
   min-height: 48px;
@@ -125,8 +125,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: #141414;
-  color: #F2F0EB;
+  background-color: #F2F0EB;
+  color: #0A0A0A;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   white-space: nowrap;
@@ -158,10 +158,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(20, 20, 20, 0.7);
-  background-color: rgba(242, 240, 235, 0.8);
+  border: 1px solid rgba(242, 240, 235, 0.4);
+  background-color: rgba(10, 10, 10, 0.5);
   backdrop-filter: blur(4px);
-  color: #141414;
+  color: #F2F0EB;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   white-space: nowrap;
@@ -256,7 +256,7 @@
   display: block;
   width: 0;
   height: 1px;
-  background: #141414;
+  background: #F2F0EB;
   transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   margin-top: 2px;
 }
@@ -277,9 +277,9 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Concrete subtle grain */
+/* Subtle grain on dark background */
 .concrete-pattern {
-  background-image: radial-gradient(rgba(20, 20, 20, 0.03) 1px, transparent 0);
+  background-image: radial-gradient(rgba(242, 240, 235, 0.03) 1px, transparent 0);
   background-size: 8px 8px;
 }
 

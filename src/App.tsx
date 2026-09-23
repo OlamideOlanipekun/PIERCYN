@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { ALL_PRODUCTS } from './data/allProducts';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
+import { AnnouncementBar } from './components/AnnouncementBar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { WomenCollectionPage } from './components/women/WomenCollectionPage';
 import { CollectionsPage } from './components/collections/CollectionsPage';
 import { HeroSection } from './components/HeroSection';
-import { CategoryRailSection } from './components/CategoryRailSection';
+import { QuickCategoryNav } from './components/QuickCategoryNav';
+import { JustDroppedSection } from './components/JustDroppedSection';
+import { ShopByCategorySection } from './components/ShopByCategorySection';
+import { TrendingNowSection } from './components/TrendingNowSection';
+import { AffordableDiscoverySection } from './components/AffordableDiscoverySection';
+import { ThePiercynEditSection } from './components/ThePiercynEditSection';
+import { MensFashionSection } from './components/MensFashionSection';
+import { WomensFashionSection } from './components/WomensFashionSection';
+import { AccessoriesTeaserSection } from './components/AccessoriesTeaserSection';
+import { TrustReassuranceSection } from './components/TrustReassuranceSection';
+import { ProductDetailsPage } from './components/pdp/ProductDetailsPage';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
 import { AccessoriesPage } from './components/AccessoriesPage';
-import { NewDropSection } from './components/NewDropSection';
-import { FeaturedCampaignSection } from './components/FeaturedCampaignSection';
-import { TrendingNowSection } from './components/TrendingNowSection';
-import { ManifestoSection } from './components/ManifestoSection';
-import { ProductCatalogSection } from './components/ProductCatalogSection';
-import { PiercynPicksSection } from './components/PiercynPicksSection';
-import { StyleEditorialSection } from './components/StyleEditorialSection';
 import { ShopPage } from './components/ShopPage';
-import { FromLagosSection } from './components/FromLagosSection';
 import { LookbookSection } from './components/LookbookSection';
 import { WhatsAppCTASection } from './components/WhatsAppCTASection';
 import { NewsletterSection } from './components/NewsletterSection';
@@ -36,6 +39,9 @@ import { AuthModal } from './components/AuthModal';
 import { CheckoutModal } from './components/CheckoutModal';
 import { OrderConfirmationModal } from './components/OrderConfirmationModal';
 import { WhatsAppButton } from './components/WhatsAppButton';
+import { AccountDashboard } from './components/AccountDashboard';
+import { BuildTheLookSection } from './components/BuildTheLookSection';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 
@@ -43,6 +49,74 @@ const MainLayout: React.FC = () => {
   const { setQuickViewProduct, setActiveLook } = useShop();
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
+
+  // Sync state from current URL pathname
+  const syncRouteFromUrl = () => {
+    const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+
+    if (rawPath === '/shop') {
+      setActivePage('shop');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Shop All Pieces';
+    } else if (rawPath === '/men') {
+      setActivePage('men');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Men’s Collection';
+    } else if (rawPath === '/women') {
+      setActivePage('women');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Women’s Collection';
+    } else if (rawPath === '/new' || rawPath === '/new-in' || rawPath === '/new-arrivals') {
+      setActivePage('new');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — New Arrivals';
+    } else if (rawPath === '/accessories') {
+      setActivePage('accessories');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Accessories';
+    } else if (rawPath === '/collections') {
+      setActivePage('collections');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Collections Archive';
+    } else if (rawPath === '/account') {
+      setActivePage('account');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — My Account';
+    } else if (rawPath.startsWith('/product/')) {
+      const slug = rawPath.replace('/product/', '');
+      const product = ALL_PRODUCTS.find(
+        (p) =>
+          p.slug === slug ||
+          p.id.toLowerCase() === slug ||
+          p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
+      );
+      if (product) {
+        setCurrentPdpProduct(product);
+        setActivePage('product');
+        document.title = `${product.name} — PIERCYN Lagos`;
+      } else {
+        setCurrentPdpProduct(null);
+        setActivePage('product');
+        document.title = 'Piece Not Found — PIERCYN';
+      }
+    } else {
+      setActivePage('home');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Look Good. Spend Less.';
+    }
+  };
+
+  useEffect(() => {
+    syncRouteFromUrl();
+
+    const handlePopState = () => {
+      syncRouteFromUrl();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleNavigateSection = (sectionId: string) => {
     const scroll = () => {
@@ -61,27 +135,79 @@ const MainLayout: React.FC = () => {
 
   const handleSelectPage = (page: ActivePageView) => {
     setActivePage(page);
+    setQuickViewProduct(null);
+    setCurrentPdpProduct(null);
+
+    const pathMap: Record<ActivePageView, string> = {
+      home: '/',
+      shop: '/shop',
+      men: '/men',
+      women: '/women',
+      new: '/new-in',
+      accessories: '/accessories',
+      collections: '/collections',
+      lookbook: '/lookbook',
+      about: '/about',
+      account: '/account',
+      product: '/shop',
+    };
+
+    const targetUrl = pathMap[page] || '/';
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState({ page }, '', targetUrl);
+    }
+
+    const titleMap: Record<ActivePageView, string> = {
+      home: 'PIERCYN — Look Good. Spend Less.',
+      shop: 'PIERCYN — Shop All Pieces',
+      men: 'PIERCYN — Men’s Collection',
+      women: 'PIERCYN — Women’s Collection',
+      new: 'PIERCYN — New Arrivals',
+      accessories: 'PIERCYN — Accessories',
+      collections: 'PIERCYN — Collections Archive',
+      lookbook: 'PIERCYN — Lookbook',
+      about: 'PIERCYN — About Our Lagos Atelier',
+      account: 'PIERCYN — My Account',
+      product: 'PIERCYN',
+    };
+
+    document.title = titleMap[page] || 'PIERCYN';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleExploreHero = (category?: string) => {
     if (category === 'shop') {
-      setActivePage('shop');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleSelectPage('shop');
     } else if (category === 'new') {
-      setActivePage('new');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleSelectPage('new');
     } else if (category === 'men') {
-      setActivePage('men');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      handleSelectPage('men');
+    } else if (category === 'women') {
+      handleSelectPage('women');
+    } else if (category === 'accessories') {
+      handleSelectPage('accessories');
     } else {
       setSelectedCategoryFilter('all');
-      handleNavigateSection('products-section');
+      handleSelectPage('shop');
     }
   };
 
   const handleViewProduct = (product: Product) => {
-    setQuickViewProduct(product);
+    setCurrentPdpProduct(product);
+    setActivePage('product');
+    setQuickViewProduct(null);
+
+    const slug = product.slug || product.id.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const targetUrl = `/product/${slug}`;
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState({ productId: product.id }, '', targetUrl);
+    }
+    document.title = `${product.name} — PIERCYN Lagos`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectCategoryFilter = (cat: string) => {
+    setSelectedCategoryFilter(cat);
   };
 
   const handleSelectLook = (look: LookbookLook) => {
@@ -89,9 +215,12 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans selection:bg-[#141414] selection:text-[#F2F0EB] relative">
+    <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] font-sans selection:bg-[#F2F0EB] selection:text-[#0A0A0A] relative">
 
-      {/* Primary Header Navigation */}
+      {/* 1. Simple Announcement Bar */}
+      <AnnouncementBar />
+
+      {/* 2. Primary Header Navigation */}
       <Navbar 
         onNavigateSection={handleNavigateSection}
         activePage={activePage}
@@ -99,7 +228,18 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main View Router */}
-      {activePage === 'shop' ? (
+      {activePage === 'product' ? (
+        <ProductDetailsPage
+          product={currentPdpProduct}
+          onSelectPage={handleSelectPage}
+          onViewProduct={handleViewProduct}
+        />
+      ) : activePage === 'account' ? (
+        <AccountDashboard
+          onSelectPage={handleSelectPage}
+          onViewProduct={handleViewProduct}
+        />
+      ) : activePage === 'shop' ? (
         <ShopPage
           products={ALL_PRODUCTS}
           onViewProduct={handleViewProduct}
@@ -117,67 +257,77 @@ const MainLayout: React.FC = () => {
         <CollectionsPage onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
       ) : (
         <>
-          {/* 1. Hero Campaign Section */}
+          {/* 3. Hero Campaign Section */}
           <HeroSection onExplore={handleExploreHero} />
 
-          {/* 2. Rapid Category Navigation Rail */}
-          <CategoryRailSection 
-            onSelectPage={handleSelectPage} 
-            onNavigateSection={handleNavigateSection} 
-          />
-
-          {/* 3. Just Dropped Pieces */}
-          <NewDropSection 
-            products={ALL_PRODUCTS} 
-            onViewProduct={handleViewProduct} 
+          {/* 4. Quick Category Navigation Bar */}
+          <QuickCategoryNav 
             onSelectPage={handleSelectPage}
+            onSelectCategoryFilter={handleSelectCategoryFilter}
           />
 
-          {/* 4. Large Visual Editorial Campaign */}
-          <FeaturedCampaignSection 
-            onExplore={handleExploreHero}
-            onSelectPage={handleSelectPage}
-            onNavigateSection={handleNavigateSection}
-          />
-
-          {/* 5. Trending Rail */}
-          <TrendingNowSection 
-            products={ALL_PRODUCTS} 
-            onViewProduct={handleViewProduct} 
-          />
-
-          {/* 6. Brand Philosophy & Lagos Roots */}
-          <ManifestoSection />
-
-          {/* 7. Full Product Catalog with Filters & Sort */}
-          <ProductCatalogSection
+          {/* 5. Just Dropped (4-col Desktop / 2-col Mobile Grid) */}
+          <JustDroppedSection 
             products={ALL_PRODUCTS}
-            selectedCategoryFilter={selectedCategoryFilter}
             onViewProduct={handleViewProduct}
-          />
-
-          {/* 8. From Lagos Editorial Heritage */}
-          <FromLagosSection />
-
-          {/* 9. Piercyn Picks Curated Selection */}
-          <PiercynPicksSection 
-            products={ALL_PRODUCTS} 
-            onViewProduct={handleViewProduct} 
-          />
-
-          {/* 10. Style Editorial Guide */}
-          <StyleEditorialSection 
             onSelectPage={handleSelectPage}
-            onNavigateSection={handleNavigateSection}
           />
 
-          {/* 11. Interactive Lookbook */}
+          {/* 6. Shop by Category (Visual Discovery Tiles) */}
+          <ShopByCategorySection 
+            onSelectPage={handleSelectPage}
+            onSelectCategoryFilter={handleSelectCategoryFilter}
+          />
+
+          {/* 7. Trending Now (Curated Standout Pieces) */}
+          <TrendingNowSection 
+            products={ALL_PRODUCTS}
+            onViewProduct={handleViewProduct}
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 8. Curated Styling: Build the Look */}
+          <BuildTheLookSection onViewProduct={handleViewProduct} />
+
+          {/* 9. Affordable Discovery: Good Looks Under ₦15K */}
+          <AffordableDiscoverySection 
+            products={ALL_PRODUCTS}
+            onViewProduct={handleViewProduct}
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 10. Featured Campaign / The Piercyn Edit */}
+          <ThePiercynEditSection 
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 11. Men's Fashion Discovery */}
+          <MensFashionSection 
+            onViewProduct={handleViewProduct}
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 12. Women's Fashion Discovery */}
+          <WomensFashionSection 
+            onViewProduct={handleViewProduct}
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 13. Accessories Teaser (Coming Soon) */}
+          <AccessoriesTeaserSection 
+            onSelectPage={handleSelectPage}
+          />
+
+          {/* 14. Trust & Reassurance Pillars */}
+          <TrustReassuranceSection />
+
+          {/* 15. Interactive Lookbook Archive */}
           <LookbookSection onSelectLook={handleSelectLook} />
 
-          {/* 12. Direct Customer Care & WhatsApp Break */}
+          {/* 16. Customer Care & WhatsApp Break */}
           <WhatsAppCTASection />
 
-          {/* 13. Newsletter */}
+          {/* 17. Newsletter */}
           <NewsletterSection />
         </>
       )}
@@ -185,8 +335,10 @@ const MainLayout: React.FC = () => {
       {/* Global Luxury Footer */}
       <Footer onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
 
+      {/* Mobile Sticky Bottom Navigation Bar */}
+      <MobileBottomNav activePage={activePage} onSelectPage={handleSelectPage} />
 
-      {/* Subtle Floating WhatsApp Concierge Button */}
+      {/* Floating WhatsApp Concierge Button */}
       <WhatsAppButton />
 
       {/* Interactive Drawers & Modals */}
@@ -215,5 +367,3 @@ export default function App() {
     </ShopProvider>
   );
 }
-
-

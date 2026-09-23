@@ -74,7 +74,7 @@ export const FromLagosSection: React.FC = () => {
               onClick={() => setIsStoryOpen(true)}
               className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-full border border-white/50 text-[12px] sm:text-[13px] tracking-[0.18em] uppercase text-[#F2F0EB] font-semibold hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98] backdrop-blur-xs"
             >
-              <span>OUR STORY →</span>
+              <span>OUR STORY</span>
               <ArrowUpRight className="w-3.5 h-3.5 opacity-80 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { formatPrice } from '../utils/currency';
-import { X, Plus, Heart, Ruler, Check, Shield, MapPin } from 'lucide-react';
+import { SHIPPING_CONFIG } from '../utils/shipping';
+import { X, Plus, Heart, Ruler, Truck, ShieldCheck } from 'lucide-react';
 
 export const QuickViewModal: React.FC = () => {
   const {
@@ -18,7 +19,25 @@ export const QuickViewModal: React.FC = () => {
   const [selectedSize, setSelectedSize] = useState<string>('L');
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && quickViewProduct) {
+        setQuickViewProduct(null);
+      }
+    };
+    if (quickViewProduct) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [quickViewProduct, setQuickViewProduct]);
+
+  useEffect(() => {
     if (quickViewProduct) {
       setSelectedColorIdx(0);
       setActiveImageIdx(0);
@@ -45,7 +64,7 @@ export const QuickViewModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label={quickViewProduct.name}>
       {/* Backdrop */}
       <div
         onClick={() => setQuickViewProduct(null)}
@@ -139,8 +158,8 @@ export const QuickViewModal: React.FC = () => {
                   <span className="font-bold text-[#141414]">{quickViewProduct.fabric}</span>
                 </div>
                 <div>
-                  <span className="text-[#8C8A84] block text-[9px] sm:text-[10px] font-semibold">ORIGIN:</span>
-                  <span className="font-bold text-[#141414]">NIGERIA</span>
+                  <span className="text-[#8C8A84] block text-[9px] sm:text-[10px] font-semibold">FIT ADVICE:</span>
+                  <span className="font-bold text-[#141414]">TRUE TO SIZE</span>
                 </div>
               </div>
 
@@ -201,8 +220,14 @@ export const QuickViewModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Delivery info banner */}
+              <div className="flex items-center gap-2 text-[11px] text-[#6E6B65] font-sans bg-[#EAE5D9]/60 px-3 py-2 rounded-lg">
+                <Truck className="w-3.5 h-3.5 shrink-0 text-[#141414]" />
+                <span>Lagos delivery in {SHIPPING_CONFIG.lagosTimeframe}. Nationwide: {SHIPPING_CONFIG.nationwideTimeframe}.</span>
+              </div>
+
               {/* Add to Bag Action with 48px height Pill Button */}
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   onClick={handleAddToCart}
                   className="flex-1 h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] uppercase tracking-[0.16em] font-semibold hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"

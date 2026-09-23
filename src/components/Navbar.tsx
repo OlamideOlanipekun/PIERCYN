@@ -81,10 +81,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         id="main-navbar"
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 font-sans ease-[cubic-bezier(0.16,1,0.3,1)] h-[56px] sm:h-[60px] flex items-center ${
           isScrolled
-            ? 'bg-[#F2F0EB]/95 backdrop-blur-md text-[#141414] border-b border-[#DAD8D1]/80 shadow-xs'
+            ? 'bg-[#0A0A0A]/95 backdrop-blur-md text-[#F2F0EB] border-b border-[#282828]/80 shadow-xs'
             : isDarkHero
             ? 'bg-gradient-to-b from-black/70 via-black/30 to-transparent text-[#F2F0EB]'
-            : 'bg-[#F2F0EB]/85 backdrop-blur-sm text-[#141414] border-b border-[#DAD8D1]/60'
+            : 'bg-[#0A0A0A]/90 backdrop-blur-sm text-[#F2F0EB] border-b border-[#282828]/60'
         }`}
       >
         <div className="piercyn-container px-2.5 sm:px-6 flex justify-between items-center text-[12px] sm:text-[13px] font-medium tracking-[0.08em] font-sans h-full w-full">
@@ -110,17 +110,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNavClick('products-section', 'shop')}
               className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
                 activePage === 'shop'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
               }`}
             >
               <span>SHOP</span>
               {activePage === 'shop' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
 
@@ -129,17 +125,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNavClick('piercyn-men-collection-page', 'men')}
               className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
                 activePage === 'men'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
               }`}
             >
               <span>MEN</span>
               {activePage === 'men' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
 
@@ -148,17 +140,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNavClick('piercyn-women-collection-page', 'women')}
               className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
                 activePage === 'women'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
               }`}
             >
               <span>WOMEN</span>
               {activePage === 'women' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
 
@@ -167,17 +155,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNavClick('piercyn-new-arrivals-page', 'new')}
               className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
                 activePage === 'new'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
               }`}
             >
               <span>NEW ARRIVALS</span>
               {activePage === 'new' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
+              )}
+            </button>
+
+            <button
+              id="nav-accessories"
+              onClick={() => handleNavClick('accessories-section', 'accessories')}
+              className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
+                activePage === 'accessories'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
+              }`}
+            >
+              <span>ACCESSORIES</span>
+              {activePage === 'accessories' && (
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
 
@@ -186,17 +185,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => handleNavClick('men-category-discovery', 'collections')}
               className={`relative py-2 hover:opacity-80 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
                 activePage === 'collections'
-                  ? isDarkHero
-                    ? 'font-bold text-[#F2F0EB]'
-                    : 'font-bold text-[#141414]'
-                  : isDarkHero
-                  ? 'text-[#F2F0EB]/70 hover:text-[#F2F0EB]'
-                  : 'text-[#6E6B65] hover:text-[#141414]'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/60 hover:text-[#F2F0EB]'
               }`}
             >
               <span>COLLECTIONS</span>
               {activePage === 'collections' && (
-                <span className={`absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full ${isDarkHero ? 'bg-[#F2F0EB]' : 'bg-[#141414]'}`} />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
           </nav>
@@ -207,19 +202,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="relative group hidden lg:block">
               <button 
                 id="currency-selector-btn"
-                className={`flex items-center gap-1 uppercase hover:opacity-70 transition-opacity duration-300 cursor-pointer py-2 text-[11px] font-semibold font-sans ${
-                  isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-                }`}
+                className={`flex items-center gap-1 uppercase hover:opacity-70 transition-opacity duration-300 cursor-pointer py-2 text-[11px] font-semibold font-sans text-[#F2F0EB]`}
               >
                 <span>{currency}</span>
               </button>
-              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-[#F2F0EB] text-[#141414] border border-[#DAD8D1] p-1.5 shadow-lg min-w-[84px] z-50 rounded-lg">
+              <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-[#111111] text-[#F2F0EB] border border-[#2A2A2A] p-1.5 shadow-lg min-w-[84px] z-50 rounded-lg">
                 {(['NGN', 'USD', 'GBP', 'EUR'] as Currency[]).map((curr) => (
                   <button
                     key={curr}
                     onClick={() => setCurrency(curr)}
-                    className={`text-left px-2.5 py-1.5 rounded-md text-[11px] tracking-[0.1em] font-sans uppercase transition-colors hover:bg-[#E8E6E1] ${
-                      currency === curr ? 'font-bold bg-[#E8E6E1]' : 'opacity-70'
+                    className={`text-left px-2.5 py-1.5 rounded-md text-[11px] tracking-[0.1em] font-sans uppercase transition-colors hover:bg-[#222222] ${
+                      currency === curr ? 'font-bold bg-[#222222]' : 'opacity-60'
                     }`}
                   >
                     {curr}
@@ -243,7 +236,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* ACCOUNT (Desktop) */}
             <button
               id="nav-account-btn"
-              onClick={() => setIsAuthOpen(true)}
+              onClick={() => {
+                if (onSelectPage) onSelectPage('account');
+                else setIsAuthOpen(true);
+              }}
               className={`hidden lg:inline-flex items-center hover:opacity-75 transition-opacity duration-300 uppercase cursor-pointer text-[12px] font-semibold ${
                 isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
               }`}
@@ -304,17 +300,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       {isMobileMenuOpen && (
         <div 
           id="mobile-editorial-menu"
-          className="fixed inset-0 z-[100] bg-[#F2F0EB] text-[#141414] flex flex-col justify-between p-6 sm:p-10 lg:p-12 animate-in fade-in duration-300 overflow-y-auto"
+          className="fixed inset-0 z-[100] bg-[#0A0A0A] text-[#F2F0EB] flex flex-col justify-between p-6 sm:p-10 lg:p-12 animate-in fade-in duration-300 overflow-y-auto"
         >
           {/* Top Bar: PIERCYN and Close icon × */}
-          <div className="flex items-center justify-between border-b border-[#DAD8D1]/80 pb-5 pt-1">
+          <div className="flex items-center justify-between border-b border-[#282828]/80 pb-5 pt-1">
             <PiercynLogo size={24} />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="w-11 h-11 rounded-full border border-[#141414]/20 hover:bg-[#E8E6E1] flex items-center justify-center transition-colors cursor-pointer"
+              className="w-11 h-11 rounded-full border border-[#F2F0EB]/20 hover:bg-[#1A1A1A] flex items-center justify-center transition-colors cursor-pointer"
               aria-label="Close Mobile Menu"
             >
-              <X className="w-5 h-5 text-[#141414]" />
+              <X className="w-5 h-5 text-[#F2F0EB]" />
             </button>
           </div>
 
@@ -344,17 +340,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     handleNavClick(link.id, link.pageKey);
                   }
                 }}
-                className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#141414] flex items-center justify-between group py-1 min-h-[44px]"
+                className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#F2F0EB] flex items-center justify-between group py-1 min-h-[44px]"
               >
                 <span className="tracking-tight flex items-center gap-2.5">
                   <span>{link.label}</span>
                   {link.badge && (
-                    <span className="not-italic text-[9px] font-sans font-bold px-2 py-0.5 rounded-full bg-[#141414] text-[#F2F0EB] tracking-widest">
+                    <span className="not-italic text-[9px] font-sans font-bold px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#0A0A0A] tracking-widest">
                       {link.badge}
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] font-mono font-normal not-italic tracking-[0.25em] text-[#8C8A84] group-hover:text-[#141414]">
+                <span className="text-[11px] font-mono font-normal not-italic tracking-[0.25em] text-[#F2F0EB]/30 group-hover:text-[#F2F0EB]">
                   0{idx + 1}
                 </span>
               </button>
@@ -362,7 +358,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Secondary Links & Footer Controls */}
-          <div className="border-t border-[#DAD8D1]/80 pt-6 flex flex-col gap-5 text-[11px] tracking-[0.22em] uppercase font-sans">
+          <div className="border-t border-[#282828]/80 pt-6 flex flex-col gap-5 text-[11px] tracking-[0.22em] uppercase font-sans">
             {/* Secondary Action Row: SEARCH, ACCOUNT, HELP */}
             <div className="flex items-center justify-between gap-4">
               <button
@@ -370,16 +366,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setIsMobileMenuOpen(false);
                   setIsSearchOpen(true);
                 }}
-                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold"
+                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"
               >
                 SEARCH
               </button>
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  setIsAuthOpen(true);
+                  if (onSelectPage) onSelectPage('account');
+                  else setIsAuthOpen(true);
                 }}
-                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold"
+                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"
               >
                 {user ? `ACCOUNT (${user.firstName})` : 'ACCOUNT'}
               </button>
@@ -388,22 +385,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setIsMobileMenuOpen(false);
                   document.getElementById('main-footer')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold"
+                className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"
               >
                 HELP
               </button>
             </div>
 
             {/* Currency and Location */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#DAD8D1]/40">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#282828]/40">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#8C8A84] font-mono">CURRENCY:</span>
+                <span className="text-[10px] text-[#F2F0EB]/40 font-mono">CURRENCY:</span>
                 {(['NGN', 'USD', 'GBP', 'EUR'] as Currency[]).map((curr) => (
                   <button
                     key={curr}
                     onClick={() => setCurrency(curr)}
                     className={`px-3 py-1 rounded-full border text-[10px] font-mono transition-colors min-h-[32px] ${
-                      currency === curr ? 'border-[#141414] bg-[#141414] text-[#F2F0EB] font-bold' : 'border-[#141414]/30 text-[#141414]/70'
+                      currency === curr ? 'border-[#F2F0EB] bg-[#F2F0EB] text-[#0A0A0A] font-bold' : 'border-[#F2F0EB]/20 text-[#F2F0EB]/50'
                     }`}
                   >
                     {curr}
@@ -411,7 +408,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ))}
               </div>
 
-              <div className="text-[10px] font-mono text-[#8C8A84]">
+              <div className="text-[10px] font-mono text-[#F2F0EB]/40">
                 LAGOS • {lagosTime}
               </div>
             </div>

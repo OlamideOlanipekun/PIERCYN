@@ -2,34 +2,35 @@ import { PaymentDetails, PaymentResult } from '../types';
 
 export interface PaymentProvider {
   name: string;
+  isLive: boolean;
   initializePayment(details: PaymentDetails): Promise<PaymentResult>;
   verifyPayment(reference: string): Promise<boolean>;
 }
 
-export class MockPaymentProvider implements PaymentProvider {
-  name = 'PIERCYN Direct Secure Checkout';
+export class DirectTransferPaymentProvider implements PaymentProvider {
+  name = 'Direct Order & Bank Transfer';
+  isLive = false;
 
   async initializePayment(details: PaymentDetails): Promise<PaymentResult> {
-    // Simulate lightweight network payment processing delay (1.2s)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    const ref = `PCY-TX-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    // Generate order confirmation reference
+    const ref = `PCY-TRF-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
 
     return {
       success: true,
       transactionReference: ref,
-      message: 'Payment authorized successfully via PIERCYN Secure Gateway',
-      paidAt: new Date().toISOString(),
+      message: 'Order placed successfully. Please complete bank transfer or WhatsApp confirmation.',
+      paidAt: undefined, // Explicitly not marked as paid until manual confirmation
     };
   }
 
   async verifyPayment(_reference: string): Promise<boolean> {
-    return true;
+    return false; // Requires merchant verification
   }
 }
 
 export class PaystackPaymentProvider implements PaymentProvider {
   name = 'Paystack';
+  isLive = true;
   private publicKey: string;
 
   constructor(publicKey: string = '') {
@@ -38,21 +39,31 @@ export class PaystackPaymentProvider implements PaymentProvider {
 
   async initializePayment(details: PaymentDetails): Promise<PaymentResult> {
     if (!this.publicKey) {
-      console.warn('Paystack public key missing. Using secure fallback provider.');
-      return new MockPaymentProvider().initializePayment(details);
+      return new DirectTransferPaymentProvider().initializePayment(details);
     }
 
     return new Promise((resolve) => {
-      const handler = (window as any).PaystackPop?.setup({
+      const paystackPop = (window as any).PaystackPop;
+      if (!paystackPop) {
+        // If Paystack script is not loaded in window
+        resolve({
+          success: false,
+          transactionReference: details.orderNumber,
+          message: 'Payment gateway could not be loaded. Please try WhatsApp / Transfer checkout.',
+        });
+        return;
+      }
+
+      const handler = paystackPop.setup({
         key: this.publicKey,
         email: details.customerEmail,
-        amount: details.amountNGN * 100,
+        amount: Math.round(details.amountNGN * 100),
         ref: details.orderNumber,
         callback: (response: any) => {
           resolve({
             success: true,
             transactionReference: response.reference,
-            message: 'Paystack payment complete',
+            message: 'Payment authorized successfully via Paystack',
             paidAt: new Date().toISOString(),
           });
         },
@@ -60,7 +71,7 @@ export class PaystackPaymentProvider implements PaymentProvider {
           resolve({
             success: false,
             transactionReference: details.orderNumber,
-            message: 'Payment modal closed by customer',
+            message: 'Payment was cancelled by customer',
           });
         },
       });
@@ -68,7 +79,11 @@ export class PaystackPaymentProvider implements PaymentProvider {
       if (handler) {
         handler.openIframe();
       } else {
-        new MockPaymentProvider().initializePayment(details).then(resolve);
+        resolve({
+          success: false,
+          transactionReference: details.orderNumber,
+          message: 'Unable to initialize Paystack checkout',
+        });
       }
     });
   }
@@ -78,7 +93,16 @@ export class PaystackPaymentProvider implements PaymentProvider {
   }
 }
 
-let currentPaymentProvider: PaymentProvider = new MockPaymentProvider();
+// Check for configured public key
+const envKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || '';
+
+let currentPaymentProvider: PaymentProvider = envKey 
+  ? new PaystackPaymentProvider(envKey) 
+  : new DirectTransferPaymentProvider();
+
+export const isLivePaymentConfigured = (): boolean => {
+  return Boolean(envKey && currentPaymentProvider.isLive);
+};
 
 export const setPaymentProvider = (provider: PaymentProvider) => {
   currentPaymentProvider = provider;

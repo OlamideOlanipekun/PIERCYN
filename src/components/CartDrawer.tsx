@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { formatNumericPrice } from '../utils/currency';
+import { SHIPPING_CONFIG } from '../utils/shipping';
 import { X, Minus, Plus, ShoppingBag, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 
 export const CartDrawer: React.FC = () => {
@@ -21,24 +22,42 @@ export const CartDrawer: React.FC = () => {
   const [promoCode, setPromoCode] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
 
-  const freeShippingThreshold = 100000;
+  const freeShippingThreshold = SHIPPING_CONFIG.freeShippingThresholdNGN;
   const currentTotalNGN = cart.reduce((acc, item) => acc + item.product.priceNGN * item.quantity, 0);
   const progressPercent = Math.min(100, (currentTotalNGN / freeShippingThreshold) * 100);
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - currentTotalNGN);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCartOpen) {
+        setIsCartOpen(false);
+      }
+    };
+    if (isCartOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCartOpen, setIsCartOpen]);
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     if (promoCode.trim().toUpperCase() === 'LAGOS26' || promoCode.trim().toUpperCase() === 'STANDOUT') {
       setDiscountPercent(15);
-      showToast('15% Private Editorial Discount Applied');
+      showToast('15% Editorial Discount Applied');
     } else {
-      showToast('Invalid promo code. Try "STANDOUT" for 15% off.');
+      showToast('Invalid code. Try "STANDOUT" for 15% off.');
     }
   };
 
   const finalSubtotal = cartSubtotal * (1 - discountPercent / 100);
 
-  const handleSimulatedCheckout = () => {
+  const handleProceedCheckout = () => {
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };
@@ -46,7 +65,7 @@ export const CartDrawer: React.FC = () => {
   if (!isCartOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Shopping Bag">
       {/* Backdrop */}
       <div 
         onClick={() => setIsCartOpen(false)}
@@ -79,7 +98,7 @@ export const CartDrawer: React.FC = () => {
             {remainingForFreeShipping > 0 ? (
               <div className="flex flex-col space-y-1.5">
                 <div className="flex items-center justify-between text-[#4A4844] font-semibold">
-                  <span>FREE DELIVERY</span>
+                  <span>FREE DELIVERY AT {formatNumericPrice(freeShippingThreshold, currency)}</span>
                   <span>{Math.round(progressPercent)}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-[#D5CFBF] rounded-full overflow-hidden">
@@ -88,7 +107,7 @@ export const CartDrawer: React.FC = () => {
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-[#6E6B65] lowercase font-medium">
+                <span className="text-[10px] text-[#6E6B65] font-medium lowercase">
                   add {formatNumericPrice(remainingForFreeShipping, currency)} more for free delivery
                 </span>
               </div>
@@ -108,104 +127,101 @@ export const CartDrawer: React.FC = () => {
                 <p className="font-editorial text-xl sm:text-2xl uppercase tracking-[-0.02em] text-[#141414]">
                   YOUR BAG IS EMPTY
                 </p>
-                <p className="text-[12px] sm:text-[13px] text-[#7A7771] font-normal max-w-xs mx-auto">
-                  Let's find you something good.
+                <p className="text-xs text-[#6E6B65] max-w-xs mx-auto">
+                  Explore our latest drops and heavyweight essentials designed in Lagos.
                 </p>
                 <button
                   onClick={() => setIsCartOpen(false)}
-                  className="mt-4 min-h-[44px] px-7 py-3 rounded-full border border-[#141414] bg-[#141414] text-[#F2F0EB] text-[11px] uppercase tracking-[0.25em] font-medium hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="min-h-[44px] px-6 py-2.5 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-semibold uppercase tracking-wider hover:bg-black transition-colors"
                 >
-                  SHOP NOW
+                  START SHOPPING
                 </button>
               </div>
             ) : (
-              cart.map((item) => {
-                const colorObj = item.product.colors.find((c) => c.name === item.selectedColor) || item.product.colors[0];
-                const itemImg = colorObj?.image || item.product.images[0];
-                const itemPrice = currency === 'NGN' ? item.product.priceNGN : currency === 'USD' ? item.product.priceUSD : currency === 'GBP' ? item.product.priceGBP : item.product.priceEUR;
+              cart.map((item) => (
+                <div 
+                  key={`${item.product.id}-${item.selectedColor}-${item.selectedSize}`}
+                  className="flex gap-4 pb-4 border-b border-[#E3DEC3]/60 items-start"
+                >
+                  <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#E7E2D6] rounded-md overflow-hidden shrink-0">
+                    <img 
+                      src={item.product.images[0]} 
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
 
-                return (
-                  <div 
-                    key={`${item.product.id}-${item.selectedColor}-${item.selectedSize}`}
-                    className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-[#E3DEC3]/80"
-                  >
-                    {/* Thumbnail with strict 4:5 ratio */}
-                    <div className="w-18 sm:w-20 aspect-[4/5] bg-[#E7E2D6] rounded-md overflow-hidden shrink-0 shadow-2xs">
-                      <img
-                        src={itemImg}
-                        alt={item.product.name}
-                        className="w-full h-full object-cover"
-                      />
+                  <div className="flex-1 min-w-0 flex flex-col justify-between h-24 sm:h-28 py-0.5">
+                    <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-editorial text-base sm:text-lg font-semibold uppercase leading-tight truncate">
+                          {item.product.name}
+                        </h4>
+                        <button
+                          onClick={() => removeFromCart(item.product.id, item.selectedColor, item.selectedSize)}
+                          className="text-[#6E6B65] hover:text-[#141414] p-1 cursor-pointer transition-colors"
+                          aria-label="Remove item"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[11px] text-[#6E6B65] uppercase font-mono mt-1">
+                        <span>SIZE: {item.selectedSize}</span>
+                        <span>•</span>
+                        <span>COLOR: {item.selectedColor}</span>
+                      </div>
                     </div>
 
-                    {/* Details */}
-                    <div className="flex-1 flex flex-col justify-between font-sans">
-                      <div>
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-[13px] uppercase tracking-[0.06em] font-semibold text-[#141414] leading-snug">
-                            {item.product.name}
-                          </h4>
-                          <button
-                            onClick={() => removeFromCart(item.product.id, item.selectedColor, item.selectedSize)}
-                            className="min-w-[40px] min-h-[40px] text-[#8C8A84] hover:text-[#141414] rounded-full hover:bg-black/5 flex items-center justify-center cursor-pointer"
-                            title="Remove"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-2 sm:gap-3 text-[10px] uppercase tracking-[0.14em] text-[#6E6B65] mt-1 font-semibold">
-                          <span>{item.selectedColor}</span>
-                          <span>•</span>
-                          <span>SIZE {item.selectedSize}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2 sm:mt-3">
-                        {/* Quantity adjuster pill with 40px touch targets */}
-                        <div className="flex items-center border border-[#D5CFBF] bg-[#FAF8F5] rounded-full overflow-hidden">
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, -1)}
-                            className="min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-[#EAE5D9] transition-colors cursor-pointer font-bold"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="px-2 text-[12px] font-sans font-bold">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, 1)}
-                            className="min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-[#EAE5D9] transition-colors cursor-pointer font-bold"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <span className="font-sans text-[13px] sm:text-[14px] font-bold text-[#141414]">
-                          {formatNumericPrice(itemPrice * item.quantity, currency)}
+                    <div className="flex items-center justify-between mt-auto">
+                      {/* Quantity Selector */}
+                      <div className="flex items-center border border-[#141414]/20 rounded-full h-7">
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, -1)}
+                          className="w-7 h-full flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 rounded-l-full cursor-pointer"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-7 text-center text-xs font-mono font-semibold">
+                          {item.quantity}
                         </span>
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, 1)}
+                          className="w-7 h-full flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 rounded-r-full cursor-pointer"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
                       </div>
+
+                      {/* Price */}
+                      <span className="font-mono text-xs sm:text-sm font-bold text-[#141414]">
+                        {formatNumericPrice(item.product.priceNGN * item.quantity, currency)}
+                      </span>
                     </div>
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
 
-          {/* Bottom Summary & Checkout with safe area bottom padding */}
+          {/* Bottom Checkout Actions */}
           {cart.length > 0 && (
-            <div className="p-4 sm:p-6 bg-[#EBE7DF] border-t border-[#E3DEC3] space-y-3 sm:space-y-4 font-sans pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="p-4 sm:p-6 border-t border-[#E3DEC3] bg-[#EAE5D9]/50 space-y-3.5 shrink-0">
               
-              {/* Promo Code Form */}
+              {/* Promo Code Input */}
               <form onSubmit={handleApplyPromo} className="flex gap-2">
                 <input
                   type="text"
+                  placeholder="PROMO CODE (e.g. STANDOUT)"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
-                  placeholder="PROMO (e.g. STANDOUT)"
-                  className="flex-1 h-11 min-h-[44px] bg-[#FAF8F5] border border-[#D5CFBF] px-4 rounded-full text-[11px] uppercase font-sans tracking-wider focus:outline-none focus:border-[#141414]"
+                  className="flex-1 h-9 px-3 bg-[#F2F0EB] border border-[#141414]/20 rounded-full text-[11px] font-mono uppercase tracking-wider focus:outline-hidden focus:border-[#141414]"
                 />
                 <button
                   type="submit"
-                  className="h-11 min-h-[44px] px-5 rounded-full border border-[#141414] text-[11px] font-sans font-bold uppercase tracking-wider hover:bg-[#141414] hover:text-[#F2F0EB] transition-colors cursor-pointer"
+                  className="h-9 px-4 rounded-full bg-[#141414]/10 hover:bg-[#141414] hover:text-[#F2F0EB] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   APPLY
                 </button>
@@ -215,8 +231,8 @@ export const CartDrawer: React.FC = () => {
               <div className="space-y-1.5 text-[11px] sm:text-[12px] uppercase tracking-[0.15em] font-sans">
                 {discountPercent > 0 && (
                   <div className="flex justify-between text-emerald-800 font-bold">
-                    <span>EDITORIAL DISCOUNT (15%)</span>
-                    <span>- {formatNumericPrice(cartSubtotal * 0.15, currency)}</span>
+                    <span>DISCOUNT ({discountPercent}%)</span>
+                    <span>- {formatNumericPrice(cartSubtotal * (discountPercent / 100), currency)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-[#141414] font-bold text-[14px] sm:text-[15px] pt-1">
@@ -227,16 +243,16 @@ export const CartDrawer: React.FC = () => {
 
               {/* Checkout Button */}
               <button
-                onClick={handleSimulatedCheckout}
+                onClick={handleProceedCheckout}
                 className="group w-full h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] uppercase tracking-[0.16em] font-bold hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
               >
-                <span>CHECKOUT</span>
+                <span>PROCEED TO CHECKOUT</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
 
-              <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-[#6E6B65] font-sans pt-0.5 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 opacity-70" />
-                <span>SECURE CHECKOUT • FAST & RELIABLE DELIVERY</span>
+              <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.12em] text-[#6E6B65] font-sans pt-0.5 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                <span>LAGOS: 24–48H • NATIONWIDE: 3–5 DAYS</span>
               </div>
             </div>
           )}

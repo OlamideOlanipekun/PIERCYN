@@ -53,3 +53,8 @@ export function formatNumericPrice(priceNGN: number | undefined | null, currency
       return `₦${safePrice.toLocaleString('en-NG')}`;
   }
 }
+
+export function formatNGN(priceNGN: number | undefined | null): string {
+  const safePrice = typeof priceNGN === 'number' && !isNaN(priceNGN) ? priceNGN : 0;
+  return `₦${safePrice.toLocaleString('en-NG')}`;
+}

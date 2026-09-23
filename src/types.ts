@@ -40,7 +40,7 @@ export type SortOption =
   | 'PRICE — HIGH TO LOW' 
   | 'BEST SELLING';
 
-export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about';
+export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product';
 
 export interface ProductColor {
   name: string;
@@ -154,7 +154,12 @@ export interface AnalyticsEvent {
     | 'remove_from_cart'
     | 'checkout_started'
     | 'payment_started'
-    | 'purchase';
+    | 'purchase'
+    | 'size_selected'
+    | 'color_selected'
+    | 'buy_now_clicked'
+    | 'size_guide_opened'
+    | 'whatsapp_clicked';
   data: Record<string, any>;
   timestamp: string;
 }

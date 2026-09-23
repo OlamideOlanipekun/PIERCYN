@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { processCheckoutPayment } from '../services/paymentService';
-import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft } from 'lucide-react';
+import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
+import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
+import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
 import { CustomerInfo, OrderItem } from '../types';
 
 export const CheckoutModal: React.FC = () => {
@@ -26,8 +27,29 @@ export const CheckoutModal: React.FC = () => {
   });
 
   const [shippingMethod, setShippingMethod] = useState<'lagos' | 'nationwide'>('lagos');
+  const [paymentMethodChoice, setPaymentMethodChoice] = useState<'transfer' | 'paystack'>('transfer');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isLiveGateway = isLivePaymentConfigured();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCheckoutOpen) {
+        setIsCheckoutOpen(false);
+      }
+    };
+    if (isCheckoutOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCheckoutOpen, setIsCheckoutOpen]);
 
   if (!isCheckoutOpen) return null;
 
@@ -48,13 +70,7 @@ export const CheckoutModal: React.FC = () => {
     'Other Nigerian State',
   ];
 
-  const deliveryFee =
-    cartSubtotal >= 35000
-      ? 0
-      : shippingMethod === 'lagos'
-      ? 2500
-      : 4500;
-
+  const deliveryFee = getDeliveryFee(cartSubtotal, shippingMethod);
   const totalNGN = cartSubtotal + deliveryFee;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -66,30 +82,45 @@ export const CheckoutModal: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!customer.fullName || !customer.email || !customer.phone || !customer.address) {
-      setErrorMessage('Please fill in all required delivery details.');
+    if (!customer.fullName.trim() || !customer.email.trim() || !customer.phone.trim() || !customer.address.trim()) {
+      setErrorMessage('Please fill in your full name, email, phone number, and delivery address.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Step 1: Initialize Payment via Payment Provider Abstraction
-      const paymentResult = await processCheckoutPayment({
-        orderNumber: `PCY-TEMP-${Date.now()}`,
-        amountNGN: totalNGN,
-        customerEmail: customer.email,
-        customerName: customer.fullName,
-        customerPhone: customer.phone,
-      });
+      const orderNumber = `PCY-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
 
-      if (!paymentResult.success) {
-        setErrorMessage(paymentResult.message || "Your payment didn't go through. Please try again or use another payment method.");
-        setIsSubmitting(false);
-        return;
+      let paymentResult = {
+        success: true,
+        transactionReference: orderNumber,
+        paidAt: undefined as string | undefined,
+      };
+
+      if (paymentMethodChoice === 'paystack' && isLiveGateway) {
+        const res = await processCheckoutPayment({
+          orderNumber,
+          amountNGN: totalNGN,
+          customerEmail: customer.email,
+          customerName: customer.fullName,
+          customerPhone: customer.phone,
+        });
+
+        if (!res.success) {
+          setErrorMessage(res.message || 'Payment could not be completed. Please try bank transfer / WhatsApp checkout.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        paymentResult = {
+          success: true,
+          transactionReference: res.transactionReference,
+          paidAt: res.paidAt,
+        };
       }
 
-      // Step 2: Map cart items to OrderItems
+      // Map cart items to OrderItems
       const orderItems: OrderItem[] = cart.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -102,39 +133,44 @@ export const CheckoutModal: React.FC = () => {
         image: item.product.images[0],
       }));
 
-      // Step 3: Create persistent Order
+      // Create persistent Order
       createOrder({
         customer,
         items: orderItems,
         subtotalNGN: cartSubtotal,
         deliveryFeeNGN: deliveryFee,
         totalNGN,
-        shippingMethod: shippingMethod === 'lagos' ? 'Lagos Express Doorstep (24-48h)' : 'Standard Nationwide Nigeria (2-4 Days)',
-        paymentMethod: 'PIERCYN Direct Secure Gateway',
-        paymentStatus: 'PAID',
+        shippingMethod: shippingMethod === 'lagos' 
+          ? `Lagos Doorstep (${SHIPPING_CONFIG.lagosTimeframe})` 
+          : `Nationwide (${SHIPPING_CONFIG.nationwideTimeframe})`,
+        paymentMethod: paymentMethodChoice === 'paystack' && isLiveGateway 
+          ? 'Paystack' 
+          : 'Direct Bank Transfer / WhatsApp',
+        paymentStatus: paymentResult.paidAt ? 'PAID' : 'PENDING',
         orderStatus: 'CONFIRMED',
       });
 
       setIsSubmitting(false);
       setIsCheckoutOpen(false);
       setIsOrderConfirmedOpen(true);
-      showToast('Order confirmed successfully!');
+      showToast('Order created successfully!');
     } catch (err: any) {
       console.error(err);
-      setErrorMessage('Something went wrong. Please try again.');
+      setErrorMessage('Something went wrong creating your order. Please try again or reach out on WhatsApp.');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto font-sans">
-      <div className="bg-[#F2F0EB] w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border border-[#DAD8D1] my-8 text-left">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto font-sans" role="dialog" aria-modal="true">
+      <div className="bg-[#F2F0EB] w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border border-[#DAD8D1] my-6 text-left animate-in fade-in zoom-in-95 duration-200">
+        
         {/* MODAL HEADER */}
-        <div className="bg-[#141414] text-[#F2F0EB] p-4 sm:p-6 flex items-center justify-between">
+        <div className="bg-[#141414] text-[#F2F0EB] p-4 sm:p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-[#E8E6E1]" />
             <div>
-              <h2 className="font-editorial italic text-xl sm:text-2xl">CHECKOUT</h2>
+              <h2 className="font-editorial italic text-xl sm:text-2xl font-normal">CHECKOUT</h2>
               <p className="text-[10px] font-mono text-[#E8E6E1]/70 uppercase tracking-widest">
                 DIRECT DOORSTEP DELIVERY
               </p>
@@ -142,83 +178,93 @@ export const CheckoutModal: React.FC = () => {
           </div>
           <button
             onClick={() => setIsCheckoutOpen(false)}
-            className="p-1 rounded-full hover:bg-white/10 text-white transition-colors"
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-[#F2F0EB] transition-colors cursor-pointer"
+            aria-label="Close Checkout"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ERROR NOTIFICATION */}
         {errorMessage && (
-          <div className="bg-red-900/10 border-b border-red-500/30 p-3 px-6 text-red-700 text-xs font-medium">
-            {errorMessage}
+          <div className="bg-red-500/10 border-b border-red-500/20 text-red-700 px-4 py-3 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmitCheckout} className="p-4 sm:p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* FORM BODY */}
+        <form onSubmit={handleSubmitCheckout} className="p-4 sm:p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
             {/* LEFT COLUMN: CUSTOMER & DELIVERY INFO */}
             <div className="space-y-4">
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#141414]/80 pb-2 border-b border-[#DAD8D1]">
-                1. YOUR DETAILS & ADDRESS
+                1. CONTACT & DELIVERY DETAILS
               </h3>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
+                <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
                   FULL NAME *
                 </label>
                 <input
                   type="text"
                   name="fullName"
                   required
+                  placeholder="e.g. Tunde Balogun"
                   value={customer.fullName}
                   onChange={handleInputChange}
-                  placeholder="e.g. Babatunde Ogunlesi"
-                  className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414]"
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
+                  <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
                     EMAIL ADDRESS *
                   </label>
                   <input
                     type="email"
                     name="email"
                     required
+                    placeholder="tunde@example.com"
                     value={customer.email}
                     onChange={handleInputChange}
-                    placeholder="name@domain.com"
-                    className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
-                    PHONE NUMBER *
+                  <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
+                    PHONE / WHATSAPP *
                   </label>
                   <input
                     type="tel"
                     name="phone"
                     required
+                    placeholder="0801 234 5678"
                     value={customer.phone}
                     onChange={handleInputChange}
-                    placeholder="+234 800 000 0000"
-                    className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
+                  <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
                     STATE *
                   </label>
                   <select
                     name="state"
                     value={customer.state}
-                    onChange={handleInputChange}
-                    className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414] cursor-pointer"
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      if (e.target.value === 'Lagos State') {
+                        setShippingMethod('lagos');
+                      } else {
+                        setShippingMethod('nationwide');
+                      }
+                    }}
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   >
                     {NIGERIAN_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -228,38 +274,52 @@ export const CheckoutModal: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
+                  <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
                     CITY / AREA *
                   </label>
                   <input
                     type="text"
                     name="city"
                     required
+                    placeholder="e.g. Lekki Phase 1 / Ikeja"
                     value={customer.city}
                     onChange={handleInputChange}
-                    placeholder="e.g. Lekki Phase 1 / Ikeja"
-                    className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase text-[#141414]/70 block mb-1">
+                <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
                   STREET DELIVERY ADDRESS *
                 </label>
                 <textarea
                   name="address"
                   required
                   rows={2}
+                  placeholder="Street name, apartment, landmark"
                   value={customer.address}
                   onChange={handleInputChange}
-                  placeholder="Full street name, building number, apartment details..."
-                  className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2.5 text-xs focus:outline-none focus:border-[#141414]"
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-[#141414]/70 mb-1">
+                  ORDER NOTE (OPTIONAL)
+                </label>
+                <input
+                  type="text"
+                  name="orderNote"
+                  placeholder="Special instructions for the courier"
+                  value={customer.orderNote}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                 />
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SHIPPING METHOD & ORDER SUMMARY */}
+            {/* RIGHT COLUMN: SHIPPING METHOD, PAYMENT & ORDER SUMMARY */}
             <div className="space-y-4 flex flex-col justify-between">
               <div>
                 <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#141414]/80 pb-2 border-b border-[#DAD8D1] mb-3">
@@ -279,11 +339,13 @@ export const CheckoutModal: React.FC = () => {
                       <Truck className="w-4 h-4" />
                       <div>
                         <p className="text-xs font-bold uppercase">LAGOS DOORSTEP</p>
-                        <p className="text-[10px] opacity-75">Express 24-48 Hours</p>
+                        <p className="text-[10px] opacity-75">{SHIPPING_CONFIG.lagosTimeframe}</p>
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= 35000 ? 'FREE' : '₦2,500'}
+                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
+                        ? 'FREE'
+                        : `₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()}`}
                     </span>
                   </label>
 
@@ -298,20 +360,67 @@ export const CheckoutModal: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <Truck className="w-4 h-4" />
                       <div>
-                        <p className="text-xs font-bold uppercase">NATIONWIDE NIGERIA</p>
-                        <p className="text-[10px] opacity-75">Standard 2–4 Business Days</p>
+                        <p className="text-xs font-bold uppercase">NATIONWIDE DELIVERY</p>
+                        <p className="text-[10px] opacity-75">{SHIPPING_CONFIG.nationwideTimeframe}</p>
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= 35000 ? 'FREE' : '₦4,500'}
+                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
+                        ? 'FREE'
+                        : `₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()}`}
                     </span>
                   </label>
                 </div>
+
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#141414]/80 pb-2 border-b border-[#DAD8D1] my-3">
+                  3. PAYMENT SELECTION
+                </h3>
+
+                <div className="space-y-2">
+                  <label
+                    onClick={() => setPaymentMethodChoice('transfer')}
+                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                      paymentMethodChoice === 'transfer'
+                        ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
+                        : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="w-4 h-4" />
+                      <div>
+                        <p className="text-xs font-bold uppercase">BANK TRANSFER / WHATSAPP</p>
+                        <p className="text-[10px] opacity-75">Instant reservation + bank transfer receipt</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase bg-emerald-700/20 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                      RECOMMENDED
+                    </span>
+                  </label>
+
+                  {isLiveGateway && (
+                    <label
+                      onClick={() => setPaymentMethodChoice('paystack')}
+                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                        paymentMethodChoice === 'paystack'
+                          ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
+                          : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Lock className="w-4 h-4" />
+                        <div>
+                          <p className="text-xs font-bold uppercase">PAYSTACK DEBIT CARD</p>
+                          <p className="text-[10px] opacity-75">Mastercard, Visa, Verve</p>
+                        </div>
+                      </div>
+                    </label>
+                  )}
+                </div>
               </div>
 
-              {/* ORDER BREAKDOWN */}
-              <div className="bg-[#E8E6E1] p-4 rounded-xl space-y-2 text-xs border border-[#DAD8D1]">
-                <h4 className="font-mono font-bold uppercase text-[#141414]/70 mb-2 pb-1 border-b border-[#DAD8D1]">
+              {/* SUMMARY BREAKDOWN */}
+              <div className="bg-[#E8E6E1] p-3.5 rounded-xl border border-[#DAD8D1] space-y-2 text-xs font-sans mt-4">
+                <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-[#141414]/70 mb-2 pb-1 border-b border-[#DAD8D1]">
                   ORDER SUMMARY ({cart.length} {cart.length === 1 ? 'PIECE' : 'PIECES'})
                 </h4>
                 <div className="flex justify-between text-[#141414]/80">
@@ -330,24 +439,25 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* ACTION BUTTON */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-4 bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-widest rounded-full hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-md"
-              >
-                {isSubmitting ? (
-                  <span>PLACING ORDER...</span>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4" />
-                    <span>PLACE ORDER (₦{totalNGN.toLocaleString()})</span>
-                  </>
-                )}
-              </button>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-12 min-h-[48px] bg-[#141414] text-[#F2F0EB] rounded-full text-xs uppercase tracking-widest font-bold hover:bg-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <span className="inline-block animate-pulse">PROCESSING ORDER...</span>
+                  ) : (
+                    <span>CONFIRM & PLACE ORDER (₦{totalNGN.toLocaleString()})</span>
+                  )}
+                </button>
+              </div>
+
             </div>
+
           </div>
         </form>
+
       </div>
     </div>
   );
