@@ -32,21 +32,21 @@ export const TrustReassuranceSection: React.FC = () => {
       className="w-full bg-[#EAE5D9]/60 text-[#141414] py-12 sm:py-16 border-b border-[#DAD8D1]/70 font-sans"
     >
       <div className="piercyn-container">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
           {pillars.map((p) => {
             const Icon = p.icon;
             return (
               <div
                 key={p.title}
-                className="flex flex-col text-left space-y-2.5 p-4 rounded-xl bg-[#F2F0EB]/60 border border-[#DAD8D1]/50"
+                className="flex flex-col text-left space-y-2 p-3 sm:p-4 rounded-xl bg-[#F2F0EB]/80 border border-[#DAD8D1]/60 shadow-2xs hover:border-[#141414]/30 transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-[#141414] text-[#F2F0EB] flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4" />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#141414] text-[#F2F0EB] flex items-center justify-center shrink-0">
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <h4 className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#141414] font-sans">
+                <h4 className="text-[10.5px] sm:text-[12px] font-bold uppercase tracking-[0.06em] text-[#141414] font-sans line-clamp-1">
                   {p.title}
                 </h4>
-                <p className="text-xs text-[#6E6B65] leading-relaxed">
+                <p className="text-[10px] sm:text-xs text-[#6E6B65] leading-relaxed">
                   {p.desc}
                 </p>
               </div>

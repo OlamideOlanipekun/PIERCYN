@@ -95,9 +95,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               if (onSelectPage) onSelectPage('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`cursor-pointer text-left hover:opacity-70 transition-opacity duration-300 min-h-[44px] flex items-center justify-start shrink-0 pr-1 ${
-              isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-            }`}
+            className="cursor-pointer text-left text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 min-h-[44px] flex items-center justify-start shrink-0 pr-1"
             aria-label="Piercyn Home"
           >
             <PiercynLogo size={22} />
@@ -225,9 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="search-trigger-btn"
               onClick={() => setIsSearchOpen(true)}
-              className={`w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center hover:opacity-75 transition-opacity duration-300 cursor-pointer ${
-                isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-              }`}
+              className="w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 cursor-pointer"
               aria-label="Search Collection"
             >
               <Search className="w-5 h-5 stroke-[1.75]" />
@@ -240,9 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 if (onSelectPage) onSelectPage('account');
                 else setIsAuthOpen(true);
               }}
-              className={`hidden lg:inline-flex items-center hover:opacity-75 transition-opacity duration-300 uppercase cursor-pointer text-[12px] font-semibold ${
-                isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-              }`}
+              className="hidden lg:inline-flex items-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 uppercase cursor-pointer text-[12px] font-semibold"
             >
               {user ? `ACCOUNT (${user.firstName})` : 'ACCOUNT'}
             </button>
@@ -251,14 +245,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="wishlist-drawer-trigger-btn"
               onClick={() => setIsWishlistOpen(true)}
-              className={`hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] relative items-center justify-center hover:opacity-75 transition-opacity duration-300 cursor-pointer ${
-                isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-              }`}
+              className="hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] relative items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 cursor-pointer"
               aria-label="Saved Pieces"
             >
-              <Heart className={`w-5 h-5 stroke-[1.75] ${wishlist.length > 0 ? (isDarkHero ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'fill-[#141414] text-[#141414]') : ''}`} />
+              <Heart className={`w-5 h-5 stroke-[1.75] ${wishlist.length > 0 ? 'fill-[#F2F0EB] text-[#F2F0EB]' : 'text-[#F2F0EB]'}`} />
               {wishlist.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#141414] text-[#F2F0EB] text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#F2F0EB] text-[#141414] text-[9px] font-bold flex items-center justify-center">
                   {wishlist.length}
                 </span>
               )}
@@ -268,11 +260,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
-              className={`h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3 sm:px-5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 ${
-                isDarkHero
-                  ? 'text-[#141414] bg-[#F2F0EB] hover:bg-white'
-                  : 'text-[#F2F0EB] bg-[#141414] hover:bg-black'
-              }`}
+              className="h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3.5 sm:px-5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 text-[#141414] bg-[#F2F0EB] hover:bg-white"
               aria-label="Shopping Bag"
             >
               <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[1.75]" />
@@ -285,9 +273,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`md:hidden w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer active:scale-95 ${
-                isDarkHero ? 'text-[#F2F0EB]' : 'text-[#141414]'
-              }`}
+              className="md:hidden w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity cursor-pointer active:scale-95"
               aria-label="Open Mobile Menu"
             >
               <Menu className="w-5 h-5 stroke-[1.75]" />

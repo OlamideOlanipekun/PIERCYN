@@ -62,7 +62,7 @@ export const AffordableDiscoverySection: React.FC<AffordableDiscoverySectionProp
           {affordableProducts.slice(0, 4).map((product, idx) => (
             <div
               key={product.id}
-              className="w-[72vw] sm:w-auto shrink-0 sm:shrink snap-start"
+              className="w-[66vw] sm:w-auto shrink-0 sm:shrink snap-start"
             >
               <ProductCard
                 product={product}

@@ -42,7 +42,7 @@ export const WhatsAppButton: React.FC = () => {
   );
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 font-sans">
+    <div className="fixed bottom-[74px] right-4 md:bottom-6 md:right-6 z-40 font-sans">
       {/* EXPANDED ASSISTANCE POPUP */}
       {isOpen && (
         <div className="mb-3 w-72 bg-[#141414] text-[#F2F0EB] p-4 rounded-2xl shadow-2xl border border-white/10 text-left animate-in slide-in-from-bottom-2 duration-300">
