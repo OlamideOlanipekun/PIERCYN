@@ -18,7 +18,7 @@ export const WomensFashionSection: React.FC<WomensFashionSectionProps> = ({
   return (
     <section
       id="womens-fashion-section"
-      className="w-full bg-[#F2F0EB] text-[#141414] py-12 sm:py-16 lg:py-20 border-b border-[#DAD8D1]/70"
+      className="w-full bg-white text-[#141414] py-12 sm:py-16 lg:py-20 border-b border-[#F0F0F0]"
     >
       <div className="piercyn-container">
         {/* Header */}

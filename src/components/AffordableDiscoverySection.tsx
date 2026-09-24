@@ -31,7 +31,7 @@ export const AffordableDiscoverySection: React.FC<AffordableDiscoverySectionProp
   return (
     <section
       id="affordable-discovery-section"
-      className="w-full bg-[#EAE5D9]/50 text-[#141414] py-12 sm:py-16 lg:py-20 border-b border-[#DAD8D1]/70"
+      className="w-full bg-white text-[#141414] py-12 sm:py-16 lg:py-20 border-b border-[#F0F0F0]"
     >
       <div className="piercyn-container">
         {/* Header */}

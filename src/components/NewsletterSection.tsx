@@ -20,7 +20,7 @@ export const NewsletterSection: React.FC = () => {
   return (
     <section 
       id="newsletter-section" 
-      className="relative w-full bg-[#F2F0EB] py-20 sm:py-28 lg:py-32 overflow-hidden border-b border-[#DAD8D1]"
+      className="relative w-full bg-white py-20 sm:py-28 lg:py-32 overflow-hidden border-b border-[#F0F0F0]"
     >
       <div className="piercyn-container text-center flex flex-col items-center font-sans">
         

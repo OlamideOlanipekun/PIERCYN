@@ -29,7 +29,7 @@ export const TrustReassuranceSection: React.FC = () => {
   return (
     <section
       id="trust-reassurance-section"
-      className="w-full bg-[#EAE5D9]/60 text-[#141414] py-12 sm:py-16 border-b border-[#DAD8D1]/70 font-sans"
+      className="w-full bg-[#FAFAFA] text-[#141414] py-12 sm:py-16 border-b border-[#F0F0F0] font-sans"
     >
       <div className="piercyn-container">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
@@ -38,7 +38,7 @@ export const TrustReassuranceSection: React.FC = () => {
             return (
               <div
                 key={p.title}
-                className="flex flex-col text-left space-y-2 p-3 sm:p-4 rounded-xl bg-[#F2F0EB]/80 border border-[#DAD8D1]/60 shadow-2xs hover:border-[#141414]/30 transition-colors"
+                className="flex flex-col text-left space-y-2 p-3.5 sm:p-4 rounded-xl bg-white border border-[#EAEAEA] shadow-2xs hover:border-[#141414]/30 transition-colors"
               >
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#141414] text-[#F2F0EB] flex items-center justify-center shrink-0">
                   <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />

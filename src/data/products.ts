@@ -26,7 +26,7 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Pitch Black',
         hex: '#111111',
-        image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop'
       },
       {
@@ -50,8 +50,8 @@ export const PRODUCTS: Product[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     images: [
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop'
     ]
   },
@@ -510,8 +510,8 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Washed Obsidian',
         hex: '#181818',
-        image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
-        altImage: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop'
+        image: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop'
       },
       {
         name: 'Bone Ivory',
@@ -522,7 +522,7 @@ export const PRODUCTS: Product[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     images: [
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop'
     ]
   },

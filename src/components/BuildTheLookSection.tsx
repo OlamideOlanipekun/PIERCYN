@@ -35,7 +35,7 @@ export const BuildTheLookSection: React.FC<BuildTheLookSectionProps> = ({ onView
   };
 
   return (
-    <section id="build-the-look-section" className="py-14 sm:py-20 bg-[#F5F3EE] text-[#111111] border-b border-[#E2DFD7]">
+    <section id="build-the-look-section" className="py-14 sm:py-20 bg-[#FAFAFA] text-[#111111] border-b border-[#F0F0F0]">
       <div className="piercyn-container">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12">

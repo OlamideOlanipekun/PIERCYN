@@ -63,12 +63,12 @@ export const ProductImage: React.FC<ProductImageProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`relative w-full overflow-hidden bg-[#F5F3EE] ${aspectClass} ${className}`}
+      className={`relative w-full overflow-hidden bg-[#F8F8F8] ${aspectClass} ${className}`}
       style={{ isolation: 'isolate' }}
     >
       {/* Background Skeleton / Placeholder */}
       {!isLoaded && !hasError && (
-        <div className="absolute inset-0 bg-[#EFECE6] animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-[#F2F2F2] animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 opacity-20">
             <PiercynMonogram size={32} />
           </div>
@@ -77,7 +77,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
 
       {/* Fallback state when image fails to load or src is missing */}
       {hasError ? (
-        <div className="absolute inset-0 bg-[#ECE8E1] flex flex-col items-center justify-center p-4 text-center select-none">
+        <div className="absolute inset-0 bg-[#F2F2F2] flex flex-col items-center justify-center p-4 text-center select-none">
           <div className="w-10 h-10 mb-2 text-[#737069] opacity-40">
             <PiercynMonogram size={40} />
           </div>
