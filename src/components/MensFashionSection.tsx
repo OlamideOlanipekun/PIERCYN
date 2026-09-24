@@ -5,15 +5,17 @@ import { ArrowRight } from 'lucide-react';
 import { MENS_PRODUCTS } from '../data/mensProducts';
 
 interface MensFashionSectionProps {
+  products?: Product[];
   onViewProduct: (product: Product) => void;
   onSelectPage: (page: ActivePageView) => void;
 }
 
 export const MensFashionSection: React.FC<MensFashionSectionProps> = ({
+  products,
   onViewProduct,
   onSelectPage,
 }) => {
-  const displayMen = MENS_PRODUCTS.slice(0, 4);
+  const displayMen = (products && products.length > 0 ? products : MENS_PRODUCTS).slice(0, 4);
 
   return (
     <section

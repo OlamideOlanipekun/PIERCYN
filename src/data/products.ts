@@ -26,8 +26,8 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Pitch Black',
         hex: '#111111',
-        image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
-        altImage: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop'
+        image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop'
       },
       {
         name: 'Washed Sand',
@@ -38,7 +38,7 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Raw Bone',
         hex: '#EBE7DF',
-        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
       },
       {
@@ -50,9 +50,9 @@ export const PRODUCTS: Product[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     images: [
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop'
     ]
   },
   {
@@ -80,13 +80,13 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Pitch Black',
         hex: '#121212',
-        image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=1200&auto=format&fit=crop',
-        altImage: 'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop'
+        image: 'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop'
       },
       {
         name: 'Washed Olive',
         hex: '#4A5340',
-        image: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=1200&auto=format&fit=crop'
       },
       {
@@ -98,9 +98,9 @@ export const PRODUCTS: Product[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     images: [
-      'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1517445312882-bc9910d016b7?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?q=80&w=1200&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1542272604-780c96856592?q=80&w=1200&auto=format&fit=crop'
     ]
   },
   {
@@ -390,19 +390,19 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Sandstone Ivory',
         hex: '#E3DEC3',
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop'
       },
       {
         name: 'Onyx Black',
         hex: '#1A1A1A',
-        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1200&auto=format&fit=crop'
       }
     ],
     sizes: ['XS', 'S', 'M', 'L', 'XL'],
     images: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop'
     ]
   },
@@ -430,7 +430,7 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Off White Slub',
         hex: '#FAF6EE',
-        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
       },
       {
@@ -442,7 +442,7 @@ export const PRODUCTS: Product[] = [
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     images: [
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=1200&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
     ]
   },
@@ -476,14 +476,119 @@ export const PRODUCTS: Product[] = [
       {
         name: 'Volcanic Ash',
         hex: '#2B2B2A',
-        image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=1200&auto=format&fit=crop',
         altImage: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200&auto=format&fit=crop'
       }
     ],
     sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
     images: [
       'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'piercyn-ribbed-tank',
+    slug: 'piercyn-320gsm-heavy-ribbed-tank',
+    name: 'PIERCYN 320GSM HEAVY RIBBED TANK',
+    category: 'tees',
+    collection: 'essentials',
+    priceNGN: 11500,
+    priceUSD: 14,
+    priceGBP: 11,
+    priceEUR: 13,
+    description: 'Sculpted 320 GSM 2x2 rib cotton tank with wide shoulder straps, deep armholes, and clean double-stitched hems. Perfect standalone or layered piece.',
+    gsm: '320 GSM',
+    fit: 'Athletic Form Fit',
+    fabric: '95% Combed Cotton, 5% Elastane Rib',
+    origin: 'Lagos, Nigeria',
+    stock: 40,
+    status: 'active',
+    createdAt: '2026-02-20T00:00:00.000Z',
+    isNewDrop: true,
+    tag: 'ESSENTIAL',
+    colors: [
+      {
+        name: 'Washed Obsidian',
+        hex: '#181818',
+        image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop'
+      },
+      {
+        name: 'Bone Ivory',
+        hex: '#EBE7DF',
+        image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: [
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'piercyn-canvas-tote',
+    slug: 'piercyn-16oz-structured-canvas-tote',
+    name: 'PIERCYN 16OZ STRUCTURED CANVAS TOTE',
+    category: 'accessories',
+    collection: 'essentials',
+    priceNGN: 9500,
+    priceUSD: 12,
+    priceGBP: 10,
+    priceEUR: 11,
+    description: 'Heavy 16oz raw duck cotton canvas tote with reinforced webbing handles, internal utility pocket, and subtle tonal PIERCYN screenprint.',
+    gsm: '16 oz Canvas',
+    fit: 'One Size (38cm x 42cm)',
+    fabric: '100% Raw Cotton Duck Canvas',
+    origin: 'Lagos Atelier',
+    stock: 50,
+    status: 'active',
+    createdAt: '2026-02-15T00:00:00.000Z',
+    isBestSeller: true,
+    tag: 'CARRY',
+    colors: [
+      {
+        name: 'Natural Ecru',
+        hex: '#EAE5D9',
+        image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['M'],
+    images: [
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'piercyn-arch-cap',
+    slug: 'piercyn-low-profile-cotton-twill-cap',
+    name: 'PIERCYN LOW-PROFILE COTTON TWILL CAP',
+    category: 'accessories',
+    collection: 'essentials',
+    priceNGN: 13500,
+    priceUSD: 17,
+    priceGBP: 14,
+    priceEUR: 16,
+    description: 'Unstructured 6-panel washed cotton twill cap with curved brim, antique brass buckle strapback, and tonal monogram embroidery.',
+    fit: 'Adjustable One Size',
+    fabric: '100% Washed Cotton Twill',
+    origin: 'Lagos, Nigeria',
+    stock: 45,
+    status: 'active',
+    createdAt: '2026-02-10T00:00:00.000Z',
+    isNewDrop: true,
+    tag: 'HEADWEAR',
+    colors: [
+      {
+        name: 'Pitch Black',
+        hex: '#111111',
+        image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=1200&auto=format&fit=crop',
+        altImage: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?q=80&w=1200&auto=format&fit=crop'
+      }
+    ],
+    sizes: ['M'],
+    images: [
+      'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=1200&auto=format&fit=crop'
     ]
   },
   {

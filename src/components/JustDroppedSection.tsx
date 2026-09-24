@@ -14,7 +14,7 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
   onViewProduct,
   onSelectPage,
 }) => {
-  const justDropped = products.filter((p) => p.isNewDrop).slice(0, 4);
+  const justDropped = products.slice(0, 4);
 
   return (
     <section

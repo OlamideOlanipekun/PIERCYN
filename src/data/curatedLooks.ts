@@ -22,7 +22,7 @@ export const CURATED_LOOKS: CuratedOutfit[] = [
     id: 'look-urban-monochrome',
     title: 'BUILD THE LOOK',
     subtitle: 'THE LAGOS MONOCHROME UNIFORM',
-    modelImage: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?q=80&w=1200&auto=format&fit=crop',
+    modelImage: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200&auto=format&fit=crop',
     totalPriceNGN: 91000,
     items: [
       {
@@ -48,7 +48,7 @@ export const CURATED_LOOKS: CuratedOutfit[] = [
         name: 'T-Shirt',
         priceNGN: 18000,
         category: 'tees',
-        image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=600&auto=format&fit=crop',
         size: 'M',
         color: 'Raw Chalk',
       },
@@ -58,7 +58,7 @@ export const CURATED_LOOKS: CuratedOutfit[] = [
     id: 'look-street-tactical',
     title: 'STREET TACTICAL',
     subtitle: 'MODULAR CARGO & UTILITY CANVAS',
-    modelImage: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop',
+    modelImage: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=1200&auto=format&fit=crop',
     totalPriceNGN: 103400,
     items: [
       {

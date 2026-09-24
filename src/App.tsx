@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { ALL_PRODUCTS } from './data/allProducts';
+import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
+import { ENABLE_WOMENSWEAR } from './config/homepage';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
 import { AnnouncementBar } from './components/AnnouncementBar';
@@ -50,6 +52,12 @@ const MainLayout: React.FC = () => {
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
+
+  // Compute distinct, deduplicated products across homepage sections
+  const { justDropped, trendingNow, mensFashion, under15k } = useMemo(
+    () => getDeduplicatedHomepageProducts(ALL_PRODUCTS),
+    []
+  );
 
   // Sync state from current URL pathname
   const syncRouteFromUrl = () => {
@@ -268,7 +276,7 @@ const MainLayout: React.FC = () => {
 
           {/* 5. Just Dropped (4-col Desktop / 2-col Mobile Grid) */}
           <JustDroppedSection 
-            products={ALL_PRODUCTS}
+            products={justDropped}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
           />
@@ -281,7 +289,7 @@ const MainLayout: React.FC = () => {
 
           {/* 7. Trending Now (Curated Standout Pieces) */}
           <TrendingNowSection 
-            products={ALL_PRODUCTS}
+            products={trendingNow}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
           />
@@ -291,7 +299,7 @@ const MainLayout: React.FC = () => {
 
           {/* 9. Affordable Discovery: Good Looks Under ₦15K */}
           <AffordableDiscoverySection 
-            products={ALL_PRODUCTS}
+            products={under15k}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
           />
@@ -303,15 +311,18 @@ const MainLayout: React.FC = () => {
 
           {/* 11. Men's Fashion Discovery */}
           <MensFashionSection 
+            products={mensFashion}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
           />
 
-          {/* 12. Women's Fashion Discovery */}
-          <WomensFashionSection 
-            onViewProduct={handleViewProduct}
-            onSelectPage={handleSelectPage}
-          />
+          {/* 12. Women's Fashion Discovery (Optional) */}
+          {ENABLE_WOMENSWEAR && (
+            <WomensFashionSection 
+              onViewProduct={handleViewProduct}
+              onSelectPage={handleSelectPage}
+            />
+          )}
 
           {/* 13. Accessories Teaser (Coming Soon) */}
           <AccessoriesTeaserSection 

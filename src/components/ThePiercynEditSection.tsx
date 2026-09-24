@@ -19,7 +19,7 @@ export const ThePiercynEditSection: React.FC<ThePiercynEditSectionProps> = ({
           {/* Campaign Image */}
           <div className="absolute inset-0 z-0">
             <img
-              src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=85&w=1600&auto=format&fit=crop"
+              src="https://images.unsplash.com/photo-1509631179647-0177331693ae?q=85&w=1600&auto=format&fit=crop"
               alt="The Piercyn Edit — Lagos After Dark"
               className="w-full h-full object-cover object-center filter brightness-[0.70] contrast-[1.08] transition-transform duration-1000 hover:scale-[1.02]"
               loading="lazy"

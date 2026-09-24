@@ -16,12 +16,17 @@ export const AffordableDiscoverySection: React.FC<AffordableDiscoverySectionProp
   onSelectPage,
   priceThresholdNGN = 15000,
 }) => {
-  // Dynamically filter genuine products under threshold
-  const affordableProducts = products
-    .filter((p) => p.priceNGN <= priceThresholdNGN)
-    .slice(0, 4);
+  const affordableProducts = products.every((p) => (p.priceNGN || 0) <= priceThresholdNGN)
+    ? products
+    : products
+        .filter((p) => (p.priceNGN || 0) <= priceThresholdNGN)
+        .map((p) => ({
+          ...p,
+          tag: 'UNDER ₦15K',
+        }));
 
-  if (affordableProducts.length === 0) return null;
+  // Never render if fewer than 3 qualify
+  if (affordableProducts.length < 3) return null;
 
   return (
     <section
@@ -32,7 +37,7 @@ export const AffordableDiscoverySection: React.FC<AffordableDiscoverySectionProp
         {/* Header */}
         <div className="flex items-end justify-between mb-6 sm:mb-10 pb-3 border-b border-[#DAD8D1]/60">
           <div>
-            <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-[#A48B71] font-bold block mb-1">
+            <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-[#7A7771] font-bold block mb-1">
               ACCESSIBLE ESSENTIALS
             </span>
             <h2 className="font-editorial text-2xl sm:text-4xl lg:text-5xl uppercase tracking-tight text-[#141414]">
@@ -52,14 +57,19 @@ export const AffordableDiscoverySection: React.FC<AffordableDiscoverySectionProp
           </button>
         </div>
 
-        {/* 4-col desktop, 2-col mobile product grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-6">
-          {affordableProducts.map((product) => (
-            <ProductCard
+        {/* Mobile: Horizontal scroll-snap carousel with peek | Desktop: 4-col grid */}
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-6 overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+          {affordableProducts.slice(0, 4).map((product, idx) => (
+            <div
               key={product.id}
-              product={product}
-              onViewProduct={onViewProduct}
-            />
+              className="w-[72vw] sm:w-auto shrink-0 sm:shrink snap-start"
+            >
+              <ProductCard
+                product={product}
+                onViewProduct={onViewProduct}
+                priority={idx < 2}
+              />
+            </div>
           ))}
         </div>
       </div>

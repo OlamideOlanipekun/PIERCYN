@@ -14,12 +14,7 @@ export const TrendingNowSection: React.FC<TrendingNowSectionProps> = ({
   onViewProduct,
   onSelectPage,
 }) => {
-  // Curated standout pieces
-  const trendingProducts = products
-    .filter((p) => p.isBestSeller || p.collection === 'essentials' || p.isNewDrop)
-    .slice(0, 4);
-
-  const displayProducts = trendingProducts.length >= 4 ? trendingProducts : products.slice(0, 4);
+  const displayProducts = products.slice(0, 4);
 
   return (
     <section
