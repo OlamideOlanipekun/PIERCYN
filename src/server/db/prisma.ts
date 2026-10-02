@@ -3,59 +3,100 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
-function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL || '';
+// Lazy singleton — only created when first accessed
+let _prisma: PrismaClient | null = null;
+let _available: boolean | null = null;
 
-  // Clean URL to prevent pg query-parser from overriding ssl config
-  let cleanUrl = connectionString;
-  try {
-    const urlObj = new URL(connectionString);
-    urlObj.searchParams.delete('sslmode');
-    cleanUrl = urlObj.toString();
-  } catch (_e) {
-    // fallback to original if parsing fails
+function createPrismaClient(): PrismaClient | null {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    // No database configured — running in static/offline mode
+    return null;
   }
 
-  const pool = new Pool({
-    connectionString: cleanUrl,
-    connectionTimeoutMillis: 2000,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-  });
+  try {
+    // Strip sslmode query param — pg handles SSL via the ssl option below
+    let cleanUrl = connectionString;
+    try {
+      const urlObj = new URL(connectionString);
+      urlObj.searchParams.delete('sslmode');
+      cleanUrl = urlObj.toString();
+    } catch {
+      // Not a valid URL — use as-is
+    }
 
-  const adapter = new PrismaPg(pool);
+    const pool = new Pool({
+      connectionString: cleanUrl,
+      connectionTimeoutMillis: 2000,
+      ssl: { rejectUnauthorized: false },
+    });
 
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
-  });
+    const adapter = new PrismaPg(pool);
+
+    return new PrismaClient({
+      adapter,
+      log: ['error'],
+    });
+  } catch (err) {
+    console.error('[PRISMA_INIT_ERROR]', err);
+    return null;
+  }
 }
 
-// Prevent multiple Prisma Client instances in development (hot reload)
+// Prevent multiple instances in development (hot reload)
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   isPrismaAvailable: boolean | null;
 };
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function getPrisma(): PrismaClient {
+  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+  if (_prisma) return _prisma;
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+  const client = createPrismaClient();
+  if (!client) {
+    // Return a no-op stub so import never throws
+    // Actual DB calls will fail gracefully via isPrismaAvailable() check
+    return {} as unknown as PrismaClient;
+  }
+
+  _prisma = client;
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = client;
+  }
+  return client;
 }
+
+// Lazily-resolved proxy — the PrismaClient is only constructed on first property access
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return (getPrisma() as any)[prop];
+  },
+});
 
 export async function isPrismaAvailable(): Promise<boolean> {
   if (process.env.NODE_ENV === 'test' && !process.env.TEST_WITH_DATABASE) {
     return false;
   }
+  if (!process.env.DATABASE_URL) {
+    return false;
+  }
+  if (_available !== null) return _available;
   if (globalForPrisma.isPrismaAvailable !== null && globalForPrisma.isPrismaAvailable !== undefined) {
-    return globalForPrisma.isPrismaAvailable;
+    _available = globalForPrisma.isPrismaAvailable;
+    return _available;
   }
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    globalForPrisma.isPrismaAvailable = true;
+    const client = getPrisma();
+    if (!client || Object.keys(client).length === 0) {
+      _available = false;
+    } else {
+      await (client as any).$queryRaw`SELECT 1`;
+      _available = true;
+    }
   } catch {
-    globalForPrisma.isPrismaAvailable = false;
+    _available = false;
   }
-  return globalForPrisma.isPrismaAvailable;
+  globalForPrisma.isPrismaAvailable = _available;
+  return _available;
 }
