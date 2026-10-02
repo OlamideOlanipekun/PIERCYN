@@ -42,9 +42,8 @@ app.get(['/api/health', '/health'], (_req: Request, res: Response) => {
   });
 });
 
-// Mount domain routes under both /api and root (to handle direct calls and Vercel serverless function rewrites)
+// Mount domain routes — Vercel rewrites /api/(.*) → /api/index.ts so Express always sees /api/...
 app.use('/api', apiRouter);
-app.use('/', apiRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

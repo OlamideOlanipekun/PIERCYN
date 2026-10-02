@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs';
 import { ALL_PRODUCTS } from '../../data/allProducts';
 import { COMMERCE_CONFIG } from '../config/constants';
 
@@ -478,7 +477,9 @@ export class CommerceDataStore {
     });
 
     // 3. Seed Default Admin User
-    const adminPasswordHash = bcrypt.hashSync('piercynAdmin2026', 10);
+    // Pre-computed bcrypt hashes (cost=10) — avoids slow hashSync on cold start
+    // Generated with: bcrypt.hashSync('piercynAdmin2026', 10)
+    const adminPasswordHash = '$2b$10$EawdzBtZHOOVuJUX2RBusuWAvMjETHgkM4G2fdKdac.Ol6FYuoP2i';
     const defaultAdmin: DbUser = {
       id: 'usr-admin-01',
       email: 'admin@piercyn.com',
@@ -496,7 +497,8 @@ export class CommerceDataStore {
     this.userEmailIndex.set(defaultAdmin.email.toLowerCase(), defaultAdmin.id);
 
     // 4. Seed Default Client User
-    const clientPasswordHash = bcrypt.hashSync('piercyn2026', 10);
+    // Generated with: bcrypt.hashSync('piercyn2026', 10)
+    const clientPasswordHash = '$2b$10$A5WRq1KGYVEzyVk1pDWF..SinkgoC/6w2Ev5RgDTgeER/d946eoFy';
     const defaultUser: DbUser = {
       id: 'usr-demo-01',
       email: 'client@piercyn.com',
