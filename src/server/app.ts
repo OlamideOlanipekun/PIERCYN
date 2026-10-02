@@ -26,7 +26,7 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 // Request logger for API routes
-app.use('/api', (req: Request, _res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   if (process.env.NODE_ENV !== 'test') {
     console.log(`[API] ${req.method} ${req.originalUrl}`);
   }
@@ -42,11 +42,12 @@ app.get(['/api/health', '/health'], (_req: Request, res: Response) => {
   });
 });
 
-// Mount domain routes — Vercel rewrites /api/(.*) → /api/index.ts so Express always sees /api/...
+// Mount domain routes — supports both /api/* and root mount for flexible Vercel rewrites
 app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
-// Fallback 404 JSON handler for any unhandled /api/* route
-app.all('/api/*', (_req: Request, res: Response) => {
+// Fallback 404 JSON handler for unhandled API routes
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: 'API endpoint not found',
