@@ -58,13 +58,19 @@ export class InventoryService {
   }
 
   /**
-   * Check availability for multiple variants.
+   * Check availability for a single variant or multiple variants.
    */
   public static checkAvailability(
-    items: Array<{ variantId: string; quantity: number }>
-  ): Map<string, number> {
+    variantIdOrItems: string | Array<{ variantId: string; quantity: number }>,
+    qty?: number
+  ): any {
+    if (typeof variantIdOrItems === 'string') {
+      const inv = dbStore.inventory.get(variantIdOrItems);
+      const needed = qty !== undefined ? qty : 1;
+      return (inv ? inv.availableStock : 0) >= needed;
+    }
     const availabilityMap = new Map<string, number>();
-    for (const item of items) {
+    for (const item of variantIdOrItems) {
       const inv = dbStore.inventory.get(item.variantId);
       availabilityMap.set(item.variantId, inv ? inv.availableStock : 0);
     }
@@ -248,12 +254,60 @@ export class InventoryService {
   }
 
   /**
-   * Retrieve ledger transaction history for a variant.
+   * Get all inventory items with optional filtering.
    */
-  public static getLedger(variantId: string): DbInventoryTransaction[] {
-    return dbStore.inventoryTransactions
-      .filter((tx) => tx.variantId === variantId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  public static getAllInventory(filter?: {
+    lowStockOnly?: boolean;
+    outOfStockOnly?: boolean;
+    search?: string;
+  }): any[] {
+    const list: any[] = [];
+    for (const [variantId, inv] of dbStore.inventory.entries()) {
+      const variant = dbStore.variants.get(variantId);
+      const product = variant ? dbStore.products.get(variant.productId) : null;
+      if (!variant) continue;
+
+      if (filter?.outOfStockOnly && inv.availableStock > 0) continue;
+      if (filter?.lowStockOnly && inv.availableStock > 5) continue;
+      if (filter?.search) {
+        const s = filter.search.toLowerCase();
+        const matchesSku = variant.sku.toLowerCase().includes(s);
+        const matchesName = product ? product.name.toLowerCase().includes(s) : false;
+        if (!matchesSku && !matchesName) continue;
+      }
+
+      list.push({
+        variantId: inv.variantId,
+        sku: variant.sku,
+        productName: product?.name || 'Unknown',
+        productId: product?.id || variant.productId,
+        category: product?.categoryId || '',
+        colour: variant.colour,
+        size: variant.size,
+        availableStock: inv.availableStock,
+        reservedStock: inv.reservedStock,
+        soldStock: inv.soldStock,
+        damagedStock: inv.damagedStock,
+        returnedStock: inv.returnedStock,
+        reorderLevel: 5,
+        updatedAt: inv.updatedAt,
+      });
+    }
+    return list;
+  }
+
+  /**
+   * Retrieve ledger transaction history for a variant or all variants.
+   */
+  public static getLedger(variantId?: string, limit: number = 100): DbInventoryTransaction[] {
+    let list = dbStore.inventoryTransactions;
+    if (variantId) {
+      list = list.filter((tx) => tx.variantId === variantId);
+    }
+    return list
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 
   /**

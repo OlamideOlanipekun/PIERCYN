@@ -75,6 +75,7 @@ export class OrderService {
         variantId: variant.id,
         productName: product.name,
         sku: variant.sku,
+        category: product.categoryId,
         size: variant.size,
         colour: variant.colour,
         unitPriceNGN: unitPrice,
@@ -87,7 +88,7 @@ export class OrderService {
     }
 
     // Shipping calculation
-    const deliveryFeeNGN = ShippingService.calculateFee(input.shippingRegion, subtotalNGN);
+    const deliveryFeeNGN = ShippingService.calculateFee(input.shippingRegion as 'lagos' | 'nationwide', subtotalNGN);
 
     // Promo code validation
     let discountNGN = 0;
@@ -166,12 +167,23 @@ export class OrderService {
   }
 
   /**
+   * Alias for getOrder
+   */
+  public static getOrderDetail(identifier: string): DbOrder | null {
+    return this.getOrder(identifier);
+  }
+
+  /**
    * Get all orders with optional filtering.
    */
   public static getAllOrders(filter?: {
     status?: OrderStatusType;
     email?: string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
   }): DbOrder[] {
     let list = Array.from(dbStore.orders.values());
 
@@ -191,8 +203,24 @@ export class OrderService {
           o.customerEmail.toLowerCase().includes(s)
       );
     }
+    if (filter?.startDate) {
+      const start = new Date(filter.startDate).getTime();
+      list = list.filter((o) => new Date(o.createdAt).getTime() >= start);
+    }
+    if (filter?.endDate) {
+      const end = new Date(filter.endDate).getTime();
+      list = list.filter((o) => new Date(o.createdAt).getTime() <= end);
+    }
 
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    list = list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (filter?.offset !== undefined || filter?.limit !== undefined) {
+      const offset = filter.offset || 0;
+      const limit = filter.limit !== undefined ? offset + filter.limit : undefined;
+      list = list.slice(offset, limit);
+    }
+
+    return list;
   }
 
   /**

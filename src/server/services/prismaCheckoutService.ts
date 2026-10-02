@@ -16,14 +16,84 @@ export class PrismaCheckoutService {
     const quote = await this.calculateQuote(input.sessionId || `guest-${Date.now()}`, input.shippingRegion, input.items, input.discountCode);
     if (!quote.isEligibleForCheckout) throw new Error(`Checkout validation failed: ${quote.errors.join(', ')}`);
     const orderNumber = `PCY-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const [firstName, ...restName] = (input.customer.fullName || 'Valued Customer').trim().split(' ');
+    const lastName = restName.join(' ') || 'Customer';
+
     return prisma.$transaction(async (tx) => {
       for (const line of quote.cart.items) {
         const inventory = await tx.inventory.findUnique({ where: { variantId: line.variantId } });
-        if (!inventory || (await tx.inventory.updateMany({ where: { id: inventory.id, availableStock: { gte: line.quantity } }, data: { availableStock: { decrement: line.quantity }, reservedStock: { increment: line.quantity } } })).count !== 1) throw new Error(`Inventory reservation failed for variant ${line.variantId}. Item may have sold out.`);
-        await tx.inventoryReservation.create({ data: { variantId: line.variantId, quantity: line.quantity, reference: orderNumber, expiresAt: new Date(Date.now() + COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES * 60000) } });
-        await tx.inventoryTransaction.create({ data: { inventoryId: inventory.id, quantity: line.quantity, type: 'RESERVATION', reference: orderNumber, reason: 'Checkout initiated' } });
+        const available = inventory ? inventory.stockQuantity - inventory.reservedQuantity : 0;
+        if (!inventory || available < line.quantity) {
+          throw new Error(`Inventory reservation failed for variant ${line.variantId}. Item may have sold out.`);
+        }
+        await tx.inventory.update({
+          where: { id: inventory.id },
+          data: { reservedQuantity: { increment: line.quantity } },
+        });
+        await tx.inventoryReservation.create({
+          data: {
+            variantId: line.variantId,
+            quantity: line.quantity,
+            reference: orderNumber,
+            expiresAt: new Date(Date.now() + COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES * 60000),
+          },
+        });
+        await tx.inventoryTransaction.create({
+          data: {
+            inventoryId: inventory.id,
+            variantId: line.variantId,
+            quantity: line.quantity,
+            type: 'RESERVATION',
+            previousStock: inventory.stockQuantity,
+            newStock: inventory.stockQuantity,
+            referenceType: 'ORDER',
+            referenceId: orderNumber,
+            reason: 'Checkout initiated',
+          },
+        });
       }
-      const order = await tx.order.create({ data: { orderNumber, customerEmail: input.customer.email.toLowerCase(), customerPhone: input.customer.phone, customerName: input.customer.fullName, shippingAddressLine: input.customer.address, shippingCity: input.customer.city, shippingState: input.customer.state, orderNote: input.customer.orderNote || null, subtotalNGN: quote.subtotalNGN, deliveryFeeNGN: quote.deliveryFeeNGN, discountNGN: quote.discountNGN, totalNGN: quote.totalNGN, shippingMethodKey: quote.shippingRegion, shippingMethodName: quote.shippingMethodName, paymentMethod: input.paymentMethod === 'paystack' ? 'Paystack' : input.paymentMethod === 'mock' ? 'Test Simulation' : 'Direct Bank Transfer / WhatsApp', items: { create: quote.cart.items.map((line) => ({ variantId: line.variantId, productId: line.productId, productName: line.productName, sku: line.sku, category: line.category, colour: line.colour, size: line.size, unitPriceNGN: line.unitPriceNGN, totalPriceNGN: line.lineTotalNGN, image: line.image, quantity: line.quantity })) }, events: { create: { eventType: 'checkout_started', sessionId: input.sessionId, metadata: JSON.stringify({ orderNumber, totalNGN: quote.totalNGN }) } } }, include: { items: true } });
+      const order = await tx.order.create({
+        data: {
+          orderNumber,
+          customerFirstName: firstName,
+          customerLastName: lastName,
+          customerEmail: input.customer.email.toLowerCase(),
+          customerPhone: input.customer.phone || '',
+          deliveryAddress: input.customer.address || '',
+          deliveryCity: input.customer.city || '',
+          deliveryState: input.customer.state || '',
+          orderNote: input.customer.orderNote || null,
+          subtotalNGN: quote.subtotalNGN,
+          deliveryFeeNGN: quote.deliveryFeeNGN,
+          discountNGN: quote.discountNGN,
+          totalNGN: quote.totalNGN,
+          shippingMethodKey: quote.shippingRegion,
+          shippingMethodName: quote.shippingMethodName,
+          paymentMethod: input.paymentMethod === 'paystack' ? 'PAYSTACK' : 'DIRECT_TRANSFER',
+          items: {
+            create: quote.cart.items.map((line) => ({
+              variantId: line.variantId,
+              productId: line.productId,
+              productName: line.productName,
+              sku: line.sku,
+              colour: line.colour,
+              size: line.size,
+              unitPriceNGN: line.unitPriceNGN,
+              totalNGN: line.lineTotalNGN,
+              image: line.image,
+              quantity: line.quantity,
+            })),
+          },
+          events: {
+            create: {
+              eventType: 'CHECKOUT_STARTED',
+              sessionId: input.sessionId,
+              metadata: JSON.stringify({ orderNumber, totalNGN: quote.totalNGN }),
+            },
+          },
+        },
+        include: { items: true },
+      });
       return order;
     });
   }

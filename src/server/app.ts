@@ -34,7 +34,7 @@ app.use('/api', (req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
+app.get(['/api/health', '/health'], (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     environment: process.env.NODE_ENV || 'development',
@@ -42,8 +42,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
-// Mount domain routes under /api
+// Mount domain routes under both /api and root (to handle direct calls and Vercel serverless function rewrites)
 app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

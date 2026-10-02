@@ -37,23 +37,45 @@ const getHeaders = (): HeadersInit => {
   return headers;
 };
 
+async function parseResponse(res: Response): Promise<any> {
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      return await res.json();
+    } catch {
+      // JSON parse error
+    }
+  }
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      success: false,
+      error: !res.ok
+        ? `Server error (${res.status}): Please try again.`
+        : `Unexpected non-JSON response from server (${res.status}).`,
+    };
+  }
+}
+
 export const api = {
   // Products
   async getProducts(params?: { category?: string; collection?: string }) {
     const query = new URLSearchParams(params as any).toString();
     const res = await fetch(`${API_BASE}/products${query ? `?${query}` : ''}`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   async getProduct(slug: string) {
     const res = await fetch(`${API_BASE}/products/${slug}`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Cart
   async getCart() {
     const res = await fetch(`${API_BASE}/cart`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   async addToCart(variantId: string, quantity: number = 1) {
@@ -62,7 +84,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ variantId, quantity }),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async updateCartItem(variantId: string, quantity: number) {
@@ -71,7 +93,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ variantId, quantity }),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async clearCart() {
@@ -79,13 +101,13 @@ export const api = {
       method: 'DELETE',
       headers: getHeaders(),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Shipping
   async getShippingOptions(subtotalNGN: number = 0) {
     const res = await fetch(`${API_BASE}/shipping/options?subtotal=${subtotalNGN}`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Checkout Quote
@@ -95,7 +117,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ shippingRegion, items, discountCode }),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Orders
@@ -119,18 +141,18 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(payload),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async getOrders(email?: string) {
     const url = email ? `${API_BASE}/orders?email=${encodeURIComponent(email)}` : `${API_BASE}/orders`;
     const res = await fetch(url, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   async getOrder(orderId: string) {
     const res = await fetch(`${API_BASE}/orders/${orderId}`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Payments
@@ -140,7 +162,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ orderNumber, callbackUrl }),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async verifyPayment(reference: string) {
@@ -149,7 +171,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify({ reference }),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Events & Analytics
@@ -174,7 +196,7 @@ export const api = {
 
   async getAnalyticsOverview() {
     const res = await fetch(`${API_BASE}/analytics/overview`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   // Atelier Client Authentication
@@ -192,7 +214,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async login(data: { email: string; password: string }) {
@@ -201,12 +223,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    return res.json();
+    return parseResponse(res);
   },
 
   async getMe() {
     const res = await fetch(`${API_BASE}/auth/me`, { headers: getHeaders() });
-    return res.json();
+    return parseResponse(res);
   },
 
   async logout() {
@@ -214,6 +236,6 @@ export const api = {
       method: 'POST',
       headers: getHeaders(),
     });
-    return res.json();
+    return parseResponse(res);
   },
 };

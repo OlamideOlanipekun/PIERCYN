@@ -103,12 +103,12 @@ export class AuthService {
 
     if (await isPrismaAvailable()) {
       try {
-        const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        const existing = await (prisma as any).user?.findUnique({ where: { email: normalizedEmail } });
         if (existing) {
           throw new Error('An account with this email address already exists. Please sign in.');
         }
 
-        const user = await prisma.user.create({
+        const user = await (prisma as any).user?.create({
           data: {
             email: normalizedEmail,
             passwordHash,
@@ -145,11 +145,13 @@ export class AuthService {
           },
         });
 
-        const token = createSession(user.id);
-        return {
-          user: await toSafeProfile(user),
-          token,
-        };
+        if (user) {
+          const token = createSession(user.id);
+          return {
+            user: await toSafeProfile(user),
+            token,
+          };
+        }
       } catch (err: any) {
         if (err.message && err.message.includes('already exists')) {
           throw err;
@@ -218,7 +220,7 @@ export class AuthService {
     // Try Prisma database if available
     if (await isPrismaAvailable()) {
       try {
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user?.findUnique({
           where: { email: normalizedEmail },
           include: {
             customer: {
@@ -275,7 +277,7 @@ export class AuthService {
 
     if (await isPrismaAvailable()) {
       try {
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user?.findUnique({
           where: { id: session.userId },
           include: {
             customer: {
