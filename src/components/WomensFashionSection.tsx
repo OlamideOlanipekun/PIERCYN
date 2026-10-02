@@ -2,6 +2,7 @@ import React from 'react';
 import { Product, ActivePageView } from '../types';
 import { ProductCard } from './ProductCard';
 import { ArrowRight } from 'lucide-react';
+import { useShop } from '../context/ShopContext';
 import { WOMENS_PRODUCTS } from '../data/womensProducts';
 
 interface WomensFashionSectionProps {
@@ -13,7 +14,8 @@ export const WomensFashionSection: React.FC<WomensFashionSectionProps> = ({
   onViewProduct,
   onSelectPage,
 }) => {
-  const displayWomen = WOMENS_PRODUCTS.slice(0, 4);
+  const { products } = useShop();
+  const displayWomen = (products.length > 0 ? products : WOMENS_PRODUCTS).slice(0, 4);
 
   return (
     <section

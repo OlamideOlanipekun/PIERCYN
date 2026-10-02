@@ -16,7 +16,7 @@ interface MenCollectionPageProps {
 }
 
 export const MenCollectionPage: React.FC<MenCollectionPageProps> = ({ onNavigateSection }) => {
-  const { setQuickViewProduct } = useShop();
+  const { products, setQuickViewProduct } = useShop();
 
   // Category filter state
   const [activeCategory, setActiveCategory] = useState<MenCategory>('ALL');
@@ -69,7 +69,7 @@ export const MenCollectionPage: React.FC<MenCollectionPageProps> = ({ onNavigate
 
   // Filter and Sort Processing
   const filteredAndSortedProducts = useMemo(() => {
-    let result = [...MENS_PRODUCTS];
+    let result = products.length > 0 ? [...products] : [...MENS_PRODUCTS];
 
     // 1. Category Filter
     if (activeCategory !== 'ALL') {

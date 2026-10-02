@@ -17,10 +17,15 @@ export const CartDrawer: React.FC = () => {
     clearCart,
     showToast,
     setIsCheckoutOpen,
+    appliedPromoCode,
+    promoDiscountNGN,
+    promoDescription,
+    applyPromoCode,
+    removePromoCode,
   } = useShop();
 
-  const [promoCode, setPromoCode] = useState('');
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const [promoCode, setPromoCode] = useState(appliedPromoCode || '');
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
   const freeShippingThreshold = SHIPPING_CONFIG.freeShippingThresholdNGN;
   const currentTotalNGN = cart.reduce((acc, item) => acc + item.product.priceNGN * item.quantity, 0);
@@ -45,17 +50,15 @@ export const CartDrawer: React.FC = () => {
     };
   }, [isCartOpen, setIsCartOpen]);
 
-  const handleApplyPromo = (e: React.FormEvent) => {
+  const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (promoCode.trim().toUpperCase() === 'LAGOS26' || promoCode.trim().toUpperCase() === 'STANDOUT') {
-      setDiscountPercent(15);
-      showToast('15% Editorial Discount Applied');
-    } else {
-      showToast('Invalid code. Try "STANDOUT" for 15% off.');
-    }
+    if (!promoCode.trim()) return;
+    setIsApplyingPromo(true);
+    await applyPromoCode(promoCode.trim());
+    setIsApplyingPromo(false);
   };
 
-  const finalSubtotal = cartSubtotal * (1 - discountPercent / 100);
+  const finalSubtotal = Math.max(0, cartSubtotal - (promoDiscountNGN || 0));
 
   const handleProceedCheckout = () => {
     setIsCartOpen(false);
@@ -211,28 +214,44 @@ export const CartDrawer: React.FC = () => {
             <div className="p-4 sm:p-6 border-t border-[#E3DEC3] bg-[#EAE5D9]/50 space-y-3.5 shrink-0">
               
               {/* Promo Code Input */}
-              <form onSubmit={handleApplyPromo} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="PROMO CODE (e.g. STANDOUT)"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  className="flex-1 h-9 px-3 bg-[#F2F0EB] border border-[#141414]/20 rounded-full text-[11px] font-mono uppercase tracking-wider focus:outline-hidden focus:border-[#141414]"
-                />
-                <button
-                  type="submit"
-                  className="h-9 px-4 rounded-full bg-[#141414]/10 hover:bg-[#141414] hover:text-[#F2F0EB] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer"
-                >
-                  APPLY
-                </button>
-              </form>
+              {appliedPromoCode ? (
+                <div className="flex items-center justify-between p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-emerald-900 uppercase">PROMO: {appliedPromoCode}</span>
+                    <span className="text-[11px] text-emerald-700">(-{formatNumericPrice(promoDiscountNGN, currency)})</span>
+                  </div>
+                  <button
+                    onClick={removePromoCode}
+                    className="text-[11px] text-emerald-800 hover:text-red-700 font-semibold underline cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleApplyPromo} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="PROMO CODE (e.g. STANDOUT)"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="flex-1 h-9 px-3 bg-[#F2F0EB] border border-[#141414]/20 rounded-full text-[11px] font-mono uppercase tracking-wider focus:outline-hidden focus:border-[#141414]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isApplyingPromo}
+                    className="h-9 px-4 rounded-full bg-[#141414]/10 hover:bg-[#141414] hover:text-[#F2F0EB] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isApplyingPromo ? '...' : 'APPLY'}
+                  </button>
+                </form>
+              )}
 
               {/* Subtotals */}
               <div className="space-y-1.5 text-[11px] sm:text-[12px] uppercase tracking-[0.15em] font-sans">
-                {discountPercent > 0 && (
+                {promoDiscountNGN > 0 && (
                   <div className="flex justify-between text-emerald-800 font-bold">
-                    <span>DISCOUNT ({discountPercent}%)</span>
-                    <span>- {formatNumericPrice(cartSubtotal * (discountPercent / 100), currency)}</span>
+                    <span>DISCOUNT ({appliedPromoCode})</span>
+                    <span>- {formatNumericPrice(promoDiscountNGN, currency)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-[#141414] font-bold text-[14px] sm:text-[15px] pt-1">

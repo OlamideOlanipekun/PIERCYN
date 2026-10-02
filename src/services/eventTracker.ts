@@ -1,8 +1,9 @@
 import { AnalyticsEvent } from '../types';
+import { api } from './apiClient';
 
 class EventTrackerService {
   private events: AnalyticsEvent[] = [];
-  private isDevelopment = true;
+  private isDevelopment = process.env.NODE_ENV !== 'production';
 
   public track(eventName: AnalyticsEvent['eventName'], data: Record<string, any> = {}) {
     const event: AnalyticsEvent = {
@@ -17,10 +18,12 @@ class EventTrackerService {
       console.log(`[PIERCYN EVENT] ${eventName}:`, data);
     }
 
+    // Persist to server backend
+    api.trackEvent(eventName, data, data.productId, data.variantId, data.orderId || data.orderNumber);
+
     try {
       const stored = localStorage.getItem('piercyn_analytics_events');
       const eventList = stored ? JSON.parse(stored) : [];
-      // Keep last 100 events
       const updated = [...eventList, event].slice(-100);
       localStorage.setItem('piercyn_analytics_events', JSON.stringify(updated));
     } catch {

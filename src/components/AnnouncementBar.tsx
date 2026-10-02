@@ -1,28 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { SHIPPING_CONFIG } from '../utils/shipping';
 
 export const AnnouncementBar: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
-  const [lagosTime, setLagosTime] = useState('');
-  const { setIsConciergeOpen, currency } = useShop();
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: 'Africa/Lagos',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      };
-      setLagosTime(`${new Intl.DateTimeFormat([], options).format(now)} WAT`);
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const { currency } = useShop();
 
   if (!isVisible) return null;
 
@@ -42,11 +25,10 @@ export const AnnouncementBar: React.FC = () => {
       className="relative z-[55] w-full bg-[#141414] text-[#F2F0EB] text-[9.5px] sm:text-[10.5px] tracking-[0.22em] uppercase font-mono py-2 border-b border-[#282828] select-none"
     >
       <div className="piercyn-container flex items-center justify-between">
-        {/* Left: Location & Time (desktop only) */}
+        {/* Left: Lagos identifier (desktop only) */}
         <div className="hidden md:flex items-center gap-2 text-[#8C8A84] shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-[#A48B71]" />
           <span className="text-[#A48B71] font-semibold">LAGOS</span>
-          <span className="opacity-50">• {lagosTime}</span>
         </div>
 
         {/* Center: Commerce message */}
@@ -56,12 +38,14 @@ export const AnnouncementBar: React.FC = () => {
             <span className="text-[#F2F0EB] font-semibold">{threshold}</span>
           </span>
           <span className="text-white/25 hidden sm:inline">•</span>
-          <button
-            onClick={() => setIsConciergeOpen(true)}
-            className="hidden sm:inline text-[#A48B71] hover:text-[#F2F0EB] transition-colors cursor-pointer underline underline-offset-2"
+          <a
+            href="https://wa.me/2348000000000"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline text-[#A48B71] hover:text-[#F2F0EB] transition-colors underline underline-offset-2"
           >
             CHAT ON WHATSAPP
-          </button>
+          </a>
         </div>
 
         {/* Right: Dismiss */}

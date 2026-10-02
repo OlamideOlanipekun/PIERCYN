@@ -9,6 +9,9 @@ export const CheckoutModal: React.FC = () => {
   const {
     cart,
     cartSubtotal,
+    appliedPromoCode,
+    promoDiscountNGN,
+    promoDescription,
     isCheckoutOpen,
     setIsCheckoutOpen,
     createOrder,
@@ -71,7 +74,7 @@ export const CheckoutModal: React.FC = () => {
   ];
 
   const deliveryFee = getDeliveryFee(cartSubtotal, shippingMethod);
-  const totalNGN = cartSubtotal + deliveryFee;
+  const totalNGN = Math.max(0, cartSubtotal + deliveryFee - (promoDiscountNGN || 0));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -80,6 +83,7 @@ export const CheckoutModal: React.FC = () => {
 
   const handleSubmitCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage(null);
 
     if (!customer.fullName.trim() || !customer.email.trim() || !customer.phone.trim() || !customer.address.trim()) {
@@ -87,76 +91,66 @@ export const CheckoutModal: React.FC = () => {
       return;
     }
 
+    if (cart.length === 0) {
+      setErrorMessage('Your bag is currently empty. Please add pieces before checkout.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const orderNumber = `PCY-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      const itemsPayload = cart.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+      }));
 
-      let paymentResult = {
-        success: true,
-        transactionReference: orderNumber,
-        paidAt: undefined as string | undefined,
-      };
+      // 1. Authoritative Server-Side Order Creation (Awaited)
+      const createdServerOrder = await createOrder({
+        customer,
+        shippingRegion: shippingMethod,
+        paymentMethod: paymentMethodChoice === 'paystack' && isLiveGateway ? 'paystack' : 'transfer',
+        items: itemsPayload,
+        discountCode: appliedPromoCode || undefined,
+      });
 
+      // 2. If Paystack Live Gateway is selected, trigger payment authorization with server order reference
       if (paymentMethodChoice === 'paystack' && isLiveGateway) {
-        const res = await processCheckoutPayment({
-          orderNumber,
-          amountNGN: totalNGN,
+        const paymentRes = await processCheckoutPayment({
+          orderNumber: createdServerOrder.orderNumber,
+          amountNGN: createdServerOrder.totalNGN,
           customerEmail: customer.email,
           customerName: customer.fullName,
           customerPhone: customer.phone,
         });
 
-        if (!res.success) {
-          setErrorMessage(res.message || 'Payment could not be completed. Please try bank transfer / WhatsApp checkout.');
+        if (!paymentRes.success) {
+          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your reservation is held; you can complete bank transfer or WhatsApp confirmation.');
           setIsSubmitting(false);
+          setIsCheckoutOpen(false);
+          setIsOrderConfirmedOpen(true);
           return;
         }
-
-        paymentResult = {
-          success: true,
-          transactionReference: res.transactionReference,
-          paidAt: res.paidAt,
-        };
       }
-
-      // Map cart items to OrderItems
-      const orderItems: OrderItem[] = cart.map((item) => ({
-        productId: item.product.id,
-        productName: item.product.name,
-        category: item.product.category,
-        color: item.selectedColor,
-        size: item.selectedSize,
-        quantity: item.quantity,
-        unitPriceNGN: item.product.priceNGN,
-        totalPriceNGN: item.product.priceNGN * item.quantity,
-        image: item.product.images[0],
-      }));
-
-      // Create persistent Order
-      createOrder({
-        customer,
-        items: orderItems,
-        subtotalNGN: cartSubtotal,
-        deliveryFeeNGN: deliveryFee,
-        totalNGN,
-        shippingMethod: shippingMethod === 'lagos' 
-          ? `Lagos Doorstep (${SHIPPING_CONFIG.lagosTimeframe})` 
-          : `Nationwide (${SHIPPING_CONFIG.nationwideTimeframe})`,
-        paymentMethod: paymentMethodChoice === 'paystack' && isLiveGateway 
-          ? 'Paystack' 
-          : 'Direct Bank Transfer / WhatsApp',
-        paymentStatus: paymentResult.paidAt ? 'PAID' : 'PENDING',
-        orderStatus: 'CONFIRMED',
-      });
 
       setIsSubmitting(false);
       setIsCheckoutOpen(false);
       setIsOrderConfirmedOpen(true);
-      showToast('Order created successfully!');
+      showToast('Order confirmed by PIERCYN Atelier!');
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage('Something went wrong creating your order. Please try again or reach out on WhatsApp.');
+      console.error('[CHECKOUT_SUBMIT_ERROR]', err);
+      const rawMsg = err?.message || '';
+      let userMsg = 'Sorry, we couldn\'t complete your order. Please check your details and try again.';
+      if (
+        rawMsg.toLowerCase().includes('insufficient') ||
+        rawMsg.toLowerCase().includes('stock') ||
+        rawMsg.toLowerCase().includes('sold out') ||
+        rawMsg.toLowerCase().includes('variant')
+      ) {
+        userMsg = rawMsg;
+      } else if (rawMsg.length > 5 && rawMsg.length < 150 && !rawMsg.includes('{') && !rawMsg.includes('at ')) {
+        userMsg = rawMsg;
+      }
+      setErrorMessage(userMsg);
       setIsSubmitting(false);
     }
   };
@@ -427,6 +421,12 @@ export const CheckoutModal: React.FC = () => {
                   <span>Subtotal</span>
                   <span className="font-mono">₦{cartSubtotal.toLocaleString()}</span>
                 </div>
+                {promoDiscountNGN > 0 && (
+                  <div className="flex justify-between text-emerald-800 font-semibold">
+                    <span>Discount ({appliedPromoCode})</span>
+                    <span className="font-mono">-₦{promoDiscountNGN.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#141414]/80">
                   <span>Delivery Fee</span>
                   <span className="font-mono">

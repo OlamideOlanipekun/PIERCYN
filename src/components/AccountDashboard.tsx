@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { Product } from '../types';
 import { formatNGN } from '../utils/currency';
 import { 
@@ -26,10 +25,11 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
   onSelectPage,
   onViewProduct,
 }) => {
-  const { user, logout, wishlist, orders, addToCart, isWishlisted, toggleWishlist } = useShop();
+  const { products, user, logout, wishlist, orders, addToCart, isWishlisted, toggleWishlist } = useShop();
   const [activeTab, setActiveTab] = useState<'orders' | 'tracking' | 'wishlist'>('orders');
 
-  const displayName = user?.firstName || 'Tunde';
+  const displayName = user?.firstName || 'Atelier Client';
+  const userCity = user?.city || 'Victoria Island, Lagos';
 
   // Mock initial tracking order if none in state
   const currentTrackingOrder = orders[0] || {
@@ -61,15 +61,15 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
       }
     ],
     customer: {
-      fullName: 'Tunde Adeleke',
-      email: 'tunde.adeleke@example.com',
-      city: 'Victoria Island, Lagos',
+      fullName: user ? `${user.firstName} ${user.lastName}` : 'Tunde Adeleke',
+      email: user?.email || 'tunde.adeleke@example.com',
+      city: userCity,
       address: '14 Admiralty Way, Lekki Phase 1',
     }
   };
 
-  const wishlistedProducts = ALL_PRODUCTS.filter((p) => wishlist.includes(p.id));
-  const recentlyViewedProducts = ALL_PRODUCTS.slice(0, 4);
+  const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
+  const recentlyViewedProducts = products.slice(0, 4);
 
   return (
     <div className="py-10 sm:py-16 bg-[#F5F3EE] text-[#111111] min-h-[80vh]">
@@ -85,7 +85,7 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
             </h1>
             <p className="text-xs sm:text-sm text-[#737069] mt-1 flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />
-              Victoria Island, Lagos • VIP Atelier Member
+              {userCity} • VIP Atelier Member
             </p>
           </div>
 

@@ -1,14 +1,13 @@
 import React from 'react';
 import { COMMUNITY_POSTS } from '../data/community';
 import { useShop } from '../context/ShopContext';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { ArrowUpRight, Instagram } from 'lucide-react';
 
 export const WornByYouSection: React.FC = () => {
-  const { setQuickViewProduct, showToast } = useShop();
+  const { products, setQuickViewProduct, showToast } = useShop();
 
   const handlePostClick = (pieceId: string) => {
-    const found = ALL_PRODUCTS.find((p) => p.id === pieceId);
+    const found = products.find((p) => p.id === pieceId || p.slug === pieceId);
     if (found) {
       setQuickViewProduct(found);
     } else {

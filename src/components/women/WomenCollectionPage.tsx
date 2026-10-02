@@ -16,7 +16,7 @@ interface WomenCollectionPageProps {
 }
 
 export const WomenCollectionPage: React.FC<WomenCollectionPageProps> = ({ onNavigateSection }) => {
-  const { setQuickViewProduct } = useShop();
+  const { products, setQuickViewProduct } = useShop();
 
   // Category filter state
   const [activeCategory, setActiveCategory] = useState<WomenCategory>('ALL');
@@ -109,7 +109,7 @@ export const WomenCollectionPage: React.FC<WomenCollectionPageProps> = ({ onNavi
 
   // Filter and Sort Processing
   const filteredAndSortedProducts = useMemo(() => {
-    let result = [...WOMENS_PRODUCTS];
+    let result = products.length > 0 ? [...products] : [...WOMENS_PRODUCTS];
 
     // 1. Category Filter
     if (activeCategory !== 'ALL') {

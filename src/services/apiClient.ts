@@ -1,0 +1,219 @@
+/**
+ * PIERCYN Commerce API Client
+ * Seamless communication with backend /api endpoints
+ */
+
+const API_BASE = '/api';
+
+// Generate or retrieve persistent anonymous session ID
+export const getSessionId = (): string => {
+  let sessionId = localStorage.getItem('piercyn_session_id');
+  if (!sessionId) {
+    sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem('piercyn_session_id', sessionId);
+  }
+  return sessionId;
+};
+
+export const getAuthToken = (): string | null => {
+  try {
+    return localStorage.getItem('piercyn_auth_token');
+  } catch {
+    return null;
+  }
+};
+
+const getHeaders = (): HeadersInit => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-session-id': getSessionId(),
+  };
+
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
+export const api = {
+  // Products
+  async getProducts(params?: { category?: string; collection?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    const res = await fetch(`${API_BASE}/products${query ? `?${query}` : ''}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async getProduct(slug: string) {
+    const res = await fetch(`${API_BASE}/products/${slug}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  // Cart
+  async getCart() {
+    const res = await fetch(`${API_BASE}/cart`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async addToCart(variantId: string, quantity: number = 1) {
+    const res = await fetch(`${API_BASE}/cart/items`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ variantId, quantity }),
+    });
+    return res.json();
+  },
+
+  async updateCartItem(variantId: string, quantity: number) {
+    const res = await fetch(`${API_BASE}/cart/items`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ variantId, quantity }),
+    });
+    return res.json();
+  },
+
+  async clearCart() {
+    const res = await fetch(`${API_BASE}/cart`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    return res.json();
+  },
+
+  // Shipping
+  async getShippingOptions(subtotalNGN: number = 0) {
+    const res = await fetch(`${API_BASE}/shipping/options?subtotal=${subtotalNGN}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  // Checkout Quote
+  async getCheckoutQuote(shippingRegion: 'lagos' | 'nationwide', items: { variantId: string; quantity: number }[], discountCode?: string) {
+    const res = await fetch(`${API_BASE}/checkout/quote`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ shippingRegion, items, discountCode }),
+    });
+    return res.json();
+  },
+
+  // Orders
+  async createOrder(payload: {
+    customer: {
+      fullName: string;
+      email: string;
+      phone: string;
+      state: string;
+      city: string;
+      address: string;
+      orderNote?: string;
+    };
+    shippingRegion: 'lagos' | 'nationwide';
+    paymentMethod: 'paystack' | 'transfer' | 'mock';
+    items: { variantId: string; quantity: number }[];
+    discountCode?: string;
+  }) {
+    const res = await fetch(`${API_BASE}/orders`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  },
+
+  async getOrders(email?: string) {
+    const url = email ? `${API_BASE}/orders?email=${encodeURIComponent(email)}` : `${API_BASE}/orders`;
+    const res = await fetch(url, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async getOrder(orderId: string) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  // Payments
+  async initializePayment(orderNumber: string, callbackUrl?: string) {
+    const res = await fetch(`${API_BASE}/payments/initialize`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ orderNumber, callbackUrl }),
+    });
+    return res.json();
+  },
+
+  async verifyPayment(reference: string) {
+    const res = await fetch(`${API_BASE}/payments/verify`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ reference }),
+    });
+    return res.json();
+  },
+
+  // Events & Analytics
+  async trackEvent(eventType: string, metadata: Record<string, any> = {}, productId?: string, variantId?: string, orderId?: string) {
+    try {
+      await fetch(`${API_BASE}/events`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          eventType,
+          sessionId: getSessionId(),
+          productId,
+          variantId,
+          orderId,
+          metadata,
+        }),
+      });
+    } catch {
+      // Non-blocking
+    }
+  },
+
+  async getAnalyticsOverview() {
+    const res = await fetch(`${API_BASE}/analytics/overview`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  // Atelier Client Authentication
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    city?: string;
+    address?: string;
+  }) {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async login(data: { email: string; password: string }) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async getMe() {
+    const res = await fetch(`${API_BASE}/auth/me`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async logout() {
+    const res = await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return res.json();
+  },
+};

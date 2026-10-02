@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { formatNGN } from '../utils/currency';
 import { X, Search, ArrowRight, Tag, Sparkles } from 'lucide-react';
 import { Product } from '../types';
@@ -10,7 +9,7 @@ interface SearchModalProps {
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({ onViewProduct }) => {
-  const { isSearchOpen, setIsSearchOpen, addToCart, showToast } = useShop();
+  const { products, isSearchOpen, setIsSearchOpen, addToCart, showToast } = useShop();
   const [searchTerm, setSearchTerm] = useState('');
 
   const quickSearchSuggestions = [
@@ -53,7 +52,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ onViewProduct }) => {
   const cleanQuery = normalizeQuery(searchTerm);
 
   const results: Product[] = cleanQuery
-    ? ALL_PRODUCTS.filter((p) => {
+    ? products.filter((p) => {
         const pName = p.name.toLowerCase();
         const pDesc = p.description.toLowerCase();
         const pCat = p.category.toLowerCase();
@@ -65,7 +64,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ onViewProduct }) => {
           tags.includes(cleanQuery)
         );
       })
-    : ALL_PRODUCTS.slice(0, 4); // Default preview items matching mockup
+    : products.slice(0, 4); // Default preview items from live catalog
 
   const handleSelectProduct = (product: Product) => {
     setIsSearchOpen(false);

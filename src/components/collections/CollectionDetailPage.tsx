@@ -1,7 +1,6 @@
 import React from 'react';
 import { Collection } from '../../types';
 import { COLLECTIONS } from '../../data/collections';
-import { ALL_PRODUCTS } from '../../data/allProducts';
 import { formatPrice } from '../../utils/currency';
 import { ArrowLeft, ArrowRight, Heart, Plus, Sparkles, MapPin, Layers } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
@@ -17,10 +16,10 @@ export const CollectionDetailPage: React.FC<CollectionDetailPageProps> = ({
   onBackToCollections,
   onSelectCollection
 }) => {
-  const { setQuickViewProduct, toggleWishlist, isWishlisted, currency } = useShop();
+  const { products, setQuickViewProduct, toggleWishlist, isWishlisted, currency } = useShop();
 
   // Products belonging to this collection
-  const collectionProducts = ALL_PRODUCTS.filter((p) =>
+  const collectionProducts = products.filter((p) =>
     collection.featuredProductIds.includes(p.id) || p.collection === collection.category
   );
 

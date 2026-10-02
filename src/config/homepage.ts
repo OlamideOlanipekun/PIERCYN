@@ -9,20 +9,20 @@ import { Currency } from '../types';
 export const ENABLE_WOMENSWEAR = false;
 
 // Store Tagline & Brand Identity
-export const BRAND_TAGLINE = 'Look Expensive. Spend Smart.';
+export const BRAND_TAGLINE = 'Look Good. Spend Less.';
 
 // Hero Banner Configuration (Menswear garment-focused)
 export const HERO_CONFIG = {
-  headline: 'LOOK EXPENSIVE. SPEND SMART.',
-  subhead: 'Engineered menswear from Lagos. Heavyweight textiles, sharp tailoring, accessible luxury.',
+  headline: 'LOOK GOOD. SPEND LESS.',
+  subhead: 'Modern fashion for people who want to stand out without overspending.',
   // Garment-forward menswear hero imagery
   image: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=1600&auto=format&fit=crop',
   mobileImage: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=900&auto=format&fit=crop',
-  altText: 'Model wearing PIERCYN structured black heavyweight blazer and relaxed trousers in Lagos studio',
-  primaryCtaText: 'SHOP THE DROP',
+  altText: 'Model wearing PIERCYN modern menswear in Lagos',
+  primaryCtaText: 'SHOP NOW',
   primaryCtaLink: 'shop',
-  secondaryCtaText: 'DISCOVER LOOKS',
-  secondaryCtaLink: 'build-the-look',
+  secondaryCtaText: 'SHOP MEN',
+  secondaryCtaLink: 'men',
 };
 
 // Category Tiles Configuration (Garment-led images)

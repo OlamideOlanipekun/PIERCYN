@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { CURATED_LOOKS, CuratedOutfit } from '../data/curatedLooks';
 import { useShop } from '../context/ShopContext';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { Product } from '../types';
 import { Plus, Check, ShoppingBag, ArrowRight } from 'lucide-react';
 import { formatNGN } from '../utils/currency';
@@ -12,21 +11,25 @@ interface BuildTheLookSectionProps {
 }
 
 export const BuildTheLookSection: React.FC<BuildTheLookSectionProps> = ({ onViewProduct }) => {
-  const { addToCart, showToast, setIsCartOpen } = useShop();
+  const { products, addToCart, showToast, setIsCartOpen } = useShop();
   const [selectedOutfitIndex, setSelectedOutfitIndex] = useState(0);
   const [addedOutfit, setAddedOutfit] = useState(false);
 
   const outfit = CURATED_LOOKS[selectedOutfitIndex] || CURATED_LOOKS[0];
 
   const handleAddSingleItem = (lookItem: { id: string; size: string; color: string; name: string }) => {
-    const product = ALL_PRODUCTS.find((p) => p.id === lookItem.id) || ALL_PRODUCTS[0];
-    addToCart(product, lookItem.color, lookItem.size, 1);
+    const product = products.find((p) => p.id === lookItem.id || p.slug === lookItem.id) || products[0];
+    if (product) {
+      addToCart(product, lookItem.color, lookItem.size, 1);
+    }
   };
 
   const handleAddFullOutfit = () => {
     outfit.items.forEach((item) => {
-      const product = ALL_PRODUCTS.find((p) => p.id === item.id) || ALL_PRODUCTS[0];
-      addToCart(product, item.color, item.size, 1);
+      const product = products.find((p) => p.id === item.id || p.slug === item.id) || products[0];
+      if (product) {
+        addToCart(product, item.color, item.size, 1);
+      }
     });
     setAddedOutfit(true);
     showToast(`Added full outfit (${outfit.items.length} pieces) to bag`);
@@ -113,7 +116,7 @@ export const BuildTheLookSection: React.FC<BuildTheLookSectionProps> = ({ onView
               {/* Items List */}
               <div className="space-y-3.5">
                 {outfit.items.map((item, index) => {
-                  const product = ALL_PRODUCTS.find((p) => p.id === item.id);
+                  const product = products.find((p) => p.id === item.id || p.slug === item.id);
                   return (
                     <div
                       key={item.id + index}

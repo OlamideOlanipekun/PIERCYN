@@ -1,6 +1,5 @@
 import React from 'react';
 import { Collection } from '../../types';
-import { ALL_PRODUCTS } from '../../data/allProducts';
 import { formatPrice } from '../../utils/currency';
 import { ArrowRight, Compass } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
@@ -11,9 +10,9 @@ interface FeaturedCollectionSectionProps {
 }
 
 export const FeaturedCollectionSection: React.FC<FeaturedCollectionSectionProps> = ({ collection, onOpenDetail }) => {
-  const { setQuickViewProduct, currency } = useShop();
+  const { products, setQuickViewProduct, currency } = useShop();
 
-  const previewProducts = ALL_PRODUCTS.slice(0, 4);
+  const previewProducts = products.slice(0, 4);
 
   return (
     <section 

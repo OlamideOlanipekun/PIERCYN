@@ -1,6 +1,5 @@
 import React from 'react';
 import { Collection } from '../../types';
-import { ALL_PRODUCTS } from '../../data/allProducts';
 import { formatPrice } from '../../utils/currency';
 import { ArrowRight, Layers } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
@@ -11,9 +10,9 @@ interface EssentialsSectionProps {
 }
 
 export const EssentialsSection: React.FC<EssentialsSectionProps> = ({ collection, onOpenDetail }) => {
-  const { setQuickViewProduct, currency } = useShop();
+  const { products, setQuickViewProduct, currency } = useShop();
 
-  const previewProducts = ALL_PRODUCTS.filter((p) =>
+  const previewProducts = products.filter((p) =>
     collection.featuredProductIds.includes(p.id) || p.collection === 'essentials'
   ).slice(0, 4);
 

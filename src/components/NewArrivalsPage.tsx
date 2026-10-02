@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, SlidersHorizontal, ArrowUpDown, X, Heart, Zap } from 'lucide-react';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { formatPrice } from '../utils/currency';
 import { useShop } from '../context/ShopContext';
 import { Product, ProductCategory } from '../types';
@@ -132,7 +131,7 @@ const NewProductCard: React.FC<{ product: Product; index: number }> = ({ product
 
 // ---------- MAIN PAGE ----------
 export const NewArrivalsPage: React.FC<NewArrivalsPageProps> = ({ onSelectPage }) => {
-  const { showToast } = useShop();
+  const { products, showToast } = useShop();
   const [activeCategory, setActiveCategory] = useState<NewCategory>('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('FEATURED');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -146,8 +145,8 @@ export const NewArrivalsPage: React.FC<NewArrivalsPageProps> = ({ onSelectPage }
     return () => clearTimeout(t);
   }, []);
 
-  // Filter products to "new" — products with isNewDrop flag (configurable window logic placeholder)
-  const allNewProducts = ALL_PRODUCTS.filter((p) => p.isNewDrop === true);
+  // Filter products to "new" from live catalog
+  const allNewProducts = products.filter((p) => p.isNewDrop === true);
 
   // Category filter
   const categoryFiltered = activeCategory === 'ALL'

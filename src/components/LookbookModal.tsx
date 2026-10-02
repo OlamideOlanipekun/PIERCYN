@@ -1,15 +1,14 @@
 import React from 'react';
 import { useShop } from '../context/ShopContext';
-import { ALL_PRODUCTS } from '../data/allProducts';
 import { formatPrice } from '../utils/currency';
 import { X, Plus, ArrowRight, Sparkles, MapPin } from 'lucide-react';
 
 export const LookbookModal: React.FC = () => {
-  const { activeLook, setActiveLook, currency, addToCart } = useShop();
+  const { products, activeLook, setActiveLook, currency, addToCart } = useShop();
 
   if (!activeLook) return null;
 
-  const outfitProducts = ALL_PRODUCTS.filter((p) => activeLook.pieces.includes(p.id));
+  const outfitProducts = products.filter((p) => activeLook.pieces.includes(p.id));
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">

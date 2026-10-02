@@ -51,6 +51,19 @@ export interface ProductColor {
   objectPosition?: string;
 }
 
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  size: string;
+  colour: string;
+  colourHex: string;
+  image?: string;
+  altImage?: string;
+  active?: boolean;
+  availableStock?: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -74,6 +87,7 @@ export interface Product {
   objectPosition?: string;
   productShotUrl?: string;
   stock?: number;
+  variants?: ProductVariant[];
   status?: 'active' | 'draft' | 'archived';
   createdAt?: string;
   isNewDrop?: boolean;
@@ -87,6 +101,7 @@ export interface Product {
 
 export interface CartItem {
   product: Product;
+  variantId: string;
   selectedColor: string;
   selectedSize: string;
   quantity: number;
@@ -112,6 +127,8 @@ export interface ShippingMethod {
 
 export interface OrderItem {
   productId: string;
+  variantId?: string;
+  sku?: string;
   productName: string;
   category: string;
   color: string;
@@ -129,6 +146,7 @@ export interface Order {
   items: OrderItem[];
   subtotalNGN: number;
   deliveryFeeNGN: number;
+  discountNGN?: number;
   totalNGN: number;
   shippingMethod: string;
   paymentMethod: string;

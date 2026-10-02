@@ -84,7 +84,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
               >
-                LOOK EXPENSIVE.
+                LOOK GOOD.
               </span>
             </div>
 
@@ -94,7 +94,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
                   isLoaded ? 'translate-y-0' : 'translate-y-[115%]'
                 }`}
               >
-                SPEND SMART.
+                SPEND LESS.
               </span>
             </div>
           </h1>
@@ -108,25 +108,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
             }`}
           >
             <p className="font-sans text-[13px] sm:text-[15px] leading-relaxed tracking-[0.01em] text-[#F2F0EB]/95 mb-4 sm:mb-6 font-medium">
-              Good-looking fashion at prices that make sense.
+              Modern fashion for people who want to stand out without overspending.
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto font-sans">
               <button
-                id="hero-shop-men-btn"
-                onClick={() => onExplore('men')}
+                id="hero-shop-now-btn"
+                onClick={() => onExplore('shop')}
                 className="group h-12 px-7 rounded-full bg-[#F2F0EB] text-[#141414] hover:bg-white transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.98] text-[12px] sm:text-[13px] font-bold tracking-[0.16em] uppercase whitespace-nowrap"
               >
-                <span>SHOP MEN</span>
+                <span>SHOP NOW</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
               
               <button
-                id="hero-shop-women-btn"
-                onClick={() => onExplore('women')}
+                id="hero-shop-men-btn"
+                onClick={() => onExplore('men')}
                 className="group h-12 px-7 rounded-full border border-[#F2F0EB]/80 bg-black/40 backdrop-blur-xs text-[#F2F0EB] hover:bg-[#F2F0EB] hover:text-[#141414] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] text-[12px] sm:text-[13px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap"
               >
-                <span>SHOP WOMEN</span>
+                <span>SHOP MEN</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </div>

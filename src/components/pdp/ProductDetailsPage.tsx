@@ -4,7 +4,6 @@ import { useShop } from '../../context/ShopContext';
 import { formatPrice, formatNumericPrice } from '../../utils/currency';
 import { SHIPPING_CONFIG } from '../../utils/shipping';
 import { eventTracker } from '../../services/eventTracker';
-import { ALL_PRODUCTS } from '../../data/allProducts';
 import { ProductGallery } from './ProductGallery';
 import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
@@ -34,6 +33,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   onViewProduct,
 }) => {
   const {
+    products,
     currency,
     addToCart,
     toggleWishlist,
@@ -145,8 +145,8 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     `Hello PIERCYN! I'm interested in the "${product.name}" (${formatPrice(product, 'NGN')}). Could you advise on fit and dispatch time?`
   );
 
-  // Related products (deterministic: same category or collection)
-  const relatedProducts = ALL_PRODUCTS.filter(
+  // Related products from real backend catalog
+  const relatedProducts = products.filter(
     (p) => p.id !== product.id && (p.category === product.category || p.collection === product.collection)
   ).slice(0, 4);
 

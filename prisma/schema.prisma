@@ -1,0 +1,697 @@
+// ============================================================
+// PIERCYN V1 DATABASE SCHEMA
+// PostgreSQL via Supabase + Prisma ORM
+// Production-ready · Relational · Transaction-safe
+// Designed for the first 90 days of PIERCYN operations
+// Money stored as INTEGER (Kobo/minor units) — never floats
+// All IDs: cuid() (non-sequential, safe for public exposure)
+// All timestamps: UTC
+// ============================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum AdminRole {
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  PACKED
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  FAILED
+  RETURNED
+  REFUNDED
+  EXCHANGED
+}
+
+enum OrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProviderType {
+  PAYSTACK
+  DIRECT_TRANSFER
+  MOCK
+}
+
+enum ShipmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum InventoryTransactionType {
+  RESTOCK
+  SALE
+  RESERVATION
+  RELEASE
+  ADJUSTMENT
+  RETURN
+  REFUND
+  DAMAGE
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  EXPIRED
+}
+
+enum EventType {
+  PRODUCT_VIEW
+  ADD_TO_CART
+  CHECKOUT_STARTED
+  PURCHASE_COMPLETED
+}
+
+// ============================================================
+// ADMIN
+// Dashboard-access accounts. Completely separate from customers.
+// Never store plaintext passwords. Never store auth secrets.
+// ============================================================
+
+model Admin {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+// ============================================================
+// CATEGORY
+// ============================================================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+// ============================================================
+// PRODUCT
+// Represents the main item (e.g. "Essential Oversized Tee").
+// Variant-specific stock/size/colour belongs to ProductVariant.
+// Money stored as INTEGER in Kobo (NGN minor units).
+// ============================================================
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  name             String
+  description      String
+  shortDescription String?
+  categoryId       String
+  category         Category      @relation(fields: [categoryId], references: [id])
+
+  // Base prices in Kobo (integer — never float)
+  priceNGN         Int
+  costPriceNGN     Int           @default(0)
+  priceUSD         Int           @default(0)
+  priceGBP         Int           @default(0)
+  priceEUR         Int           @default(0)
+
+  // Merchandising
+  collection       String        @default("essentials")
+  status           ProductStatus @default(DRAFT)
+  images           String[]      // Ordered image URLs (no binary stored here)
+  videoUrl         String?
+
+  // Product details
+  gsm              String?
+  fit              String?
+  fabric           String?
+  origin           String?
+  careInstructions String?
+  productStory     String?
+  tag              String?
+
+  // Flags
+  isNewDrop        Boolean       @default(false)
+  isBestSeller     Boolean       @default(false)
+  isSoldOut        Boolean       @default(false)
+  isLimited        Boolean       @default(false)
+  sortOrder        Int           @default(0)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  variants         ProductVariant[]
+  events           AnalyticsEvent[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+}
+
+// ============================================================
+// PRODUCT VARIANT
+// Inventory MUST be tracked at variant level.
+// SKU is the authoritative identifier for a specific variant.
+// ============================================================
+
+model ProductVariant {
+  id           String    @id @default(cuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku          String    @unique   // e.g. PC-TEE-BLK-M
+  size         String              // XS, S, M, L, XL, XXL, ONE_SIZE
+  colour       String              // "Pitch Black", "Washed Sand"
+  colourHex    String              // "#111111"
+
+  // Optional variant-level price override (falls back to product price if null)
+  priceNGN     Int?
+  costPriceNGN Int?
+  priceUSD     Int?
+  priceGBP     Int?
+  priceEUR     Int?
+
+  image        String?
+  altImage     String?
+  isActive     Boolean   @default(true)
+  sortOrder    Int       @default(0)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  inventory    Inventory?
+  reservations InventoryReservation[]
+  transactions InventoryTransaction[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  events       AnalyticsEvent[]
+
+  @@unique([productId, size, colour])
+  @@index([productId])
+  @@index([sku])
+}
+
+// ============================================================
+// INVENTORY
+// One record per variant. Available stock = stockQuantity - reservedQuantity.
+// NEVER allow available stock to go negative (enforced in service layer
+// with DB transactions + CHECK constraints in migration SQL).
+// ============================================================
+
+model Inventory {
+  id               String         @id @default(cuid())
+  variantId        String         @unique
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  stockQuantity    Int            @default(0)  // Physical units on hand
+  reservedQuantity Int            @default(0)  // Reserved for active/pending orders
+  soldQuantity     Int            @default(0)  // Cumulative units sold
+  damagedQuantity  Int            @default(0)  // Damaged/written-off units
+  returnedQuantity Int            @default(0)  // Returned units
+  reorderLevel     Int            @default(5)  // Alert threshold
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  transactions     InventoryTransaction[]
+
+  @@index([variantId])
+}
+
+// ============================================================
+// INVENTORY RESERVATION
+// Soft-reserves stock during the checkout window.
+// Prevents overselling while payment is in-flight.
+// Expires automatically if payment is not completed.
+// ============================================================
+
+model InventoryReservation {
+  id        String            @id @default(cuid())
+  variantId String
+  variant   ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+  reference String            // Cart sessionId or orderNumber
+  status    ReservationStatus @default(ACTIVE)
+  expiresAt DateTime
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([reference])
+  @@index([status, expiresAt])
+  @@index([variantId])
+}
+
+// ============================================================
+// INVENTORY TRANSACTION (Audit Trail)
+// Every stock change MUST produce a transaction record.
+// Never silently change stock. This is the inventory ledger.
+// ============================================================
+
+model InventoryTransaction {
+  id            String                   @id @default(cuid())
+  inventoryId   String
+  inventory     Inventory                @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  variantId     String
+  variant       ProductVariant           @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  type          InventoryTransactionType
+  quantity      Int                      // Positive = increase, Negative = decrease
+  previousStock Int                      // stockQuantity before this transaction
+  newStock      Int                      // stockQuantity after this transaction
+
+  // What caused this change
+  referenceType String?                  // "ORDER", "MANUAL", "RETURN", "DAMAGE"
+  referenceId   String?                  // e.g. orderId or orderNumber
+  reason        String?                  // Human-readable explanation
+
+  // Who made a manual change (null for system-driven changes)
+  adminId       String?
+
+  createdAt     DateTime                 @default(now())
+
+  @@index([inventoryId])
+  @@index([variantId])
+  @@index([type])
+  @@index([referenceId])
+}
+
+// ============================================================
+// CUSTOMER
+// V1: No mandatory account. Customers are created from checkout.
+// Match existing customers by normalized email/phone.
+// ============================================================
+
+model Customer {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?   @unique  // Nullable: allow phone-only checkout
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  addresses   Address[]
+  orders      Order[]
+  carts       Cart[]
+  events      AnalyticsEvent[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+// ============================================================
+// ADDRESS
+// A customer can have multiple saved addresses.
+// Orders snapshot their own delivery address at time of purchase.
+// ============================================================
+
+model Address {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  fullName       String
+  phone          String
+  state          String
+  city           String
+  addressLine    String
+  additionalInfo String?
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+// ============================================================
+// CART
+// sessionId is the primary lookup key (cookie / localStorage).
+// customerId is optional — V1 is guest-first.
+// The server must re-validate prices and inventory at checkout.
+// ============================================================
+
+model Cart {
+  id         String     @id @default(cuid())
+  sessionId  String     @unique
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  status     CartStatus @default(ACTIVE)
+  expiresAt  DateTime
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  items      CartItem[]
+
+  @@index([sessionId])
+  @@index([customerId])
+  @@index([status])
+}
+
+// ============================================================
+// CART ITEM
+// A variant cannot be duplicated within the same active cart.
+// Quantity must be > 0.
+// Prices are NOT trusted from the cart — re-validated at checkout.
+// ============================================================
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+// ============================================================
+// ORDER
+// Stores a SNAPSHOT of customer and delivery info at purchase time.
+// If a customer later changes their address, old orders are unaffected.
+// All financial values are server-calculated integers (NGN Kobo).
+// TOTAL = SUBTOTAL + DELIVERY_FEE - DISCOUNT (server-only)
+// ============================================================
+
+model Order {
+  id          String             @id @default(cuid())
+  orderNumber String             @unique  // e.g. PC-000001
+
+  customerId  String?
+  customer    Customer?          @relation(fields: [customerId], references: [id])
+
+  // Order status
+  status        OrderStatus        @default(PENDING_PAYMENT)
+  paymentStatus OrderPaymentStatus @default(PENDING)
+
+  // Financial snapshot (server-calculated, integer Kobo — never floats)
+  subtotalNGN    Int
+  deliveryFeeNGN Int
+  discountNGN    Int             @default(0)
+  totalNGN       Int
+  currency       String          @default("NGN")
+
+  // Customer info snapshot (immutable — historical accuracy)
+  customerFirstName String
+  customerLastName  String
+  customerEmail     String
+  customerPhone     String
+
+  // Delivery snapshot (immutable — historical accuracy)
+  deliveryState   String
+  deliveryCity    String
+  deliveryAddress String
+  orderNote       String?
+
+  // Shipping method context
+  shippingMethodKey  String       // 'lagos' | 'nationwide'
+  shippingMethodName String
+
+  // Payment method selected
+  paymentMethod  String           // 'PAYSTACK' | 'DIRECT_TRANSFER'
+
+  paidAt         DateTime?
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  items          OrderItem[]
+  payments       Payment[]
+  shipment       Shipment?
+  statusHistory  OrderStatusHistory[]
+  events         AnalyticsEvent[]
+
+  @@index([orderNumber])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([customerEmail])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// ORDER ITEM
+// Contains a SNAPSHOT of product/variant at time of purchase.
+// Critical: product prices and names change. Orders must not.
+// costPriceNGN enables historical COGS and gross profit calculation.
+// ============================================================
+
+model OrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Live FK (nullable: variant may be deleted later)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Historical snapshot (immutable — do NOT update after creation)
+  productId   String
+  productName String
+  sku         String
+  size        String
+  colour      String
+  image       String
+
+  // Financial snapshot (integer Kobo)
+  unitPriceNGN  Int
+  costPriceNGN  Int           @default(0)
+  quantity      Int
+  totalNGN      Int           // unitPriceNGN * quantity (server-calculated)
+
+  createdAt     DateTime      @default(now())
+
+  @@index([orderId])
+  @@index([sku])
+}
+
+// ============================================================
+// PAYMENT
+// Stores payment attempts and webhook verification results.
+// providerReference must be unique to prevent duplicate processing.
+// Payment confirmation ONLY happens via backend webhook verification.
+// NEVER mark an order paid because the frontend says so.
+// ============================================================
+
+model Payment {
+  id                String              @id @default(cuid())
+  orderId           String
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider          PaymentProviderType @default(DIRECT_TRANSFER)
+  providerReference String              @unique  // Idempotency key
+  amountNGN         Int
+  currency          String              @default("NGN")
+  status            PaymentStatus       @default(PENDING)
+
+  paidAt            DateTime?
+  rawMetadata       String?             // JSON of webhook/verification response
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([orderId])
+  @@index([providerReference])
+}
+
+// ============================================================
+// SHIPMENT
+// One shipment per order. Abstracted by provider string
+// so new couriers (GIG, DHL etc.) can be added without schema changes.
+// ============================================================
+
+model Shipment {
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider       String         @default("KWIK")  // KWIK, GIG, INTERNAL
+  trackingNumber String?        @unique
+  status         ShipmentStatus @default(PENDING)
+  deliveryFeeNGN Int            @default(0)
+
+  // Delivery snapshot for courier dispatch
+  deliveryAddress String
+  recipientName   String
+  recipientPhone  String
+  courierMetadata String?       // JSON string of courier API response
+
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([orderId])
+  @@index([trackingNumber])
+  @@index([status])
+}
+
+// ============================================================
+// ORDER STATUS HISTORY
+// Immutable audit trail for every order status transition.
+// Powers the admin order timeline view.
+// changedBy: adminId or "SYSTEM" for automated transitions.
+// ============================================================
+
+model OrderStatusHistory {
+  id         String      @id @default(cuid())
+  orderId    String
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  fromStatus OrderStatus
+  toStatus   OrderStatus
+  changedBy  String      // adminId or "SYSTEM"
+  note       String?
+
+  createdAt  DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// SHIPPING CONFIG
+// Admin-managed delivery zones and pricing.
+// ============================================================
+
+model ShippingConfig {
+  id                       String   @id @default(cuid())
+  regionKey                String   @unique  // 'lagos', 'nationwide'
+  name                     String
+  feeNGN                   Int
+  freeShippingThresholdNGN Int      @default(10000000)  // ₦100,000 in Kobo
+  estimatedTimeframe       String
+  description              String
+  isActive                 Boolean  @default(true)
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// ============================================================
+// ANALYTICS EVENT
+// Lightweight funnel tracking: View → Cart → Checkout → Purchase.
+// V1: no analytics warehouse needed. Basic funnel metrics only.
+// ============================================================
+
+model AnalyticsEvent {
+  id         String    @id @default(cuid())
+  sessionId  String?
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  eventType  EventType
+  productId  String?
+  product    Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  orderId    String?
+  order      Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  metadata   String?   // JSON attributes (device, referrer, etc.)
+  createdAt  DateTime  @default(now())
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([productId])
+  @@index([sessionId])
+}
+
+// ============================================================
+// AUDIT LOG
+// Persistent record of all admin actions.
+// Never log passwords or payment secrets.
+// ============================================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  adminId      String?
+  admin        Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  action       String   // e.g. "INVENTORY_ADJUSTMENT", "ORDER_STATUS_CHANGE"
+  resourceType String   // "ORDER" | "PRODUCT" | "INVENTORY" | "SHIPMENT" | "ADMIN"
+  resourceId   String
+
+  oldValue     String?  // JSON snapshot before change
+  newValue     String?  // JSON snapshot after change
+  ipAddress    String?
+
+  createdAt    DateTime @default(now())
+
+  @@index([adminId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// NOTIFICATION
+// Outbound message log (email/SMS/WhatsApp).
+// ============================================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  recipient String    // Email or phone
+  channel   String    // EMAIL, SMS, WHATSAPP
+  subject   String?
+  content   String
+  status    String    @default("PENDING")  // PENDING, SENT, FAILED
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([recipient])
+  @@index([status])
+}

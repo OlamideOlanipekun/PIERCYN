@@ -3,31 +3,43 @@ import { useShop } from '../context/ShopContext';
 import { X, User, Mail, Lock, LogOut, Package, Heart, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthOpen, setIsAuthOpen, user, login, logout, setIsWishlistOpen, setIsConciergeOpen, showToast } = useShop();
+  const { isAuthOpen, setIsAuthOpen, user, login, register, logout, setIsWishlistOpen, setIsConciergeOpen, showToast } = useShop();
 
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isAuthOpen) return null;
 
   const handleClose = () => {
     setIsAuthOpen(false);
+    setErrorMessage(null);
   };
 
-  const handleSignInSubmit = (e: React.FormEvent) => {
+  const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     if (!email || !email.includes('@')) {
       showToast('Please provide a valid email address.');
       return;
     }
-    login(email, password, firstName, lastName);
+    setIsSubmitting(true);
+    const res = await login(email, password);
+    setIsSubmitting(false);
+    if (res.success) {
+      handleClose();
+    } else if (res.error) {
+      setErrorMessage(res.error);
+    }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     if (!email || !email.includes('@')) {
       showToast('Please provide a valid email address.');
       return;
@@ -36,8 +48,19 @@ export const AuthModal: React.FC = () => {
       showToast('Please enter your first and last name.');
       return;
     }
-    login(email, password, firstName, lastName);
-    showToast('PIERCYN Atelier client account created.');
+    setIsSubmitting(true);
+    const res = await register({
+      email,
+      password,
+      firstName,
+      lastName,
+    });
+    setIsSubmitting(false);
+    if (res.success) {
+      handleClose();
+    } else if (res.error) {
+      setErrorMessage(res.error);
+    }
   };
 
   return (
@@ -166,6 +189,12 @@ export const AuthModal: React.FC = () => {
                   Sign in to access your saved pieces, private atelier dispatches, and priority access to limited drops.
                 </p>
 
+                {errorMessage && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-900 rounded-xl text-xs font-medium">
+                    {errorMessage}
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <div>
                     <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#7A7771] block mb-1">
@@ -191,7 +220,7 @@ export const AuthModal: React.FC = () => {
                       </label>
                       <button
                         type="button"
-                        onClick={() => showToast('Password reset link sent to your email.')}
+                        onClick={() => showToast('Demo password is "piercyn2026" or use your registered password.')}
                         className="text-[10px] font-mono uppercase tracking-[0.1em] text-[#7A7771] hover:text-[#141414] underline"
                       >
                         FORGOT PASSWORD?
@@ -214,9 +243,10 @@ export const AuthModal: React.FC = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full h-12 min-h-[48px] rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] font-bold uppercase tracking-[0.2em] hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full h-12 min-h-[48px] rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] font-bold uppercase tracking-[0.2em] hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span>SIGN IN</span>
+                    <span>{isSubmitting ? 'AUTHENTICATING...' : 'SIGN IN'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -226,7 +256,10 @@ export const AuthModal: React.FC = () => {
                     Don't have a PIERCYN account?{' '}
                     <button
                       type="button"
-                      onClick={() => setMode('register')}
+                      onClick={() => {
+                        setMode('register');
+                        setErrorMessage(null);
+                      }}
                       className="font-bold text-[#141414] underline uppercase tracking-[0.1em] cursor-pointer ml-1"
                     >
                       REGISTER HERE
@@ -242,6 +275,12 @@ export const AuthModal: React.FC = () => {
                 <p className="text-[13px] text-[#4A4844] leading-relaxed">
                   Join the PIERCYN Atelier inner circle. Unlock bespoke fittings, express global dispatch, and private drop invitations.
                 </p>
+
+                {errorMessage && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-900 rounded-xl text-xs font-medium">
+                    {errorMessage}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -295,7 +334,7 @@ export const AuthModal: React.FC = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimum 8 characters"
+                    placeholder="Minimum 4 characters"
                     required
                     className="w-full h-12 min-h-[48px] px-3.5 bg-white/80 border border-[#DAD8D1] rounded-xl text-[13px] font-sans text-[#141414] focus:outline-none focus:border-[#141414]"
                   />
@@ -304,9 +343,10 @@ export const AuthModal: React.FC = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full h-12 min-h-[48px] rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] font-bold uppercase tracking-[0.2em] hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full h-12 min-h-[48px] rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] font-bold uppercase tracking-[0.2em] hover:bg-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span>CREATE ACCOUNT</span>
+                    <span>{isSubmitting ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -316,7 +356,10 @@ export const AuthModal: React.FC = () => {
                     Already registered with PIERCYN?{' '}
                     <button
                       type="button"
-                      onClick={() => setMode('signin')}
+                      onClick={() => {
+                        setMode('signin');
+                        setErrorMessage(null);
+                      }}
                       className="font-bold text-[#141414] underline uppercase tracking-[0.1em] cursor-pointer ml-1"
                     >
                       SIGN IN HERE

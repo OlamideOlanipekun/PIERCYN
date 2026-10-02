@@ -26,14 +26,11 @@ export const JustDroppedSection: React.FC<JustDroppedSectionProps> = ({
         <div className="flex items-end justify-between mb-6 sm:mb-10 pb-3 border-b border-[#DAD8D1]/60">
           <div>
             <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-[#7A7771] block mb-1">
-              LATEST ARRIVALS
+              JUST IN
             </span>
             <h2 className="font-editorial text-2xl sm:text-4xl lg:text-5xl uppercase tracking-tight text-[#141414]">
-              JUST DROPPED
+              NEW ARRIVALS
             </h2>
-            <p className="font-sans text-xs sm:text-sm text-[#6E6B65] mt-1">
-              New pieces worth seeing.
-            </p>
           </div>
 
           <button
