@@ -1,4 +1,7 @@
 export const COMMERCE_CONFIG = {
+  // App Base URL
+  APP_URL: process.env.APP_URL || 'https://piercyn.vercel.app',
+
   // Shipping defaults (Single Source of Truth)
   SHIPPING: {
     FREE_THRESHOLD_NGN: 100000,

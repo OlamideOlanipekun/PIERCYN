@@ -131,7 +131,7 @@ export class PaystackPaymentProvider implements IPaymentProvider {
             email: params.customerEmail,
             amount: params.amountNGN,
             reference: params.orderNumber,
-            callback_url: params.callbackUrl,
+            callback_url: params.callbackUrl || `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${params.orderNumber}`,
             metadata: {
               customer_name: params.customerName,
               customer_phone: params.customerPhone,
