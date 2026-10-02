@@ -30,6 +30,9 @@ function createPrismaClient(): PrismaClient | null {
       connectionTimeoutMillis: 2000,
       ssl: { rejectUnauthorized: false },
     });
+    pool.on('error', (err) => {
+      console.warn('[PRISMA_POOL_WARN]', err?.message || err);
+    });
 
     const adapter = new PrismaPg(pool);
 
@@ -70,7 +73,11 @@ function getPrisma(): PrismaClient {
 // Lazily-resolved proxy — the PrismaClient is only constructed on first property access
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    return (getPrisma() as any)[prop];
+    const client = getPrisma() as any;
+    if (!client || Object.keys(client).length === 0) {
+      return undefined;
+    }
+    return client[prop];
   },
 });
 
@@ -88,10 +95,11 @@ export async function isPrismaAvailable(): Promise<boolean> {
   }
   try {
     const client = getPrisma();
-    if (!client || Object.keys(client).length === 0) {
+    if (!client || Object.keys(client).length === 0 || typeof (client as any).$queryRaw !== 'function') {
       _available = false;
     } else {
-      await (client as any).$queryRaw`SELECT 1`;
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('DB check timeout')), 1500));
+      await Promise.race([(client as any).$queryRaw`SELECT 1`, timeoutPromise]);
       _available = true;
     }
   } catch {

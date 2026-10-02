@@ -182,6 +182,20 @@ apiRouter.post('/orders', (req: Request, res: Response) => {
   }
 });
 
+// Lookup order list by customer email or session
+apiRouter.get('/orders', (req: Request, res: Response) => {
+  try {
+    const { email, status } = req.query;
+    const orders = OrderService.getAllOrders({
+      email: email as string,
+      status: status as any,
+    });
+    res.json({ success: true, count: orders.length, data: orders });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Lookup order by ID or order number (for order confirmation page)
 apiRouter.get('/orders/:id', (req: Request, res: Response) => {
   const order = OrderService.getOrderDetail(req.params.id);
@@ -278,6 +292,15 @@ apiRouter.post('/events', (req: Request, res: Response) => {
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
+  }
+});
+
+apiRouter.get('/analytics/overview', (_req: Request, res: Response) => {
+  try {
+    const summary = EventService.getAnalyticsSummary();
+    res.json({ success: true, data: summary });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

@@ -45,6 +45,14 @@ app.get(['/api/health', '/health'], (_req: Request, res: Response) => {
 // Mount domain routes — Vercel rewrites /api/(.*) → /api/index.ts so Express always sees /api/...
 app.use('/api', apiRouter);
 
+// Fallback 404 JSON handler for any unhandled /api/* route
+app.all('/api/*', (_req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: 'API endpoint not found',
+  });
+});
+
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[UNHANDLED_ERROR]', err);
