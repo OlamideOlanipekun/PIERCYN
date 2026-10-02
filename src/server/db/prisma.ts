@@ -1,13 +1,10 @@
-import 'dotenv/config';
-import { createRequire } from 'module';
 import type { PrismaClient } from '@prisma/client';
-
-const require = createRequire(import.meta.url);
 
 // Singleton instance
 let _prisma: any = null;
 let _available: boolean | null = null;
 let _initAttempted = false;
+let _initPromise: Promise<any> | null = null;
 
 // Create a safe dummy target that never crashes when properties/methods are chained
 function createSafeDummy(): any {
@@ -22,7 +19,7 @@ function createSafeDummy(): any {
   });
 }
 
-function initPrismaClientSync(): any {
+async function initPrismaClient(): Promise<any> {
   if (_initAttempted) return _prisma;
   _initAttempted = true;
 
@@ -32,10 +29,14 @@ function initPrismaClientSync(): any {
   }
 
   try {
-    // Dynamic requires to prevent import-time crashes in serverless if env is missing
-    const { PrismaClient } = require('@prisma/client');
-    const { PrismaPg } = require('@prisma/adapter-pg');
-    const { Pool } = require('pg');
+    // Dynamic imports work in both ESM (Vite) and CJS (Vercel serverless)
+    const prismaClientModule = await import('@prisma/client');
+    const adapterModule = await import('@prisma/adapter-pg');
+    const pgModule = await import('pg');
+
+    const PrismaClientCtor = prismaClientModule.PrismaClient;
+    const PrismaPgCtor = adapterModule.PrismaPg;
+    const PoolCtor = pgModule.default?.Pool || pgModule.Pool;
 
     let cleanUrl = connectionString;
     try {
@@ -46,7 +47,7 @@ function initPrismaClientSync(): any {
       // use as-is
     }
 
-    const pool = new Pool({
+    const pool = new PoolCtor({
       connectionString: cleanUrl,
       connectionTimeoutMillis: 2000,
       ssl: { rejectUnauthorized: false },
@@ -55,8 +56,8 @@ function initPrismaClientSync(): any {
       console.warn('[PRISMA_POOL_WARN]', err?.message || err);
     });
 
-    const adapter = new PrismaPg(pool);
-    _prisma = new PrismaClient({
+    const adapter = new PrismaPgCtor(pool);
+    _prisma = new PrismaClientCtor({
       adapter,
       log: ['error'],
     });
@@ -74,11 +75,16 @@ const globalForPrisma = globalThis as unknown as {
   isPrismaAvailable: boolean | null;
 };
 
-function getPrisma(): any {
+async function getPrisma(): Promise<any> {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
   if (_prisma) return _prisma;
 
-  const client = initPrismaClientSync();
+  // Deduplicate concurrent init calls
+  if (!_initPromise) {
+    _initPromise = initPrismaClient();
+  }
+
+  const client = await _initPromise;
   if (!client) {
     return null;
   }
@@ -90,11 +96,32 @@ function getPrisma(): any {
   return client;
 }
 
+// Synchronous getter for proxy — returns cached client or null
+function getPrismaSync(): any {
+  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+  if (_prisma) return _prisma;
+
+  // Kick off async init in background if not started
+  if (!_initPromise) {
+    _initPromise = initPrismaClient().then((client) => {
+      if (client) {
+        _prisma = client;
+        if (process.env.NODE_ENV !== 'production') {
+          globalForPrisma.prisma = client;
+        }
+      }
+      return client;
+    });
+  }
+
+  return null;
+}
+
 // Deep proxy that safely intercepts any chain: prisma.order.findUnique(...)
 // If Prisma is unavailable, it returns a safe promise that resolves to null
 export const prisma: PrismaClient = new Proxy({} as any, {
   get(_target, prop) {
-    const client = getPrisma();
+    const client = getPrismaSync();
     if (client && client[prop] !== undefined) {
       return client[prop];
     }
@@ -115,7 +142,7 @@ export async function isPrismaAvailable(): Promise<boolean> {
     return _available;
   }
   try {
-    const client = getPrisma();
+    const client = await getPrisma();
     if (!client || typeof client.$queryRaw !== 'function') {
       _available = false;
     } else {
