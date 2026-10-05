@@ -7,7 +7,13 @@ function expressApiPlugin(): Plugin {
     name: 'express-api-plugin',
     async configureServer(server) {
       const { app } = await import('./src/server/app');
-      server.middlewares.use(app);
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || '';
+        if (url.startsWith('/api') || url.startsWith('/health')) {
+          return app(req, res, next);
+        }
+        next();
+      });
     },
   };
 }

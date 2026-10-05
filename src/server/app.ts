@@ -42,16 +42,18 @@ app.get(['/api/health', '/health'], (_req: Request, res: Response) => {
   });
 });
 
-// Mount domain routes — supports both /api/* and root mount for flexible Vercel rewrites
+// Mount domain routes
 app.use('/api', apiRouter);
-app.use('/', apiRouter);
 
 // Fallback 404 JSON handler for unhandled API routes
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    error: 'API endpoint not found',
-  });
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.originalUrl?.startsWith('/api') || req.url?.startsWith('/api')) {
+    return res.status(404).json({
+      success: false,
+      error: 'API endpoint not found',
+    });
+  }
+  next();
 });
 
 // Global Error Handler

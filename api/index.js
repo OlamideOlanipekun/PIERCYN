@@ -1,3 +1,4 @@
+import { createRequire } from 'module'; const require = createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -24584,10 +24585,11 @@ function getPrismaClient() {
     cleanUrl = urlObj.toString();
   } catch {
   }
+  const isRemote = cleanUrl.includes("supabase.com") || cleanUrl.includes("supabase.co") || cleanUrl.includes("pooler.supabase") || cleanUrl.includes("sslmode=require") || process.env.NODE_ENV === "production";
   const pool = new Pool({
     connectionString: cleanUrl,
-    connectionTimeoutMillis: 5e3,
-    ssl: process.env.NODE_ENV === "production" || cleanUrl.includes("supabase.co") ? { rejectUnauthorized: false } : void 0
+    connectionTimeoutMillis: 1e4,
+    ssl: isRemote ? { rejectUnauthorized: false } : void 0
   });
   pool.on("error", (err) => {
     console.warn("[DB_POOL_WARN]", err?.message || err);

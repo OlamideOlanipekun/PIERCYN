@@ -34,12 +34,17 @@ export function getPrismaClient(): PrismaClient {
     // fallback
   }
 
+  const isRemote =
+    cleanUrl.includes('supabase.com') ||
+    cleanUrl.includes('supabase.co') ||
+    cleanUrl.includes('pooler.supabase') ||
+    cleanUrl.includes('sslmode=require') ||
+    process.env.NODE_ENV === 'production';
+
   const pool = new Pool({
     connectionString: cleanUrl,
-    connectionTimeoutMillis: 5000,
-    ssl: process.env.NODE_ENV === 'production' || cleanUrl.includes('supabase.co')
-      ? { rejectUnauthorized: false }
-      : undefined,
+    connectionTimeoutMillis: 10000,
+    ssl: isRemote ? { rejectUnauthorized: false } : undefined,
   });
 
   pool.on('error', (err: any) => {
