@@ -25,8 +25,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // ─── Prisma setup (uses direct connection for seeding) ───────
+const rawConnectionString =
+  process.env.DATABASE_URL_NON_POOLING ||
+  process.env.DATABASE_URL ||
+  'postgresql://postgres:postgres@localhost:5432/piercyn';
+
+let cleanConnectionString = rawConnectionString;
+try {
+  const urlObj = new URL(rawConnectionString);
+  urlObj.searchParams.delete('sslmode');
+  cleanConnectionString = urlObj.toString();
+} catch {
+  // fallback to raw string
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL,
+  connectionString: cleanConnectionString,
   ssl: { rejectUnauthorized: false },
 });
 const adapter = new PrismaPg(pool);
@@ -200,16 +214,21 @@ async function main() {
 
     for (const col of colors) {
       for (const sz of sizes) {
-        // SKU format: PCY-{PRODUCTID}-{COL}-{SIZE}
-        const sku = `PCY-${slugify(p.id).toUpperCase().slice(0, 8)}-${slugify(col.name)
+        // SKU format: PCY-{PRODUCT_ID}-{COL}-{SIZE}
+        const sku = `PCY-${slugify(p.id).toUpperCase()}-${slugify(col.name)
           .toUpperCase()
-          .slice(0, 3)}-${sz}`;
+          .replace(/[^A-Z0-9]/g, '')}-${slugify(sz).toUpperCase()}`;
 
         const variant = await prisma.productVariant.upsert({
-          where: { sku },
+          where: {
+            productId_size_colour: {
+              productId: product.id,
+              size: sz,
+              colour: col.name,
+            },
+          },
           update: {
-            size: sz,
-            colour: col.name,
+            sku,
             colourHex: col.hex,
             image: col.image || p.images?.[0],
             isActive: !p.isSoldOut,

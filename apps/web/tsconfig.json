@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@piercyn/db": ["../../packages/db/src"],
+      "@piercyn/db/*": ["../../packages/db/src/*"],
+      "@piercyn/types": ["../../packages/types/src"],
+      "@piercyn/types/*": ["../../packages/types/src/*"],
+      "@piercyn/config": ["../../packages/config/src"],
+      "@piercyn/config/*": ["../../packages/config/src/*"],
+      "@piercyn/utils": ["../../packages/utils/src"],
+      "@piercyn/utils/*": ["../../packages/utils/src/*"]
+    }
+  },
+  "include": ["src"]
+}

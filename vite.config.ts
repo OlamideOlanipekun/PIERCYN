@@ -18,6 +18,10 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        '@piercyn/db': path.resolve(__dirname, './packages/db/src'),
+        '@piercyn/types': path.resolve(__dirname, './packages/types/src'),
+        '@piercyn/config': path.resolve(__dirname, './packages/config/src'),
+        '@piercyn/utils': path.resolve(__dirname, './packages/utils/src'),
       },
     },
     server: {

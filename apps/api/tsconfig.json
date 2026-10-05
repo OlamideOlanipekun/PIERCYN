@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@piercyn/db": ["../../packages/db/src"],
+      "@piercyn/db/*": ["../../packages/db/src/*"],
+      "@piercyn/types": ["../../packages/types/src"],
+      "@piercyn/types/*": ["../../packages/types/src/*"],
+      "@piercyn/config": ["../../packages/config/src"],
+      "@piercyn/config/*": ["../../packages/config/src/*"],
+      "@piercyn/utils": ["../../packages/utils/src"],
+      "@piercyn/utils/*": ["../../packages/utils/src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

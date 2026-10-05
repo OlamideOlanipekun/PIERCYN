@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build:client": "vite build",
@@ -29,6 +33,7 @@
     "@types/pg": "^8.23.1",
     "@vitejs/plugin-react": "^5.0.4",
     "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",

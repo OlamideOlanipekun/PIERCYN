@@ -3,7 +3,7 @@ import { api } from './apiClient';
 
 class EventTrackerService {
   private events: AnalyticsEvent[] = [];
-  private isDevelopment = process.env.NODE_ENV !== 'production';
+  private isDevelopment = (import.meta as any).env?.DEV ?? (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production');
 
   public track(eventName: AnalyticsEvent['eventName'], data: Record<string, any> = {}) {
     const event: AnalyticsEvent = {

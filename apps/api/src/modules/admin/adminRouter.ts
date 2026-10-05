@@ -1,0 +1,635 @@
+import { Router, Request, Response } from 'express';
+import { AdminAuthService } from './adminAuthService';
+import { requireAdmin, AuthenticatedAdminRequest } from './adminMiddleware';
+import { OrderService } from '../orders/orderService';
+import { ProductService } from '../products/productService';
+import { InventoryService } from '../inventory/inventoryService';
+import { CustomerService } from '../customers/customerService';
+import { ShippingService } from '../shipping/shippingService';
+import { AnalyticsService } from '../analytics/analyticsService';
+import { AuditService } from './auditService';
+import { COMMERCE_CONFIG } from '../../config/constants';
+import { prisma } from '../../db/prisma';
+import { z } from 'zod';
+
+export const adminRouter = Router();
+
+export const storeSettingsState = {
+  storeName: 'PIERCYN',
+  tagline: 'Look Good. Spend Less.',
+  atelierAddress: '14 Admiralty Way, Lekki Phase 1, Lagos, Nigeria',
+  supportEmail: 'director@piercyn.com',
+  supportPhone: '+2348000000000',
+  currency: 'NGN (₦)',
+  freeShippingThresholdNGN: COMMERCE_CONFIG.SHIPPING.FREE_THRESHOLD_NGN,
+  lagosDeliveryFeeNGN: COMMERCE_CONFIG.SHIPPING.LAGOS_FEE_NGN,
+  nationwideDeliveryFeeNGN: COMMERCE_CONFIG.SHIPPING.NATIONWIDE_FEE_NGN,
+  lowStockThreshold: COMMERCE_CONFIG.INVENTORY.LOW_STOCK_THRESHOLD,
+  reservationTtlMinutes: COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
+  paymentGatewayConfigured: Boolean(COMMERCE_CONFIG.PAYMENT.PAYSTACK.PUBLIC_KEY || process.env.PAYSTACK_SECRET_KEY),
+  paymentEnvironment: process.env.NODE_ENV === 'production' ? 'LIVE' : 'TEST',
+  shippingProviders: ['KWIK Delivery (Lagos Express)', 'GIG Logistics (Nationwide)', 'DHL Express (Global)'],
+};
+
+const AdminLoginSchema = z.object({
+  email: z.string().trim().email('Valid admin email is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const UpdateOrderStatusSchema = z.object({
+  status: z.enum([
+    'PENDING_PAYMENT',
+    'PAID',
+    'PROCESSING',
+    'PACKED',
+    'SHIPPED',
+    'DELIVERED',
+    'COMPLETED',
+    'CANCELLED',
+    'FAILED',
+    'RETURNED',
+    'REFUNDED',
+    'EXCHANGED',
+  ]),
+  note: z.string().max(500).optional(),
+});
+
+const CreateShipmentSchema = z.object({
+  courier: z.string().optional(),
+  trackingNumber: z.string().optional(),
+  deliveryFeeNGN: z.number().int().nonnegative().optional(),
+  deliveryAddress: z.string().min(5),
+  recipientName: z.string().min(2),
+  recipientPhone: z.string().min(7),
+  itemDescription: z.string().optional(),
+});
+
+const CreateProductSchema = z.object({
+  name: z.string().min(2),
+  slug: z.string().optional(),
+  description: z.string().min(5),
+  shortDescription: z.string().optional(),
+  priceNGN: z.number().int().positive(),
+  costPriceNGN: z.number().int().nonnegative().optional(),
+  priceUSD: z.number().int().optional(),
+  priceGBP: z.number().int().optional(),
+  priceEUR: z.number().int().optional(),
+  categoryId: z.string().min(1),
+  collection: z.string().optional(),
+  status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+  images: z.array(z.string()).min(1),
+  videoUrl: z.string().optional(),
+  gsm: z.string().optional(),
+  fit: z.string().optional(),
+  fabric: z.string().optional(),
+  origin: z.string().optional(),
+  careInstructions: z.string().optional(),
+  productStory: z.string().optional(),
+  tag: z.string().optional(),
+  isNewDrop: z.boolean().optional(),
+  isBestSeller: z.boolean().optional(),
+  isLimited: z.boolean().optional(),
+  variants: z
+    .array(
+      z.object({
+        sku: z.string().optional(),
+        size: z.string(),
+        colour: z.string(),
+        colourHex: z.string().optional(),
+        priceNGN: z.number().int().optional(),
+        costPriceNGN: z.number().int().optional(),
+        initialStock: z.number().int().nonnegative().optional(),
+        image: z.string().optional(),
+      })
+    )
+    .optional(),
+});
+
+const InventoryAdjustmentSchema = z.object({
+  variantId: z.string().min(1),
+  quantity: z.number().int(),
+  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN']),
+  reference: z.string().min(1),
+  reason: z.string().optional(),
+});
+
+// 1. AUTH
+adminRouter.post('/auth/login', async (req: Request, res: Response) => {
+  try {
+    const validated = AdminLoginSchema.parse(req.body);
+    const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'global';
+    const result = await AdminAuthService.login(validated.email, validated.password, ip);
+
+    await AuditService.log({
+      adminId: result.admin.id,
+      adminEmail: result.admin.email,
+      action: 'LOGIN',
+      resource: 'SETTINGS',
+      resourceId: result.admin.id,
+      note: `Admin logged in successfully from IP: ${ip}`,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(401).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.get('/auth/me', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  res.json({ success: true, data: req.admin });
+});
+
+adminRouter.post('/auth/logout', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  const token =
+    (req.headers['authorization']?.replace('Bearer ', '') ||
+      req.headers['x-admin-token'] ||
+      req.headers['x-auth-token']) as string;
+  AdminAuthService.logout(token);
+
+  if (req.admin) {
+    await AuditService.log({
+      adminId: req.admin.id,
+      adminEmail: req.admin.email,
+      action: 'LOGOUT',
+      resource: 'SETTINGS',
+      resourceId: req.admin.id,
+      note: 'Admin logged out',
+    });
+  }
+
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// 2. ORDERS
+adminRouter.get('/orders', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { status, email, search, startDate, endDate, limit, offset } = req.query;
+    const orders = await OrderService.getAllOrders({
+      status: status as any,
+      email: email as string,
+      search: search as string,
+      startDate: startDate as string,
+      endDate: endDate as string,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      offset: offset ? parseInt(offset as string, 10) : undefined,
+    });
+    res.json({ success: true, count: orders.length, data: orders });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.get('/orders/:id', requireAdmin, async (req: Request, res: Response) => {
+  const order = await OrderService.getOrderDetail(req.params.id);
+  if (!order) {
+    return res.status(404).json({ success: false, error: 'Order not found' });
+  }
+  res.json({ success: true, data: order });
+});
+
+adminRouter.patch('/orders/:id/status', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = UpdateOrderStatusSchema.parse(req.body);
+    const existing = await OrderService.getOrder(req.params.id);
+    const previousStatus = existing ? existing.orderStatus : 'UNKNOWN';
+
+    const updated = await OrderService.updateStatus(
+      req.params.id,
+      validated.status,
+      validated.note,
+      req.admin?.name || 'ADMIN'
+    );
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'ORDER_STATUS_CHANGED',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      previousValue: previousStatus,
+      newValue: validated.status,
+      note: validated.note || `Transitioned status from ${previousStatus} to ${validated.status}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.post('/orders/:id/shipment', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = CreateShipmentSchema.parse(req.body);
+    const shipment = await ShippingService.createShipment({
+      orderId: req.params.id,
+      ...validated,
+    });
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'SHIPMENT_CREATED',
+      resource: 'SHIPMENT',
+      resourceId: shipment.id,
+      newValue: `${shipment.provider}: ${shipment.trackingNumber}`,
+      note: `Shipment booked for order ${req.params.id}`,
+    });
+
+    res.status(201).json({ success: true, data: shipment });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// 3. PRODUCTS
+adminRouter.get('/products', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { category, status, search } = req.query;
+    const products = await ProductService.getAllProducts({
+      category: category as string,
+      status: status as string,
+      search: search as string,
+      includeInactive: true,
+    });
+    res.json({ success: true, count: products.length, data: products });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/products', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = CreateProductSchema.parse(req.body);
+    const created = await ProductService.createProduct(validated as any);
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PRODUCT_CREATED',
+      resource: 'PRODUCT',
+      resourceId: created.id,
+      newValue: `${created.name} (₦${created.priceNGN.toLocaleString()})`,
+      note: `Added new product with ${created.variants.length} variants`,
+    });
+
+    res.status(201).json({ success: true, data: created });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.patch('/products/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
+    const prevDetails = previous ? `${previous.name} | ₦${previous.priceNGN} | ${previous.status}` : '';
+
+    const updated = await ProductService.updateProduct(req.params.id, req.body);
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PRODUCT_UPDATED',
+      resource: 'PRODUCT',
+      resourceId: updated.id,
+      previousValue: prevDetails,
+      newValue: `${updated.name} | ₦${updated.priceNGN} | ${updated.status}`,
+      note: 'Product updated',
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.delete('/products/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
+  const success = await ProductService.deleteProduct(req.params.id);
+  if (!success) {
+    return res.status(404).json({ success: false, error: 'Product not found' });
+  }
+
+  await AuditService.log({
+    adminId: req.admin?.id || 'admin',
+    adminEmail: req.admin?.email || 'admin@piercyn.com',
+    action: 'PRODUCT_ARCHIVED',
+    resource: 'PRODUCT',
+    resourceId: req.params.id,
+    previousValue: previous?.name,
+    newValue: 'ARCHIVED',
+    note: 'Product moved to archive',
+  });
+
+  res.json({ success: true, message: 'Product archived successfully' });
+});
+
+// 4. INVENTORY
+adminRouter.get('/inventory', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { lowStockOnly, outOfStockOnly, search } = req.query;
+    const inventory = await InventoryService.getAllInventory({
+      lowStockOnly: lowStockOnly === 'true',
+      outOfStockOnly: outOfStockOnly === 'true',
+      search: search as string,
+    });
+    res.json({ success: true, count: inventory.length, data: inventory });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/inventory/adjust', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = InventoryAdjustmentSchema.parse(req.body);
+    const inv = await InventoryService.getVariantStock(validated.variantId);
+    const prevAvailable = inv ? inv.stockQuantity - inv.reservedQuantity : 0;
+
+    const success = await InventoryService.adjustStock(
+      validated.variantId,
+      validated.quantity,
+      validated.type,
+      validated.reference,
+      validated.reason,
+      req.admin?.id
+    );
+
+    const newInv = await InventoryService.getVariantStock(validated.variantId);
+    const newAvailable = newInv ? newInv.stockQuantity - newInv.reservedQuantity : prevAvailable;
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: validated.type === 'PURCHASE' ? 'STOCK_RESTOCKED' : 'STOCK_ADJUSTED',
+      resource: 'INVENTORY',
+      resourceId: validated.variantId,
+      previousValue: `${prevAvailable} available`,
+      newValue: `${newAvailable} available (${validated.quantity > 0 ? '+' : ''}${validated.quantity} ${validated.type})`,
+      note: validated.reason || `Reference: ${validated.reference}`,
+    });
+
+    res.json({ success, message: 'Inventory adjusted successfully' });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.get('/inventory/history', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { variantId, limit } = req.query;
+    const ledger = await InventoryService.getLedger(
+      variantId as string,
+      limit ? parseInt(limit as string, 10) : 100
+    );
+    res.json({ success: true, count: ledger.length, data: ledger });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. CUSTOMERS
+adminRouter.get('/customers', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { search } = req.query;
+    const customers = await CustomerService.getAllCustomers({ search: search as string });
+    res.json({ success: true, count: customers.length, data: customers });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.get('/customers/:id', requireAdmin, async (req: Request, res: Response) => {
+  const customer = await CustomerService.getCustomerById(req.params.id);
+  if (!customer) {
+    return res.status(404).json({ success: false, error: 'Customer not found' });
+  }
+
+  const paidOrders = customer.orders.filter((o) => o.paymentStatus === 'PAID');
+  const totalSpent = paidOrders.reduce((sum, o) => sum + o.totalNGN, 0);
+
+  res.json({
+    success: true,
+    data: {
+      ...customer,
+      fullName: `${customer.firstName} ${customer.lastName}`.trim(),
+      totalOrders: customer.orders.length,
+      totalSpentNGN: totalSpent,
+    },
+  });
+});
+
+// 6. ANALYTICS
+adminRouter.get('/analytics', requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const summary = await AnalyticsService.getAnalyticsSummary();
+    res.json({ success: true, data: summary });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. ALERTS
+adminRouter.get('/alerts', requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const threshold = storeSettingsState.lowStockThreshold;
+    const inventories = await prisma.inventory.findMany({
+      include: {
+        variant: {
+          include: { product: true },
+        },
+      },
+    });
+
+    const lowStockVariants: any[] = [];
+    const outOfStockVariants: any[] = [];
+
+    for (const inv of inventories) {
+      if (!inv.variant || !inv.variant.product) continue;
+      const available = Math.max(0, inv.stockQuantity - inv.reservedQuantity);
+
+      if (available === 0) {
+        outOfStockVariants.push({
+          variantId: inv.variantId,
+          sku: inv.variant.sku,
+          productName: inv.variant.product.name,
+          colour: inv.variant.colour,
+          size: inv.variant.size,
+          availableStock: 0,
+        });
+      } else if (available <= threshold) {
+        lowStockVariants.push({
+          variantId: inv.variantId,
+          sku: inv.variant.sku,
+          productName: inv.variant.product.name,
+          colour: inv.variant.colour,
+          size: inv.variant.size,
+          availableStock: available,
+        });
+      }
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { status: { in: ['PAID', 'PROCESSING'] } },
+          { paymentStatus: 'PENDING' },
+        ],
+      },
+    });
+
+    const ordersNeedingAttention = orders.filter(
+      (o) => o.paymentStatus === 'PAID' && (o.status === 'PAID' || o.status === 'PROCESSING')
+    );
+    const pendingPaymentOrders = orders.filter((o) => o.paymentStatus === 'PENDING');
+
+    const totalCount =
+      lowStockVariants.length +
+      outOfStockVariants.length +
+      ordersNeedingAttention.length;
+
+    res.json({
+      success: true,
+      data: {
+        totalAlertsCount: totalCount,
+        lowStockVariants,
+        outOfStockVariants,
+        ordersNeedingAttention,
+        pendingPaymentOrders,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. UNIVERSAL SEARCH
+adminRouter.get('/search', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const q = ((req.query.q as string) || '').trim().toLowerCase();
+    if (!q) {
+      return res.json({ success: true, data: { orders: [], customers: [], products: [] } });
+    }
+
+    const [orders, customers, products] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          OR: [
+            { orderNumber: { contains: q, mode: 'insensitive' } },
+            { customerFirstName: { contains: q, mode: 'insensitive' } },
+            { customerLastName: { contains: q, mode: 'insensitive' } },
+            { customerEmail: { contains: q, mode: 'insensitive' } },
+            { customerPhone: { contains: q } },
+          ],
+        },
+        include: { items: true },
+        take: 10,
+      }),
+      prisma.customer.findMany({
+        where: {
+          OR: [
+            { firstName: { contains: q, mode: 'insensitive' } },
+            { lastName: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+            { phone: { contains: q } },
+          ],
+        },
+        take: 10,
+      }),
+      prisma.product.findMany({
+        where: {
+          OR: [
+            { name: { contains: q, mode: 'insensitive' } },
+            { description: { contains: q, mode: 'insensitive' } },
+          ],
+        },
+        include: { variants: { include: { inventory: true } } },
+        take: 10,
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        orders: orders.map((o) => ({
+          ...o,
+          orderStatus: o.status,
+          customerName: `${o.customerFirstName} ${o.customerLastName}`.trim(),
+        })),
+        customers: customers.map((c) => ({
+          ...c,
+          fullName: `${c.firstName} ${c.lastName}`.trim(),
+        })),
+        products: products.map((p) => ProductService.mapPrismaProduct(p)),
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 9. AUDIT LOGS
+adminRouter.get('/audit-logs', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    const resource = req.query.resource as string;
+    const logs = await AuditService.getLogs(limit, resource);
+    res.json({ success: true, count: logs.length, data: logs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 10. SETTINGS
+adminRouter.get('/settings', requireAdmin, (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: storeSettingsState,
+  });
+});
+
+adminRouter.patch('/settings', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const {
+      storeName,
+      tagline,
+      atelierAddress,
+      supportEmail,
+      supportPhone,
+      freeShippingThresholdNGN,
+      lagosDeliveryFeeNGN,
+      nationwideDeliveryFeeNGN,
+      lowStockThreshold,
+    } = req.body;
+
+    if (storeName !== undefined) storeSettingsState.storeName = storeName;
+    if (tagline !== undefined) storeSettingsState.tagline = tagline;
+    if (atelierAddress !== undefined) storeSettingsState.atelierAddress = atelierAddress;
+    if (supportEmail !== undefined) storeSettingsState.supportEmail = supportEmail;
+    if (supportPhone !== undefined) storeSettingsState.supportPhone = supportPhone;
+    if (freeShippingThresholdNGN !== undefined)
+      storeSettingsState.freeShippingThresholdNGN = Number(freeShippingThresholdNGN);
+    if (lagosDeliveryFeeNGN !== undefined)
+      storeSettingsState.lagosDeliveryFeeNGN = Number(lagosDeliveryFeeNGN);
+    if (nationwideDeliveryFeeNGN !== undefined)
+      storeSettingsState.nationwideDeliveryFeeNGN = Number(nationwideDeliveryFeeNGN);
+    if (lowStockThreshold !== undefined)
+      storeSettingsState.lowStockThreshold = Number(lowStockThreshold);
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'SETTINGS_UPDATED',
+      resource: 'SETTINGS',
+      resourceId: 'store-settings',
+      note: 'Store operations configuration modified',
+    });
+
+    res.json({ success: true, data: storeSettingsState });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});

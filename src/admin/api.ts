@@ -37,6 +37,9 @@ export const AdminStorage = {
   },
 };
 
+const RAW_API_URL = (import.meta.env?.VITE_API_URL || '').replace(/\/+$/, '');
+const ADMIN_API_BASE = RAW_API_URL ? `${RAW_API_URL}/api/admin` : '/api/admin';
+
 class AdminApiClient {
   private getHeaders(): HeadersInit {
     const headers: Record<string, string> = {
@@ -51,7 +54,7 @@ class AdminApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `/api/admin${endpoint}`;
+    const url = `${ADMIN_API_BASE}${endpoint}`;
     const headers = { ...this.getHeaders(), ...(options.headers || {}) };
 
     const res = await fetch(url, {

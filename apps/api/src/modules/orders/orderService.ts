@@ -1,0 +1,266 @@
+import { prisma } from '../../db/prisma';
+import { InventoryService } from '../inventory/inventoryService';
+
+export const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
+  PENDING_PAYMENT: ['PAID', 'CANCELLED', 'FAILED'],
+  PAID: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
+  PROCESSING: ['PACKED', 'CANCELLED', 'REFUNDED'],
+  PACKED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED', 'RETURNED', 'FAILED'],
+  DELIVERED: ['COMPLETED', 'RETURNED', 'EXCHANGED'],
+  COMPLETED: ['RETURNED', 'REFUNDED'],
+  CANCELLED: [],
+  FAILED: ['PENDING_PAYMENT'],
+  RETURNED: ['REFUNDED', 'EXCHANGED'],
+  REFUNDED: [],
+  EXCHANGED: ['PROCESSING'],
+};
+
+export class OrderService {
+  public static async getOrder(identifier: string) {
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: identifier }, { orderNumber: identifier }],
+      },
+      include: {
+        items: true,
+        statusHistory: {
+          orderBy: { createdAt: 'asc' },
+        },
+        payments: true,
+        shipment: true,
+      },
+    });
+
+    if (!order) return null;
+
+    return {
+      ...order,
+      orderStatus: order.status,
+      customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+      shippingAddressLine: order.deliveryAddress,
+      shippingCity: order.deliveryCity,
+      shippingState: order.deliveryState,
+      timeline: order.statusHistory.map((sh) => ({
+        status: sh.toStatus,
+        timestamp: sh.createdAt.toISOString(),
+        note: sh.note,
+      })),
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+    };
+  }
+
+  public static async getOrderDetail(identifier: string) {
+    return this.getOrder(identifier);
+  }
+
+  public static async getAllOrders(filter?: {
+    status?: string;
+    email?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const where: any = {};
+
+    if (filter?.status && filter.status !== 'ALL') {
+      where.status = filter.status;
+    }
+
+    if (filter?.email) {
+      where.customerEmail = { equals: filter.email, mode: 'insensitive' };
+    }
+
+    if (filter?.search) {
+      const s = filter.search.toLowerCase();
+      where.OR = [
+        { orderNumber: { contains: s, mode: 'insensitive' } },
+        { customerFirstName: { contains: s, mode: 'insensitive' } },
+        { customerLastName: { contains: s, mode: 'insensitive' } },
+        { customerEmail: { contains: s, mode: 'insensitive' } },
+        { customerPhone: { contains: s } },
+      ];
+    }
+
+    if (filter?.startDate || filter?.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) where.createdAt.gte = new Date(filter.startDate);
+      if (filter.endDate) where.createdAt.lte = new Date(filter.endDate);
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: true,
+        statusHistory: { orderBy: { createdAt: 'asc' } },
+        shipment: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: filter?.limit,
+      skip: filter?.offset,
+    });
+
+    return orders.map((o) => ({
+      ...o,
+      orderStatus: o.status,
+      customerName: `${o.customerFirstName} ${o.customerLastName}`.trim(),
+      shippingAddressLine: o.deliveryAddress,
+      shippingCity: o.deliveryCity,
+      shippingState: o.deliveryState,
+      timeline: o.statusHistory.map((sh) => ({
+        status: sh.toStatus,
+        timestamp: sh.createdAt.toISOString(),
+        note: sh.note,
+      })),
+      createdAt: o.createdAt.toISOString(),
+      updatedAt: o.updatedAt.toISOString(),
+    }));
+  }
+
+  public static async updateStatus(
+    orderIdentifier: string,
+    newStatus: string,
+    note?: string,
+    updatedBy: string = 'ADMIN'
+  ) {
+    const existing = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: orderIdentifier }, { orderNumber: orderIdentifier }],
+      },
+    });
+
+    if (!existing) {
+      throw new Error(`Order ${orderIdentifier} not found`);
+    }
+
+    const currentStatus = existing.status;
+    const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
+
+    if (!allowed.includes(newStatus)) {
+      throw new Error(
+        `Invalid order status transition from ${currentStatus} to ${newStatus}. Allowed: ${allowed.join(', ') || 'None'}`
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const isPaid = newStatus === 'PAID';
+      const updated = await tx.order.update({
+        where: { id: existing.id },
+        data: {
+          status: newStatus as any,
+          ...(isPaid ? { paymentStatus: 'PAID', paidAt: new Date() } : {}),
+        },
+        include: {
+          items: true,
+          statusHistory: true,
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: existing.id,
+          fromStatus: currentStatus as any,
+          toStatus: newStatus as any,
+          changedBy: updatedBy,
+          note: note || `Status transitioned to ${newStatus} by ${updatedBy}`,
+        },
+      });
+
+      if (newStatus === 'CANCELLED') {
+        await InventoryService.releaseReservation(existing.orderNumber, tx);
+      }
+
+      return updated;
+    });
+  }
+
+  public static async markOrderPaid(
+    orderNumber: string,
+    providerReference: string = 'SYS-REF'
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        include: { items: true },
+      });
+
+      if (!order) {
+        throw new Error(`Order not found: ${orderNumber}`);
+      }
+
+      // Idempotency: if already paid, return early
+      if (order.paymentStatus === 'PAID') {
+        return order;
+      }
+
+      const now = new Date();
+
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: 'PAID',
+          status: 'PAID',
+          paidAt: now,
+        },
+        include: { items: true },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'PAID',
+          changedBy: 'SYSTEM',
+          note: `Payment confirmed via reference ${providerReference}`,
+        },
+      });
+
+      // Upsert Payment record
+      await tx.payment.upsert({
+        where: { providerReference },
+        update: {
+          status: 'SUCCESS',
+          paidAt: now,
+        },
+        create: {
+          orderId: order.id,
+          providerReference,
+          amountNGN: order.totalNGN,
+          currency: 'NGN',
+          status: 'SUCCESS',
+          paidAt: now,
+        },
+      });
+
+      // Finalize inventory for all items
+      for (const item of order.items) {
+        if (item.variantId) {
+          await InventoryService.finalizeSale(item.variantId, item.quantity, order.orderNumber, tx);
+        }
+      }
+
+      // Log purchase event
+      await tx.analyticsEvent.create({
+        data: {
+          orderId: order.id,
+          customerId: order.customerId,
+          eventType: 'PURCHASE_COMPLETED',
+          metadata: JSON.stringify({
+            orderNumber: order.orderNumber,
+            totalNGN: order.totalNGN,
+            providerReference,
+          }),
+        },
+      });
+
+      return updatedOrder;
+    });
+  }
+
+  public static async cancelOrder(orderNumber: string, reason: string = 'User cancellation') {
+    return this.updateStatus(orderNumber, 'CANCELLED', reason);
+  }
+}

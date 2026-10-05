@@ -336,8 +336,8 @@ model InventoryTransaction {
 
 model Customer {
   id          String    @id @default(cuid())
-  firstName   String
-  lastName    String
+  firstName   String    @default("")
+  lastName    String    @default("")
   email       String?   @unique  // Nullable: allow phone-only checkout
   phone       String?
   createdAt   DateTime  @default(now())
