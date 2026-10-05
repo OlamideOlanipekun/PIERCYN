@@ -20067,14 +20067,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto3 = __require("crypto");
+    var crypto5 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto3.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -22967,11 +22967,11 @@ var require_request = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports) {
-    var crypto3 = __require("crypto");
+    var crypto5 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto3.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -22980,7 +22980,7 @@ var require_cookie_signature = __commonJS({
       return sha1(mac3) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto3.createHash("sha1").update(str).digest("hex");
+      return crypto5.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -24232,7 +24232,7 @@ var require_main = __commonJS({
     var fs = __require("fs");
     var path = __require("path");
     var os = __require("os");
-    var crypto3 = __require("crypto");
+    var crypto5 = __require("crypto");
     var TIPS = [
       "\u25C8 encrypted .env [www.dotenvx.com]",
       "\u25C8 secrets for agents [www.dotenvx.com]",
@@ -24476,7 +24476,7 @@ var require_main = __commonJS({
       const authTag = ciphertext.subarray(-16);
       ciphertext = ciphertext.subarray(12, -16);
       try {
-        const aesgcm = crypto3.createDecipheriv("aes-256-gcm", key, nonce);
+        const aesgcm = crypto5.createDecipheriv("aes-256-gcm", key, nonce);
         aesgcm.setAuthTag(authTag);
         return `${aesgcm.update(ciphertext)}${aesgcm.final()}`;
       } catch (error62) {
@@ -26437,6 +26437,9 @@ var EventService = class {
   }
 };
 
+// apps/api/src/services/authService.ts
+import crypto3 from "crypto";
+
 // node_modules/bcryptjs/index.js
 import nodeCrypto from "crypto";
 var randomFallback = null;
@@ -28161,12 +28164,23 @@ var bcryptjs_default = {
 };
 
 // apps/api/src/services/authService.ts
+var HMAC_SECRET = process.env.CUSTOMER_JWT_SECRET || process.env.JWT_SECRET || "piercyn-customer-session-secret-2026";
+var revokedTokens = /* @__PURE__ */ new Set();
 var authSessions = /* @__PURE__ */ new Map();
-function generateToken() {
-  return `tok_${Date.now()}_${Math.random().toString(36).substring(2, 14)}`;
+function createSignedToken(userId, email3) {
+  const payload = {
+    userId,
+    email: email3,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1e3,
+    iat: Date.now(),
+    nonce: crypto3.randomBytes(8).toString("hex")
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto3.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+  return `tok_${payloadB64}.${signature}`;
 }
 function createSession(userId, email3) {
-  const token = generateToken();
+  const token = createSignedToken(userId, email3);
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3);
   authSessions.set(token, { userId, email: email3, expiresAt });
   return token;
@@ -28264,46 +28278,86 @@ var AuthService = class {
   }
   static async getUserByToken(token) {
     if (!token) return null;
-    const session = authSessions.get(token);
-    if (!session) return null;
-    if (session.expiresAt < /* @__PURE__ */ new Date()) {
-      authSessions.delete(token);
-      return null;
+    if (revokedTokens.has(token)) return null;
+    let targetUserId = null;
+    let targetEmail = null;
+    if (token.startsWith("tok_")) {
+      const raw = token.slice("tok_".length);
+      if (raw.includes(".")) {
+        try {
+          const [payloadB64, signature] = raw.split(".");
+          if (payloadB64 && signature) {
+            const expectedSig = crypto3.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+            const sigBuf = Buffer.from(signature);
+            const expBuf = Buffer.from(expectedSig);
+            if (sigBuf.length === expBuf.length && crypto3.timingSafeEqual(sigBuf, expBuf)) {
+              const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+              if (payload.exp && payload.exp > Date.now()) {
+                targetUserId = payload.userId;
+                targetEmail = payload.email;
+              }
+            }
+          }
+        } catch {
+        }
+      }
     }
-    const customer = await prisma.customer.findUnique({
-      where: { id: session.userId },
-      include: { addresses: true, orders: true }
-    });
-    if (customer) {
-      const defaultAddr = customer.addresses[0];
+    if (!targetUserId) {
+      const session = authSessions.get(token);
+      if (session && session.expiresAt >= /* @__PURE__ */ new Date()) {
+        targetUserId = session.userId;
+        targetEmail = session.email;
+      }
+    }
+    if (!targetUserId) return null;
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: targetUserId },
+        include: { addresses: true, orders: true }
+      });
+      if (customer) {
+        const defaultAddr = customer.addresses[0];
+        return {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email || targetEmail || "",
+          phone: customer.phone || void 0,
+          city: defaultAddr?.city,
+          address: defaultAddr?.addressLine,
+          role: "CUSTOMER",
+          ordersCount: customer.orders.length
+        };
+      }
+      const admin = await prisma.admin.findUnique({
+        where: { id: targetUserId }
+      });
+      if (admin) {
+        return {
+          id: admin.id,
+          firstName: admin.name.split(" ")[0] || "Admin",
+          lastName: admin.name.split(" ").slice(1).join(" ") || "",
+          email: admin.email,
+          role: "ADMIN",
+          ordersCount: 0
+        };
+      }
+    } catch {
+    }
+    if (targetEmail) {
       return {
-        id: customer.id,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        email: customer.email || session.email,
-        phone: customer.phone || void 0,
-        city: defaultAddr?.city,
-        address: defaultAddr?.addressLine,
+        id: targetUserId,
+        firstName: "Client",
+        lastName: "PIERCYN",
+        email: targetEmail,
         role: "CUSTOMER",
-        ordersCount: customer.orders.length
-      };
-    }
-    const admin = await prisma.admin.findUnique({
-      where: { id: session.userId }
-    });
-    if (admin) {
-      return {
-        id: admin.id,
-        firstName: admin.name.split(" ")[0] || "Admin",
-        lastName: admin.name.split(" ").slice(1).join(" ") || "",
-        email: admin.email,
-        role: "ADMIN",
         ordersCount: 0
       };
     }
     return null;
   }
   static logout(token) {
+    revokedTokens.add(token);
     return authSessions.delete(token);
   }
 };
@@ -28312,14 +28366,28 @@ var AuthService = class {
 var import_express = __toESM(require_express2(), 1);
 
 // apps/api/src/modules/admin/adminAuthService.ts
+import crypto4 from "crypto";
+var HMAC_SECRET2 = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "piercyn-atelier-secret-key-2026";
+var revokedTokens2 = /* @__PURE__ */ new Set();
 var adminSessions = /* @__PURE__ */ new Map();
 var loginAttempts = /* @__PURE__ */ new Map();
 var MAX_LOGIN_ATTEMPTS = 5;
 var LOCKOUT_DURATION_MS = 5 * 60 * 1e3;
 var SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1e3;
-function generateToken2() {
-  const entropy = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-  return `adm_tok_${Date.now()}_${entropy}`;
+function generateSignedToken(admin) {
+  const payload = {
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: admin.role,
+    createdAt: typeof admin.createdAt === "string" ? admin.createdAt : admin.createdAt.toISOString(),
+    exp: Date.now() + SESSION_DURATION_MS,
+    iat: Date.now(),
+    nonce: crypto4.randomBytes(8).toString("hex")
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto4.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
+  return `adm_tok_${payloadB64}.${signature}`;
 }
 var AdminAuthService = class {
   static async login(email3, pass, ipAddress) {
@@ -28370,13 +28438,38 @@ var AdminAuthService = class {
       throw new Error("Invalid administrative credentials or insufficient permissions");
     }
     loginAttempts.delete(rateLimitKey);
-    const token = generateToken2();
+    const token = generateSignedToken(adminRecord);
     const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
     adminSessions.set(token, { admin: adminRecord, expiresAt });
     return { admin: adminRecord, token };
   }
   static verifyToken(token) {
     if (!token || !token.startsWith("adm_tok_")) return null;
+    if (revokedTokens2.has(token)) return null;
+    const raw = token.slice("adm_tok_".length);
+    if (raw.includes(".")) {
+      try {
+        const [payloadB64, signature] = raw.split(".");
+        if (payloadB64 && signature) {
+          const expectedSig = crypto4.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
+          const sigBuffer = Buffer.from(signature);
+          const expBuffer = Buffer.from(expectedSig);
+          if (sigBuffer.length === expBuffer.length && crypto4.timingSafeEqual(sigBuffer, expBuffer)) {
+            const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+            if (payload.exp && payload.exp > Date.now()) {
+              return {
+                id: payload.id,
+                email: payload.email,
+                name: payload.name,
+                role: payload.role || "ADMIN",
+                createdAt: payload.createdAt || (/* @__PURE__ */ new Date()).toISOString()
+              };
+            }
+          }
+        }
+      } catch {
+      }
+    }
     const session = adminSessions.get(token);
     if (!session) return null;
     if (session.expiresAt < /* @__PURE__ */ new Date()) {
@@ -28389,7 +28482,9 @@ var AdminAuthService = class {
     return this.verifyToken(token);
   }
   static logout(token) {
-    return adminSessions.delete(token);
+    revokedTokens2.add(token);
+    adminSessions.delete(token);
+    return true;
   }
 };
 

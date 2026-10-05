@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db/prisma';
 
@@ -18,14 +19,26 @@ export interface AuthResult {
   token: string;
 }
 
+const HMAC_SECRET = process.env.CUSTOMER_JWT_SECRET || process.env.JWT_SECRET || 'piercyn-customer-session-secret-2026';
+
+const revokedTokens = new Set<string>();
 const authSessions = new Map<string, { userId: string; expiresAt: Date; email: string }>();
 
-function generateToken(): string {
-  return `tok_${Date.now()}_${Math.random().toString(36).substring(2, 14)}`;
+function createSignedToken(userId: string, email: string): string {
+  const payload = {
+    userId,
+    email,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    iat: Date.now(),
+    nonce: crypto.randomBytes(8).toString('hex'),
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', HMAC_SECRET).update(payloadB64).digest('base64url');
+  return `tok_${payloadB64}.${signature}`;
 }
 
 function createSession(userId: string, email: string): string {
-  const token = generateToken();
+  const token = createSignedToken(userId, email);
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   authSessions.set(token, { userId, email, expiresAt });
   return token;
@@ -148,45 +161,92 @@ export class AuthService {
 
   public static async getUserByToken(token: string): Promise<UserProfileResponse | null> {
     if (!token) return null;
+    if (revokedTokens.has(token)) return null;
 
-    const session = authSessions.get(token);
-    if (!session) return null;
-    if (session.expiresAt < new Date()) {
-      authSessions.delete(token);
-      return null;
+    let targetUserId: string | null = null;
+    let targetEmail: string | null = null;
+
+    // 1. Stateless token parsing
+    if (token.startsWith('tok_')) {
+      const raw = token.slice('tok_'.length);
+      if (raw.includes('.')) {
+        try {
+          const [payloadB64, signature] = raw.split('.');
+          if (payloadB64 && signature) {
+            const expectedSig = crypto.createHmac('sha256', HMAC_SECRET).update(payloadB64).digest('base64url');
+            const sigBuf = Buffer.from(signature);
+            const expBuf = Buffer.from(expectedSig);
+            if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
+              const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+              if (payload.exp && payload.exp > Date.now()) {
+                targetUserId = payload.userId;
+                targetEmail = payload.email;
+              }
+            }
+          }
+        } catch {
+          // Fallback to in-memory map
+        }
+      }
     }
 
-    const customer = await prisma.customer.findUnique({
-      where: { id: session.userId },
-      include: { addresses: true, orders: true },
-    });
+    // 2. In-memory session fallback
+    if (!targetUserId) {
+      const session = authSessions.get(token);
+      if (session && session.expiresAt >= new Date()) {
+        targetUserId = session.userId;
+        targetEmail = session.email;
+      }
+    }
 
-    if (customer) {
-      const defaultAddr = customer.addresses[0];
+    if (!targetUserId) return null;
+
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: targetUserId },
+        include: { addresses: true, orders: true },
+      });
+
+      if (customer) {
+        const defaultAddr = customer.addresses[0];
+        return {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email || targetEmail || '',
+          phone: customer.phone || undefined,
+          city: defaultAddr?.city,
+          address: defaultAddr?.addressLine,
+          role: 'CUSTOMER',
+          ordersCount: customer.orders.length,
+        };
+      }
+
+      const admin = await prisma.admin.findUnique({
+        where: { id: targetUserId },
+      });
+
+      if (admin) {
+        return {
+          id: admin.id,
+          firstName: admin.name.split(' ')[0] || 'Admin',
+          lastName: admin.name.split(' ').slice(1).join(' ') || '',
+          email: admin.email,
+          role: 'ADMIN',
+          ordersCount: 0,
+        };
+      }
+    } catch {
+      // Prisma offline/mock fallback
+    }
+
+    if (targetEmail) {
       return {
-        id: customer.id,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        email: customer.email || session.email,
-        phone: customer.phone || undefined,
-        city: defaultAddr?.city,
-        address: defaultAddr?.addressLine,
+        id: targetUserId,
+        firstName: 'Client',
+        lastName: 'PIERCYN',
+        email: targetEmail,
         role: 'CUSTOMER',
-        ordersCount: customer.orders.length,
-      };
-    }
-
-    const admin = await prisma.admin.findUnique({
-      where: { id: session.userId },
-    });
-
-    if (admin) {
-      return {
-        id: admin.id,
-        firstName: admin.name.split(' ')[0] || 'Admin',
-        lastName: admin.name.split(' ').slice(1).join(' ') || '',
-        email: admin.email,
-        role: 'ADMIN',
         ordersCount: 0,
       };
     }
@@ -195,6 +255,8 @@ export class AuthService {
   }
 
   public static logout(token: string): boolean {
+    revokedTokens.add(token);
     return authSessions.delete(token);
   }
 }
+
