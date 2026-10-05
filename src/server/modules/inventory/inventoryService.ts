@@ -289,6 +289,11 @@ export class InventoryService {
         soldStock: inv.soldStock,
         damagedStock: inv.damagedStock,
         returnedStock: inv.returnedStock,
+        status: inv.availableStock === 0
+          ? 'OUT_OF_STOCK'
+          : inv.availableStock <= 5
+          ? 'LOW_STOCK'
+          : 'IN_STOCK',
         reorderLevel: 5,
         updatedAt: inv.updatedAt,
       });

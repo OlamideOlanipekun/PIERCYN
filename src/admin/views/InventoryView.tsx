@@ -375,7 +375,7 @@ export const InventoryView: React.FC = () => {
                                 : 'bg-rose-950 text-rose-300 border border-rose-800/40'
                             }`}
                           >
-                            {item.status.replace('_', ' ')}
+                            {(item.status || 'IN_STOCK').replace('_', ' ')}
                           </span>
                         </td>
 
