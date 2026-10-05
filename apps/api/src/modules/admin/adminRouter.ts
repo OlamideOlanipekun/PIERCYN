@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { AdminAuthService } from './adminAuthService';
 import { requireAdmin, AuthenticatedAdminRequest } from './adminMiddleware';
 import { OrderService } from '../orders/orderService';
@@ -11,6 +12,12 @@ import { AuditService } from './auditService';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { z } from 'zod';
+
+// Supabase admin client — uses the service_role key to bypass RLS for storage uploads
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 export const adminRouter = Router();
 
@@ -159,6 +166,55 @@ adminRouter.post('/auth/logout', requireAdmin, async (req: AuthenticatedAdminReq
   }
 
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// 1b. IMAGE UPLOAD (proxied via service-role to bypass RLS)
+adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { fileBase64, fileName, mimeType, bucket = 'products', folder = '' } = req.body as {
+      fileBase64: string;
+      fileName: string;
+      mimeType: string;
+      bucket?: string;
+      folder?: string;
+    };
+
+    if (!fileBase64 || !fileName || !mimeType) {
+      return res.status(400).json({ success: false, error: 'fileBase64, fileName, and mimeType are required' });
+    }
+
+    // Strip data URI prefix if present (e.g. "data:image/png;base64,")
+    const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const ext = fileName.split('.').pop();
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const filePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+
+    const { error } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(filePath, buffer, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: mimeType,
+      });
+
+    if (error) {
+      console.error('[UPLOAD_IMAGE]', error);
+      return res.status(500).json({ success: false, error: `Image upload failed: ${error.message}` });
+    }
+
+    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+
+    if (!data?.publicUrl) {
+      return res.status(500).json({ success: false, error: 'Could not retrieve public URL after upload.' });
+    }
+
+    res.json({ success: true, data: { publicUrl: data.publicUrl } });
+  } catch (err: any) {
+    console.error('[UPLOAD_IMAGE]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // 2. ORDERS
