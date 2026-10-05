@@ -1,19 +1,153 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AdminProduct } from '../types';
 import { AdminApi } from '../api';
+import { uploadImageToSupabase } from '../utils/uploadImage';
 import {
   Package,
   Plus,
   Search,
   Edit2,
   Archive,
-  CheckCircle,
-  Eye,
   Loader2,
   X,
-  AlertCircle,
-  TrendingUp,
+  Upload,
+  ImagePlus,
+  Trash2,
 } from 'lucide-react';
+
+// ─── Image Upload Zone ─────────────────────────────────────────────────────
+
+interface ImageSlot {
+  url: string;        // final URL (remote or object URL for preview)
+  file?: File;        // pending file to upload
+  uploading?: boolean;
+  error?: string;
+}
+
+interface ImageUploadRowProps {
+  slots: ImageSlot[];
+  onChange: (slots: ImageSlot[]) => void;
+  bucket?: string;
+}
+
+const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket = 'products' }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newSlots: ImageSlot[] = Array.from(files).map((file) => ({
+      url: URL.createObjectURL(file),
+      file,
+      uploading: true,
+    }));
+    const updated = [...slots, ...newSlots];
+    onChange(updated);
+
+    // Upload each file
+    for (let i = 0; i < newSlots.length; i++) {
+      const slot = newSlots[i];
+      const idx = slots.length + i;
+      try {
+        const publicUrl = await uploadImageToSupabase(slot.file!, bucket);
+        updated[idx] = { url: publicUrl, uploading: false };
+        onChange([...updated]);
+      } catch (err: any) {
+        updated[idx] = { url: '', uploading: false, error: err.message };
+        onChange([...updated]);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    handleFiles(e.dataTransfer.files);
+  };
+
+  const removeSlot = (idx: number) => {
+    onChange(slots.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Existing slots */}
+      {slots.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {slots.map((slot, idx) => (
+            <div
+              key={idx}
+              className="relative aspect-square rounded-lg overflow-hidden bg-[#0A0A0A] border border-[#2D2D2D] group"
+            >
+              {slot.uploading ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#F2F0EB]" />
+                  <span className="text-[9px] font-mono text-neutral-400 uppercase">Uploading…</span>
+                </div>
+              ) : slot.error ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-950/60 p-2">
+                  <X className="w-4 h-4 text-red-400" />
+                  <span className="text-[9px] font-mono text-red-300 text-center leading-tight">{slot.error}</span>
+                </div>
+              ) : (
+                <img
+                  src={slot.url}
+                  alt={`Image ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {/* Remove button */}
+              {!slot.uploading && (
+                <button
+                  type="button"
+                  onClick={() => removeSlot(idx)}
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 cursor-pointer"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-3 h-3 text-white" />
+                </button>
+              )}
+              {/* Primary badge */}
+              {idx === 0 && !slot.uploading && !slot.error && (
+                <span className="absolute bottom-1 left-1 text-[8px] font-mono uppercase bg-emerald-900/80 text-emerald-300 px-1.5 py-0.5 rounded">
+                  Primary
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Drop zone */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        onClick={() => inputRef.current?.click()}
+        className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#2D2D2D] rounded-xl py-6 px-4 cursor-pointer hover:border-[#F2F0EB]/30 hover:bg-white/5 transition-all group"
+      >
+        <div className="p-2 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
+          <ImagePlus className="w-5 h-5 text-neutral-500 group-hover:text-neutral-300 transition-colors" />
+        </div>
+        <div className="text-center">
+          <p className="text-[11px] font-semibold text-neutral-400 group-hover:text-neutral-200 transition-colors">
+            Drop images here or <span className="text-[#F2F0EB] underline underline-offset-2">browse</span>
+          </p>
+          <p className="text-[10px] font-mono text-neutral-600 mt-0.5">
+            JPG, PNG, WEBP — max 10 MB each
+          </p>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────
 
 export const ProductsView: React.FC = () => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -36,10 +170,13 @@ export const ProductsView: React.FC = () => {
   const [formCategory, setFormCategory] = useState('cat-tees');
   const [formPriceNGN, setFormPriceNGN] = useState<number>(35000);
   const [formCostPriceNGN, setFormCostPriceNGN] = useState<number>(14000);
-  const [formImage, setFormImage] = useState('');
   const [formGsm, setFormGsm] = useState('280 GSM');
   const [formFit, setFormFit] = useState('Relaxed Boxy Cut');
   const [formFabric, setFormFabric] = useState('100% Heavyweight Cotton');
+
+  // Image slot state (for both add & edit)
+  const [addImageSlots, setAddImageSlots] = useState<ImageSlot[]>([]);
+  const [editImageSlots, setEditImageSlots] = useState<ImageSlot[]>([]);
 
   const fetchProducts = async () => {
     try {
@@ -74,9 +211,19 @@ export const ProductsView: React.FC = () => {
       return;
     }
 
+    // Check no images are still uploading
+    if (addImageSlots.some((s) => s.uploading)) {
+      setError('Please wait for all images to finish uploading.');
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
+
+      const validImages = addImageSlots
+        .map((s) => s.url)
+        .filter((u) => u && !u.startsWith('blob:'));
 
       const defaultVariants = [
         {
@@ -114,7 +261,9 @@ export const ProductsView: React.FC = () => {
         categoryId: formCategory,
         priceNGN: Number(formPriceNGN),
         costPriceNGN: Number(formCostPriceNGN),
-        images: formImage ? [formImage] : ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'],
+        images: validImages.length > 0
+          ? validImages
+          : ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'],
         gsm: formGsm,
         fit: formFit,
         fabric: formFabric,
@@ -125,6 +274,7 @@ export const ProductsView: React.FC = () => {
       setIsAddModalOpen(false);
       setFormName('');
       setFormDescription('');
+      setAddImageSlots([]);
       await fetchProducts();
     } catch (err: any) {
       setError(err.message || 'Failed to create product.');
@@ -137,18 +287,30 @@ export const ProductsView: React.FC = () => {
     e.preventDefault();
     if (!editingProduct) return;
 
+    if (editImageSlots.some((s) => s.uploading)) {
+      setError('Please wait for all images to finish uploading.');
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
+
+      const validImages = editImageSlots
+        .map((s) => s.url)
+        .filter((u) => u && !u.startsWith('blob:'));
+
       await AdminApi.updateProduct(editingProduct.id, {
         name: editingProduct.name,
         priceNGN: Number(editingProduct.priceNGN),
         costPriceNGN: Number(editingProduct.costPriceNGN || 0),
         status: editingProduct.status,
         description: editingProduct.description,
+        images: validImages.length > 0 ? validImages : editingProduct.images,
       });
 
       setEditingProduct(null);
+      setEditImageSlots([]);
       await fetchProducts();
     } catch (err: any) {
       setError(err.message || 'Failed to update product.');
@@ -187,7 +349,7 @@ export const ProductsView: React.FC = () => {
           <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-0.5">
             ATELIER CATALOG
           </span>
-          <h2 className="text-xl font-bold text-[#F2F0EB]">Garments & Collections</h2>
+          <h2 className="text-xl font-bold text-[#F2F0EB]">Garments &amp; Collections</h2>
         </div>
 
         <button
@@ -346,7 +508,13 @@ export const ProductsView: React.FC = () => {
 
                       <td className="py-3.5 text-right space-x-1">
                         <button
-                          onClick={() => setEditingProduct(p)}
+                          onClick={() => {
+                            setEditingProduct(p);
+                            // Pre-populate edit image slots from existing product images
+                            setEditImageSlots(
+                              (p.images || []).map((url) => ({ url }))
+                            );
+                          }}
                           className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
                           title="Edit Product"
                         >
@@ -384,7 +552,7 @@ export const ProductsView: React.FC = () => {
                 <span>ADD NEW ATELIER PIECE</span>
               </h3>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => { setIsAddModalOpen(false); setAddImageSlots([]); }}
                 className="text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -406,37 +574,41 @@ export const ProductsView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
-                  >
-                    <option value="cat-tees">Tees</option>
-                    <option value="cat-hoodies">Hoodies</option>
-                    <option value="cat-sweatshirts">Sweatshirts</option>
-                    <option value="cat-jackets">Jackets</option>
-                    <option value="cat-trousers">Trousers</option>
-                    <option value="cat-accessories">Accessories</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                  Category *
+                </label>
+                <select
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                >
+                  <option value="cat-tees">Tees</option>
+                  <option value="cat-hoodies">Hoodies</option>
+                  <option value="cat-sweatshirts">Sweatshirts</option>
+                  <option value="cat-jackets">Jackets</option>
+                  <option value="cat-trousers">Trousers</option>
+                  <option value="cat-accessories">Accessories</option>
+                </select>
+              </div>
 
-                <div>
-                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
-                    Image URL
+              {/* ── Supabase Image Upload ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-mono text-[#A3A199] uppercase">
+                    Product Images
                   </label>
-                  <input
-                    type="url"
-                    value={formImage}
-                    onChange={(e) => setFormImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
-                  />
+                  {addImageSlots.length > 0 && (
+                    <span className="text-[10px] font-mono text-neutral-500">
+                      {addImageSlots.filter((s) => !s.uploading && !s.error).length} uploaded
+                    </span>
+                  )}
                 </div>
+                <ImageUploadRow
+                  slots={addImageSlots}
+                  onChange={setAddImageSlots}
+                  bucket="products"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -527,17 +699,23 @@ export const ProductsView: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => { setIsAddModalOpen(false); setAddImageSlots([]); }}
                   className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50"
+                  disabled={saving || addImageSlots.some((s) => s.uploading)}
+                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center gap-2"
                 >
-                  {saving ? 'CREATING...' : 'PUBLISH PIECE'}
+                  {saving ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> CREATING...</>
+                  ) : addImageSlots.some((s) => s.uploading) ? (
+                    <><Upload className="w-3.5 h-3.5 animate-bounce" /> UPLOADING...</>
+                  ) : (
+                    'PUBLISH PIECE'
+                  )}
                 </button>
               </div>
             </form>
@@ -550,14 +728,14 @@ export const ProductsView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-lg bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#242424] pb-4 mb-4">
               <h3 className="font-bold text-base text-[#F2F0EB] flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-amber-400" />
                 <span>EDIT ATELIER PIECE</span>
               </h3>
               <button
-                onClick={() => setEditingProduct(null)}
+                onClick={() => { setEditingProduct(null); setEditImageSlots([]); }}
                 className="text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -637,6 +815,25 @@ export const ProductsView: React.FC = () => {
                 </select>
               </div>
 
+              {/* ── Supabase Image Upload (Edit) ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-mono text-[#A3A199] uppercase">
+                    Product Images
+                  </label>
+                  {editImageSlots.length > 0 && (
+                    <span className="text-[10px] font-mono text-neutral-500">
+                      {editImageSlots.filter((s) => !s.uploading && !s.error).length} image(s)
+                    </span>
+                  )}
+                </div>
+                <ImageUploadRow
+                  slots={editImageSlots}
+                  onChange={setEditImageSlots}
+                  bucket="products"
+                />
+              </div>
+
               <div>
                 <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
                   Description
@@ -654,17 +851,23 @@ export const ProductsView: React.FC = () => {
               <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
-                  onClick={() => setEditingProduct(null)}
+                  onClick={() => { setEditingProduct(null); setEditImageSlots([]); }}
                   className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50"
+                  disabled={saving || editImageSlots.some((s) => s.uploading)}
+                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center gap-2"
                 >
-                  {saving ? 'SAVING...' : 'SAVE CHANGES'}
+                  {saving ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> SAVING...</>
+                  ) : editImageSlots.some((s) => s.uploading) ? (
+                    <><Upload className="w-3.5 h-3.5 animate-bounce" /> UPLOADING...</>
+                  ) : (
+                    'SAVE CHANGES'
+                  )}
                 </button>
               </div>
             </form>
