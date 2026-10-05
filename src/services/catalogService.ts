@@ -41,9 +41,11 @@ export function mapServerProduct(p: any): Product {
     });
   }
 
-  const colors = colorsMap.size > 0 
-    ? Array.from(colorsMap.values()) 
-    : (p.colors || [{ name: 'Default', hex: '#111111', image: p.images?.[0] || '' }]);
+  const colors: ProductColor[] = colorsMap.size > 0
+    ? Array.from(colorsMap.values())
+    : Array.isArray(p.colors) && p.colors.length > 0
+      ? p.colors
+      : [{ name: 'Default', hex: '#111111', image: (Array.isArray(p.images) ? p.images[0] : '') || '' }];
 
   const sizes = sizesSet.size > 0 
     ? (Array.from(sizesSet) as any[]) 
@@ -54,9 +56,9 @@ export function mapServerProduct(p: any): Product {
     : (typeof p.stock === 'number' ? p.stock : 25);
 
   return {
-    id: p.id,
-    name: p.name,
-    slug: p.slug || p.id,
+    id: p.id || '',
+    name: p.name || '',
+    slug: p.slug || p.id || '',
     category: p.categorySlug || p.category || 'hoodies',
     collection: p.collection || 'essentials',
     priceNGN: p.priceNGN,

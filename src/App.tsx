@@ -90,8 +90,8 @@ const MainLayout: React.FC = () => {
       const foundInCache = products.find(
         (p) =>
           p.slug === slug ||
-          p.id.toLowerCase() === slug ||
-          p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug
+          (p.id && p.id.toLowerCase() === slug) ||
+          (p.name && p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug)
       );
 
       if (foundInCache) {

@@ -231,8 +231,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const inMemory = products.find(
       (p) =>
         p.slug === cleanSlug ||
-        p.id.toLowerCase() === cleanSlug ||
-        p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === cleanSlug
+        (p.id && p.id.toLowerCase() === cleanSlug) ||
+        (p.name && p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === cleanSlug)
     );
     if (inMemory) return inMemory;
 
