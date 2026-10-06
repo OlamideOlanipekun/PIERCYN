@@ -71,7 +71,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
     <div className="space-y-3">
       {/* Existing slots */}
       {slots.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {slots.map((slot, idx) => (
             <div
               key={idx}
@@ -344,7 +344,7 @@ export const ProductsView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {/* 1. TOP HEADER & ACTION */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
         <div>
           <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-0.5">
             ATELIER CATALOG
@@ -354,7 +354,7 @@ export const ProductsView: React.FC = () => {
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer shadow-sm active:scale-95 w-full sm:w-auto min-h-[44px]"
         >
           <Plus className="w-4 h-4" />
           <span>ADD NEW PRODUCT</span>
@@ -364,23 +364,23 @@ export const ProductsView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {/* 2. SEARCH & CATEGORY FILTER */}
       {/* ------------------------------------------------------------- */}
-      <div className="p-4 rounded-xl bg-[#141414] border border-[#262626] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
-        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-[#141414] border border-[#262626] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3 text-xs min-w-0">
+        <form onSubmit={handleSearchSubmit} className="flex-1 relative min-w-0">
           <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products by title, category, or SKU..."
-            className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg pl-9 pr-3 py-2 text-[#F2F0EB] placeholder:text-neutral-600 outline-hidden font-sans"
+            className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg pl-9 pr-3 py-2 text-xs text-[#F2F0EB] placeholder:text-neutral-600 outline-hidden font-sans min-h-[40px]"
           />
         </form>
 
-        <div className="flex items-center gap-2 font-mono">
+        <div className="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-2 font-mono w-full md:w-auto">
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
+            className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-2.5 sm:px-3 py-2 text-[#F2F0EB] outline-hidden min-h-[40px] text-xs min-w-0"
           >
             <option value="ALL">All Categories</option>
             <option value="cat-tees">Tees</option>
@@ -394,7 +394,7 @@ export const ProductsView: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
+            className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-2.5 sm:px-3 py-2 text-[#F2F0EB] outline-hidden min-h-[40px] text-xs min-w-0"
           >
             <option value="ALL">All Statuses</option>
             <option value="ACTIVE">Active</option>
@@ -407,7 +407,7 @@ export const ProductsView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {/* 3. PRODUCTS TABLE */}
       {/* ------------------------------------------------------------- */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-[#141414] border border-[#262626]">
+      <div className="p-4 sm:p-6 rounded-2xl bg-[#141414] border border-[#262626] min-w-0">
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-6 h-6 animate-spin text-[#F2F0EB]" />
@@ -426,21 +426,119 @@ export const ProductsView: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
-                  <th className="py-3 font-normal">Garment</th>
-                  <th className="py-3 font-normal">Category</th>
-                  <th className="py-3 font-normal">Retail Price</th>
-                  <th className="py-3 font-normal">Unit Cost</th>
-                  <th className="py-3 font-normal">Margin %</th>
-                  <th className="py-3 font-normal">Variants / Stock</th>
-                  <th className="py-3 font-normal">Status</th>
-                  <th className="py-3 font-normal text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#202020]">
+          <div>
+            {/* MOBILE PRODUCT CARDS (< md) */}
+            <div className="md:hidden space-y-3">
+              {products.map((p) => {
+                const totalStock = p.variants?.reduce(
+                  (sum, v) => sum + (v.stock?.availableStock || 0),
+                  0
+                ) || 0;
+                const grossProfit = p.priceNGN - (p.costPriceNGN || 0);
+                const marginPercent = p.priceNGN > 0 ? Math.round((grossProfit / p.priceNGN) * 100) : 0;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="p-4 rounded-xl bg-[#181818] border border-[#262626] space-y-3"
+                  >
+                    {/* Header: Image, Title, Category */}
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={p.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'}
+                        alt={p.name}
+                        className="w-16 h-16 object-cover rounded-lg bg-neutral-800 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-1">
+                          <h3 className="font-semibold text-sm text-[#F2F0EB] leading-tight">
+                            {p.name}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-400 uppercase block mt-1">
+                          {p.categoryId.replace('cat-', '')} • {p.slug}
+                        </span>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <button
+                            onClick={() => handleToggleStatus(p)}
+                            className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                              p.status === 'ACTIVE'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                                : p.status === 'DRAFT'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                                : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                            }`}
+                          >
+                            {p.status}
+                          </button>
+                          <span className="text-[10px] font-mono text-neutral-400">
+                            {totalStock} in stock ({p.variants?.length || 0} vars)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial Metrics */}
+                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                      <div>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Retail</span>
+                        <span className="font-bold text-[#F2F0EB]">₦{p.priceNGN.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-neutral-500 uppercase block">COGS</span>
+                        <span className="text-neutral-400">₦{(p.costPriceNGN || 0).toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Margin</span>
+                        <span className="font-bold text-emerald-400">{marginPercent}%</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setEditingProduct(p);
+                          setEditImageSlots((p.images || []).map((url) => ({ url })));
+                        }}
+                        className="flex-1 py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[42px]"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit Product</span>
+                      </button>
+
+                      {p.status !== 'ARCHIVED' && (
+                        <button
+                          onClick={() => handleArchive(p.id)}
+                          className="py-2.5 px-3 rounded-lg bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 text-red-300 font-mono text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[42px] shrink-0"
+                          title="Archive"
+                        >
+                          <Archive className="w-3.5 h-3.5" />
+                          <span>Archive</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (>= md) */}
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-[#202020]">
+              <table className="w-full text-left text-xs min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-[#262626] bg-[#0E0E0E] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
+                    <th className="py-3 px-3 font-normal">Garment</th>
+                    <th className="py-3 px-3 font-normal">Category</th>
+                    <th className="py-3 px-3 font-normal">Retail Price</th>
+                    <th className="py-3 px-3 font-normal">Unit Cost</th>
+                    <th className="py-3 px-3 font-normal">Margin %</th>
+                    <th className="py-3 px-3 font-normal">Variants / Stock</th>
+                    <th className="py-3 px-3 font-normal">Status</th>
+                    <th className="py-3 px-3 font-normal text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#202020]">
                 {products.map((p) => {
                   const totalStock = p.variants?.reduce(
                     (sum, v) => sum + (v.stock?.availableStock || 0),
@@ -537,15 +635,16 @@ export const ProductsView: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* ------------------------------------------------------------- */}
       {/* 4. ADD PRODUCT MODAL */}
       {/* ------------------------------------------------------------- */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-xl bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-xl bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-4 mb-4">
               <h3 className="font-bold text-base text-[#F2F0EB] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-400" />
@@ -611,7 +710,7 @@ export const ProductsView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
                     Retail Price (NGN ₦) *
@@ -656,7 +755,7 @@ export const ProductsView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">
                     Fabric
@@ -696,18 +795,18 @@ export const ProductsView: React.FC = () => {
                 ℹ️ Initial variants (Onyx Black M/L, Bone White M) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[COLOR]-[SIZE].
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
                   onClick={() => { setIsAddModalOpen(false); setAddImageSlots([]); }}
-                  className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
+                  className="px-4 py-2.5 rounded text-neutral-400 hover:text-white font-mono min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving || addImageSlots.some((s) => s.uploading)}
-                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[42px] cursor-pointer"
                 >
                   {saving ? (
                     <><Loader2 className="w-3.5 h-3.5 animate-spin" /> CREATING...</>
@@ -727,8 +826,8 @@ export const ProductsView: React.FC = () => {
       {/* 5. EDIT PRODUCT MODAL */}
       {/* ------------------------------------------------------------- */}
       {editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-lg bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-lg bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-4 mb-4">
               <h3 className="font-bold text-base text-[#F2F0EB] flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-amber-400" />
@@ -758,7 +857,7 @@ export const ProductsView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
                     Retail Price (NGN ₦)
@@ -848,18 +947,18 @@ export const ProductsView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
                   onClick={() => { setEditingProduct(null); setEditImageSlots([]); }}
-                  className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
+                  className="px-4 py-2.5 rounded text-neutral-400 hover:text-white font-mono min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving || editImageSlots.some((s) => s.uploading)}
-                  className="px-5 py-2 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono uppercase text-xs hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[42px] cursor-pointer"
                 >
                   {saving ? (
                     <><Loader2 className="w-3.5 h-3.5 animate-spin" /> SAVING...</>

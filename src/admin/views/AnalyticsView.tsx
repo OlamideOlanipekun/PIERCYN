@@ -59,14 +59,15 @@ export const AnalyticsView: React.FC = () => {
           </span>
         </div>
 
-        <div className="p-6 rounded-2xl bg-[#141414] border border-[#262626]">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+        <div className="p-4 sm:p-6 rounded-2xl bg-[#141414] border border-[#262626]">
+          {/* Mobile: vertical stack with operators; Desktop: 4-col grid */}
+          <div className="flex flex-col md:grid md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 items-stretch md:items-center">
             {/* 1. Gross Revenue */}
             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3A199] block mb-1">
                 GROSS REVENUE
               </span>
-              <div className="text-2xl font-bold font-mono text-[#F2F0EB]">
+              <div className="text-xl sm:text-2xl font-bold font-mono text-[#F2F0EB]">
                 ₦{analytics.revenueNGN.toLocaleString()}
               </div>
               <p className="text-[10px] text-neutral-500 mt-1 font-sans">
@@ -74,9 +75,10 @@ export const AnalyticsView: React.FC = () => {
               </p>
             </div>
 
-            {/* Minus Symbol */}
-            <div className="hidden md:flex justify-center text-neutral-600 font-mono text-xl">
-              −
+            {/* Operator: minus */}
+            <div className="flex items-center justify-center text-neutral-500 font-mono text-xl py-1 md:py-0">
+              <span className="md:hidden">−</span>
+              <span className="hidden md:block">−</span>
             </div>
 
             {/* 2. COGS (Cost of Goods Sold) */}
@@ -84,21 +86,21 @@ export const AnalyticsView: React.FC = () => {
               <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300/80 block mb-1">
                 COST OF GOODS SOLD (COGS)
               </span>
-              <div className="text-2xl font-bold font-mono text-rose-300">
+              <div className="text-xl sm:text-2xl font-bold font-mono text-rose-300">
                 ₦{analytics.cogsNGN.toLocaleString()}
               </div>
               <p className="text-[10px] text-neutral-500 mt-1 font-sans">
-                Direct atelier fabrication & fabric cost
+                Direct atelier fabrication &amp; fabric cost
               </p>
             </div>
 
-            {/* Equal Symbol */}
-            <div className="hidden md:flex justify-center text-neutral-600 font-mono text-xl">
+            {/* Operator: equals */}
+            <div className="flex items-center justify-center text-neutral-500 font-mono text-xl py-1 md:py-0">
               =
             </div>
 
-            {/* 3. Gross Profit */}
-            <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
+            {/* 3. Gross Profit — spans full on mobile, last col on desktop */}
+            <div className="md:col-span-1 p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">
                   GROSS PROFIT
@@ -205,61 +207,55 @@ export const AnalyticsView: React.FC = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 text-center">
           {/* Step 1: Views */}
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 relative">
-            <span className="text-[10px] font-mono text-[#A3A199] uppercase block mb-1">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-white/5 border border-white/5">
+            <span className="text-[9px] sm:text-[10px] font-mono text-[#A3A199] uppercase block mb-1">
               1. PRODUCT VIEWS
             </span>
-            <div className="text-2xl font-bold font-mono text-[#F2F0EB]">
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#F2F0EB]">
               {analytics.funnel.productViews}
             </div>
             <p className="text-[10px] text-neutral-500 mt-1">Catalog discovery</p>
           </div>
 
           {/* Step 2: Add to cart */}
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <span className="text-[10px] font-mono text-[#A3A199] uppercase">
-                2. ADD TO CART
-              </span>
-              <span className="text-[9px] font-mono text-emerald-400">
-                ({analytics.funnel.viewToCartPercent}%)
-              </span>
-            </div>
-            <div className="text-2xl font-bold font-mono text-[#F2F0EB]">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-white/5 border border-white/5">
+            <span className="text-[9px] sm:text-[10px] font-mono text-[#A3A199] uppercase block mb-0.5">
+              2. ADD TO CART
+            </span>
+            <span className="text-[9px] font-mono text-emerald-400 block mb-1">
+              ({analytics.funnel.viewToCartPercent}%)
+            </span>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#F2F0EB]">
               {analytics.funnel.addToCart}
             </div>
             <p className="text-[10px] text-neutral-500 mt-1">Items bagged</p>
           </div>
 
           {/* Step 3: Checkout Started */}
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <span className="text-[10px] font-mono text-[#A3A199] uppercase">
-                3. CHECKOUT QUOTE
-              </span>
-              <span className="text-[9px] font-mono text-emerald-400">
-                ({analytics.funnel.cartToCheckoutPercent}%)
-              </span>
-            </div>
-            <div className="text-2xl font-bold font-mono text-[#F2F0EB]">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-white/5 border border-white/5">
+            <span className="text-[9px] sm:text-[10px] font-mono text-[#A3A199] uppercase block mb-0.5">
+              3. CHECKOUT
+            </span>
+            <span className="text-[9px] font-mono text-emerald-400 block mb-1">
+              ({analytics.funnel.cartToCheckoutPercent}%)
+            </span>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#F2F0EB]">
               {analytics.funnel.checkoutStarted}
             </div>
-            <p className="text-[10px] text-neutral-500 mt-1">Shipping address entered</p>
+            <p className="text-[10px] text-neutral-500 mt-1">Shipping entered</p>
           </div>
 
           {/* Step 4: Purchase Completed */}
-          <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <span className="text-[10px] font-mono text-emerald-400 uppercase">
-                4. PAID PURCHASE
-              </span>
-              <span className="text-[9px] font-mono text-emerald-300">
-                ({analytics.funnel.checkoutToPurchasePercent}%)
-              </span>
-            </div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
+            <span className="text-[9px] sm:text-[10px] font-mono text-emerald-400 uppercase block mb-0.5">
+              4. PAID ORDER
+            </span>
+            <span className="text-[9px] font-mono text-emerald-300 block mb-1">
+              ({analytics.funnel.checkoutToPurchasePercent}%)
+            </span>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
               {analytics.funnel.purchases}
             </div>
             <p className="text-[10px] text-emerald-400/70 mt-1">Payment finalized</p>
@@ -283,7 +279,45 @@ export const AnalyticsView: React.FC = () => {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile product performance cards */}
+        <div className="md:hidden space-y-2.5">
+          {analytics.productPerformance.map((item) => (
+            <div
+              key={item.productId}
+              className="p-3.5 rounded-xl bg-[#181818] border border-[#262626] space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-semibold text-sm text-[#F2F0EB]">{item.productName}</span>
+                <span className="text-[9px] font-mono text-neutral-400 uppercase bg-white/5 px-2 py-0.5 rounded shrink-0">
+                  {item.category}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                <div>
+                  <span className="text-[9px] text-neutral-500 uppercase block">Units Sold</span>
+                  <span className="font-bold text-[#F2F0EB]">{item.unitsSold}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-500 uppercase block">Revenue</span>
+                  <span className="font-bold text-[#F2F0EB] text-[11px]">₦{item.revenueNGN.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-neutral-500 uppercase block">Gross Profit</span>
+                  <span className="font-bold text-emerald-400 text-[11px]">₦{item.grossProfitNGN.toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-neutral-400">{item.ordersCount} orders</span>
+                <span className={item.currentStock <= 5 ? 'text-amber-400 font-bold' : 'text-neutral-400'}>
+                  {item.currentStock} in stock
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop product performance table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
@@ -315,11 +349,7 @@ export const AnalyticsView: React.FC = () => {
                     ₦{item.grossProfitNGN.toLocaleString()}
                   </td>
                   <td className="py-3 text-neutral-300">
-                    <span
-                      className={
-                        item.currentStock <= 5 ? 'text-amber-400 font-bold' : ''
-                      }
-                    >
+                    <span className={item.currentStock <= 5 ? 'text-amber-400 font-bold' : ''}>
                       {item.currentStock} units
                     </span>
                   </td>

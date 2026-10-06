@@ -118,73 +118,141 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onOpenOrder }) => 
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
-                  <th className="py-3 font-normal">Customer Name</th>
-                  <th className="py-3 font-normal">Email</th>
-                  <th className="py-3 font-normal">Phone</th>
-                  <th className="py-3 font-normal">Orders</th>
-                  <th className="py-3 font-normal">Total Spent</th>
-                  <th className="py-3 font-normal">Last Order</th>
-                  <th className="py-3 font-normal text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#202020]">
-                {customers.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => handleOpenCustomer(c.id)}
-                    className="hover:bg-white/5 cursor-pointer transition-colors group"
-                  >
-                    <td className="py-3.5">
-                      <span className="font-semibold text-[#F2F0EB] group-hover:underline">
+          <div>
+            {/* MOBILE CUSTOMER CARDS (< md) */}
+            <div className="md:hidden space-y-3">
+              {customers.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => handleOpenCustomer(c.id)}
+                  className="p-4 rounded-xl bg-[#181818] border border-[#262626] hover:border-neutral-500 active:bg-white/5 transition-all cursor-pointer space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm text-[#F2F0EB] truncate">
                         {c.fullName}
+                      </h3>
+                      <p className="text-[11px] font-mono text-neutral-400 truncate mt-0.5">
+                        {c.email}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-neutral-300 shrink-0">
+                      {c.orderCount || 0} {(c.orderCount || 0) === 1 ? 'order' : 'orders'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-xs font-mono">
+                    <div>
+                      <span className="text-[9px] text-neutral-500 uppercase block">Total Spent</span>
+                      <span className="font-bold text-[#F2F0EB] text-sm">
+                        ₦{(c.totalSpentNGN || 0).toLocaleString()}
                       </span>
-                    </td>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-neutral-500 uppercase block">Last Order</span>
+                      <span className="text-neutral-300 text-[11px]">
+                        {c.lastOrderDate
+                          ? new Date(c.lastOrderDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
+                          : 'No orders'}
+                      </span>
+                    </div>
+                  </div>
 
-                    <td className="py-3.5 text-neutral-400 font-mono text-[11px]">
-                      {c.email}
-                    </td>
+                  {c.phone && (
+                    <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                      <span>{c.phone}</span>
+                    </div>
+                  )}
 
-                    <td className="py-3.5 text-neutral-400 font-mono text-[11px]">
-                      {c.phone || '—'}
-                    </td>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenCustomer(c.id);
+                    }}
+                    className="w-full py-2.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors min-h-[42px]"
+                  >
+                    <span>View Client Profile</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
 
-                    <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                      {c.orderCount || 0}
-                    </td>
-
-                    <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                      ₦{(c.totalSpentNGN || 0).toLocaleString()}
-                    </td>
-
-                    <td className="py-3.5 text-neutral-400 font-mono text-[11px]">
-                      {c.lastOrderDate
-                        ? new Date(c.lastOrderDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
-                        : '—'}
-                    </td>
-
-                    <td className="py-3.5 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenCustomer(c.id);
-                        }}
-                        className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-mono text-[10px] cursor-pointer"
-                      >
-                        PROFILE
-                      </button>
-                    </td>
+            {/* DESKTOP TABLE VIEW (>= md) */}
+            <div className="hidden md:block overflow-x-auto rounded-lg border border-[#202020]">
+              <table className="w-full text-left text-xs min-w-[620px]">
+                <thead>
+                  <tr className="border-b border-[#262626] bg-[#0E0E0E] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
+                    <th className="py-3 px-3 font-normal">Customer Name</th>
+                    <th className="py-3 px-3 font-normal">Email</th>
+                    <th className="py-3 px-3 font-normal">Phone</th>
+                    <th className="py-3 px-3 font-normal">Orders</th>
+                    <th className="py-3 px-3 font-normal">Total Spent</th>
+                    <th className="py-3 px-3 font-normal">Last Order</th>
+                    <th className="py-3 px-3 font-normal text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#202020]">
+                  {customers.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => handleOpenCustomer(c.id)}
+                      className="hover:bg-white/5 cursor-pointer transition-colors group"
+                    >
+                      <td className="py-3.5 px-3">
+                        <span className="font-semibold text-[#F2F0EB] group-hover:underline">
+                          {c.fullName}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-3 text-neutral-400 font-mono text-[11px]">
+                        {c.email}
+                      </td>
+
+                      <td className="py-3.5 px-3 text-neutral-400 font-mono text-[11px]">
+                        {c.phone || '—'}
+                      </td>
+
+                      <td className="py-3.5 px-3 font-mono font-bold text-[#F2F0EB]">
+                        {c.orderCount || 0}
+                      </td>
+
+                      <td className="py-3.5 px-3 font-mono font-bold text-[#F2F0EB]">
+                        ₦{(c.totalSpentNGN || 0).toLocaleString()}
+                      </td>
+
+                      <td className="py-3.5 px-3 text-neutral-400 font-mono text-[11px]">
+                        {c.lastOrderDate
+                          ? new Date(c.lastOrderDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
+                          : '—'}
+                      </td>
+
+                      <td className="py-3.5 px-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCustomer(c.id);
+                          }}
+                          className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-mono text-[10px] cursor-pointer"
+                        >
+                          PROFILE
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -193,8 +261,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onOpenOrder }) => 
       {/* 3. CUSTOMER PROFILE MODAL / DRAWER */}
       {/* ------------------------------------------------------------- */}
       {selectedCustomerId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-2xl bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-2xl bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-4 mb-4">
               <div>
                 <span className="text-[10px] font-mono text-[#A3A199] uppercase tracking-widest block">
@@ -209,7 +277,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onOpenOrder }) => 
                   setSelectedCustomerId(null);
                   setCustomerDetail(null);
                 }}
-                className="text-neutral-400 hover:text-white"
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>

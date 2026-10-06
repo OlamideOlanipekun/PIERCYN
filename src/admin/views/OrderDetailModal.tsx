@@ -139,12 +139,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs font-sans text-left">
-      <div className="w-full max-w-4xl max-h-[92vh] bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl flex flex-col overflow-hidden text-[#F2F0EB] animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xs font-sans text-left">
+      <div className="w-full max-w-4xl max-h-[94vh] h-[94vh] sm:h-auto bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden text-[#F2F0EB] animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="p-4 sm:p-6 border-b border-[#262626] flex items-center justify-between bg-[#111]">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-lg sm:text-xl font-bold tracking-tight text-[#F2F0EB]">
+        <div className="p-3.5 sm:p-6 border-b border-[#262626] flex items-center justify-between gap-2 bg-[#111] shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+            <span className="font-mono text-base sm:text-xl font-bold tracking-tight text-[#F2F0EB]">
               {order ? `#${order.orderNumber}` : 'Loading order...'}
             </span>
             {order && (
@@ -177,14 +177,15 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center space-y-3">
               <Loader2 className="w-6 h-6 animate-spin text-[#F2F0EB]" />
@@ -204,7 +205,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               )}
 
               {/* ACTION TOOLBAR: Transition state buttons */}
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3A199] block">
                     CURRENT FULFILLMENT STATE
@@ -226,7 +227,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           handleUpdateStatus(act.targetStatus);
                         }
                       }}
-                      className={`px-3.5 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 ${
+                      className={`flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 min-h-[44px] sm:min-h-[40px] flex items-center justify-center text-center ${
                         act.variant === 'primary'
                           ? 'bg-[#F2F0EB] text-[#0A0A0A] hover:bg-white'
                           : act.variant === 'warning'
@@ -264,7 +265,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <select
                         value={courier}
                         onChange={(e) => setCourier(e.target.value)}
-                        className="w-full bg-[#0E0E0E] border border-[#333] rounded px-3 py-2 text-[#F2F0EB] outline-hidden"
+                        className="w-full bg-[#0E0E0E] border border-[#333] rounded px-3 py-2 text-[#F2F0EB] outline-hidden min-h-[42px]"
                       >
                         <option value="KWIK Express Dispatch">KWIK Express Dispatch (Lagos)</option>
                         <option value="GIG Logistics">GIG Logistics (Nationwide)</option>
@@ -282,16 +283,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         value={trackingNumber}
                         onChange={(e) => setTrackingNumber(e.target.value)}
                         placeholder="e.g. KWK-LAG-99214"
-                        className="w-full bg-[#0E0E0E] border border-[#333] rounded px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                        className="w-full bg-[#0E0E0E] border border-[#333] rounded px-3 py-2 text-[#F2F0EB] outline-hidden font-mono min-h-[42px]"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowShippingForm(false)}
-                      className="px-3 py-1.5 rounded text-xs text-neutral-400 hover:text-white font-mono"
+                      className="px-3 py-2 rounded text-xs text-neutral-400 hover:text-white font-mono min-h-[40px]"
                     >
                       Cancel
                     </button>
@@ -299,7 +300,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       type="button"
                       disabled={updatingStatus}
                       onClick={() => handleUpdateStatus('SHIPPED')}
-                      className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-mono text-xs uppercase"
+                      className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-mono text-xs uppercase min-h-[40px] flex items-center justify-center"
                     >
                       CONFIRM DISPATCH & MARK SHIPPED
                     </button>
@@ -308,7 +309,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               )}
 
               {/* 2-COLUMN OPERATIONAL SUMMARY: Customer & Delivery Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Customer Info */}
                 <div className="p-4 rounded-xl bg-[#181818] border border-[#262626] space-y-2 text-xs">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] flex items-center gap-1.5">
@@ -317,12 +318,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   </span>
                   <div className="pt-1">
                     <p className="font-bold text-sm text-[#F2F0EB]">{order.customerName}</p>
-                    <p className="text-neutral-400 flex items-center gap-1.5 mt-1">
-                      <Mail className="w-3.5 h-3.5 text-neutral-500" />
-                      <span>{order.customerEmail}</span>
+                    <p className="text-neutral-400 flex items-center gap-1.5 mt-1 truncate">
+                      <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                      <span className="truncate">{order.customerEmail}</span>
                     </p>
                     <p className="text-neutral-400 flex items-center gap-1.5 mt-1 font-mono">
-                      <Phone className="w-3.5 h-3.5 text-neutral-500" />
+                      <Phone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
                       <span>{order.customerPhone}</span>
                     </p>
                   </div>
@@ -348,28 +349,58 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* ORDERED ITEMS TABLE */}
-              <div className="p-4 rounded-xl bg-[#181818] border border-[#262626]">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-3">
+              {/* ORDERED ITEMS (Mobile Cards for < sm, Data Table for >= sm) */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-[#181818] border border-[#262626]">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-2 sm:mb-3">
                   ORDERED PIECES ({order.items.reduce((s, it) => s + it.quantity, 0)})
                 </span>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                {/* Mobile Pieces Card View (< sm) */}
+                <div className="sm:hidden space-y-2.5">
+                  {order.items.map((it) => (
+                    <div key={it.id} className="p-3 rounded-lg bg-white/5 border border-white/5 flex gap-3 items-center">
+                      {it.image && (
+                        <img
+                          src={it.image}
+                          alt={it.productName}
+                          className="w-14 h-14 object-cover rounded-md bg-neutral-800 shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0 text-xs">
+                        <div className="font-medium text-[#F2F0EB] truncate">{it.productName}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">
+                            {it.colour} / {it.size}
+                          </span>
+                          <span className="font-mono text-neutral-400 text-[10px]">
+                            {it.quantity} × ₦{it.unitPriceNGN.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="font-mono font-bold text-[#F2F0EB] mt-1">
+                          ₦{it.totalPriceNGN.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Pieces Table View (>= sm) */}
+                <div className="hidden sm:block overflow-x-auto rounded-lg border border-[#2B2B2B]">
+                  <table className="w-full text-left text-xs min-w-[520px]">
                     <thead>
                       <tr className="border-b border-[#2B2B2B] text-[10px] font-mono text-neutral-500 uppercase">
-                        <th className="py-2">Garment</th>
-                        <th className="py-2">SKU</th>
-                        <th className="py-2">Variant</th>
-                        <th className="py-2">Qty</th>
-                        <th className="py-2">Unit Price</th>
-                        <th className="py-2 text-right">Line Total</th>
+                        <th className="py-2 px-2.5">Garment</th>
+                        <th className="py-2 px-2.5">SKU</th>
+                        <th className="py-2 px-2.5">Variant</th>
+                        <th className="py-2 px-2.5">Qty</th>
+                        <th className="py-2 px-2.5">Unit Price</th>
+                        <th className="py-2 px-2.5 text-right">Line Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#242424]">
                       {order.items.map((it) => (
                         <tr key={it.id}>
-                          <td className="py-3">
+                          <td className="py-3 px-2.5">
                             <div className="flex items-center gap-3">
                               {it.image && (
                                 <img
@@ -381,17 +412,17 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                               <span className="font-medium text-[#F2F0EB]">{it.productName}</span>
                             </div>
                           </td>
-                          <td className="py-3 font-mono text-neutral-400">{it.sku}</td>
-                          <td className="py-3">
+                          <td className="py-3 px-2.5 font-mono text-neutral-400">{it.sku}</td>
+                          <td className="py-3 px-2.5">
                             <span className="font-mono bg-white/5 px-2 py-0.5 rounded text-[11px]">
                               {it.colour} / {it.size}
                             </span>
                           </td>
-                          <td className="py-3 font-mono font-bold text-[#F2F0EB]">{it.quantity}</td>
-                          <td className="py-3 font-mono text-neutral-400">
+                          <td className="py-3 px-2.5 font-mono font-bold text-[#F2F0EB]">{it.quantity}</td>
+                          <td className="py-3 px-2.5 font-mono text-neutral-400">
                             ₦{it.unitPriceNGN.toLocaleString()}
                           </td>
-                          <td className="py-3 font-mono font-bold text-right text-[#F2F0EB]">
+                          <td className="py-3 px-2.5 font-mono font-bold text-right text-[#F2F0EB]">
                             ₦{it.totalPriceNGN.toLocaleString()}
                           </td>
                         </tr>

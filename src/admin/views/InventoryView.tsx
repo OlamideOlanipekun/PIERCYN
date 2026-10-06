@@ -152,10 +152,10 @@ export const InventoryView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {/* 1. VIEW TABS */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex items-center gap-1.5 border-b border-[#242424] pb-2 text-xs font-mono">
+      <div className="flex items-center gap-1.5 border-b border-[#242424] pb-2 text-xs font-mono overflow-x-auto scrollbar-none whitespace-nowrap">
         <button
           onClick={() => setActiveTab('all')}
-          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
             activeTab === 'all'
               ? 'bg-[#F2F0EB] text-[#0A0A0A] font-bold'
               : 'text-[#A3A199] hover:text-[#F2F0EB] hover:bg-white/5'
@@ -165,7 +165,7 @@ export const InventoryView: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('lowStock')}
-          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ${
             activeTab === 'lowStock'
               ? 'bg-amber-400 text-[#0A0A0A] font-bold'
               : 'text-amber-400 hover:bg-amber-950/40'
@@ -176,7 +176,7 @@ export const InventoryView: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('ledger')}
-          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ${
             activeTab === 'ledger'
               ? 'bg-[#F2F0EB] text-[#0A0A0A] font-bold'
               : 'text-[#A3A199] hover:text-[#F2F0EB] hover:bg-white/5'
@@ -204,7 +204,7 @@ export const InventoryView: React.FC = () => {
           </div>
           <button
             onClick={fetchInventory}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-[#F2F0EB] rounded-lg text-xs font-mono uppercase cursor-pointer"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-[#F2F0EB] rounded-lg text-xs font-mono uppercase cursor-pointer shrink-0"
           >
             FILTER
           </button>
@@ -233,55 +233,107 @@ export const InventoryView: React.FC = () => {
                 No ledger transactions recorded yet.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase">
-                      <th className="py-2.5">Timestamp</th>
-                      <th className="py-2.5">Variant ID / SKU</th>
-                      <th className="py-2.5">Type</th>
-                      <th className="py-2.5">Units</th>
-                      <th className="py-2.5">Reference</th>
-                      <th className="py-2.5">Reason / Note</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#202020] font-mono">
-                    {allLedger.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-white/5">
-                        <td className="py-3 text-neutral-400 text-[11px]">
-                          {new Date(tx.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-3 text-[#F2F0EB] font-bold">{tx.variantId}</td>
-                        <td className="py-3">
-                          <span
-                            className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                              tx.type === 'PURCHASE'
-                                ? 'bg-emerald-950 text-emerald-300'
-                                : tx.type === 'SALE'
-                                ? 'bg-blue-950 text-blue-300'
-                                : tx.type === 'DAMAGE'
-                                ? 'bg-rose-950 text-rose-300'
-                                : 'bg-neutral-800 text-neutral-300'
-                            }`}
-                          >
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td
-                          className={`py-3 font-bold ${
+              <div>
+                {/* MOBILE LEDGER CARDS (< md) */}
+                <div className="md:hidden space-y-2.5">
+                  {allLedger.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="p-3.5 rounded-xl bg-[#181818] border border-[#262626] font-mono text-xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#F2F0EB] text-[11px] truncate max-w-[160px]">
+                          {tx.variantId}
+                        </span>
+                        <span
+                          className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
+                            tx.type === 'PURCHASE'
+                              ? 'bg-emerald-950 text-emerald-300'
+                              : tx.type === 'SALE'
+                              ? 'bg-blue-950 text-blue-300'
+                              : tx.type === 'DAMAGE'
+                              ? 'bg-rose-950 text-rose-300'
+                              : 'bg-neutral-800 text-neutral-300'
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-bold text-sm ${
                             tx.quantity > 0 ? 'text-emerald-400' : 'text-rose-400'
                           }`}
                         >
-                          {tx.quantity > 0 ? `+${tx.quantity}` : tx.quantity}
-                        </td>
-                        <td className="py-3 text-neutral-300">{tx.reference}</td>
-                        <td className="py-3 text-neutral-400 text-[11px] font-sans">
-                          {tx.reason || '—'}
-                        </td>
+                          {tx.quantity > 0 ? `+${tx.quantity}` : tx.quantity} units
+                        </span>
+                        <span className="text-[10px] text-neutral-400 bg-white/5 px-2 py-0.5 rounded">
+                          {tx.reference}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#242424] flex items-center justify-between text-[10px] text-neutral-500">
+                        <span className="font-sans text-neutral-400 truncate max-w-[180px]">
+                          {tx.reason || 'Atelier transaction'}
+                        </span>
+                        <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* DESKTOP LEDGER TABLE (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[620px]">
+                    <thead>
+                      <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase">
+                        <th className="py-2.5">Timestamp</th>
+                        <th className="py-2.5">Variant ID / SKU</th>
+                        <th className="py-2.5">Type</th>
+                        <th className="py-2.5">Units</th>
+                        <th className="py-2.5">Reference</th>
+                        <th className="py-2.5">Reason / Note</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[#202020] font-mono">
+                      {allLedger.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-white/5">
+                          <td className="py-3 text-neutral-400 text-[11px]">
+                            {new Date(tx.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-3 text-[#F2F0EB] font-bold">{tx.variantId}</td>
+                          <td className="py-3">
+                            <span
+                              className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
+                                tx.type === 'PURCHASE'
+                              ? 'bg-emerald-950 text-emerald-300'
+                              : tx.type === 'SALE'
+                              ? 'bg-blue-950 text-blue-300'
+                              : tx.type === 'DAMAGE'
+                              ? 'bg-rose-950 text-rose-300'
+                              : 'bg-neutral-800 text-neutral-300'
+                              }`}
+                            >
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td
+                            className={`py-3 font-bold ${
+                              tx.quantity > 0 ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {tx.quantity > 0 ? `+${tx.quantity}` : tx.quantity}
+                          </td>
+                          <td className="py-3 text-neutral-300">{tx.reference}</td>
+                          <td className="py-3 text-neutral-400 text-[11px] font-sans">
+                            {tx.reason || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -311,107 +363,209 @@ export const InventoryView: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
-                      <th className="py-3 font-normal">Garment / Piece</th>
-                      <th className="py-3 font-normal">SKU</th>
-                      <th className="py-3 font-normal">Size</th>
-                      <th className="py-3 font-normal">Color</th>
-                      <th className="py-3 font-normal">Available</th>
-                      <th className="py-3 font-normal">Reserved</th>
-                      <th className="py-3 font-normal">Sold</th>
-                      <th className="py-3 font-normal">Status</th>
-                      <th className="py-3 font-normal text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#202020]">
-                    {inventory.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 font-medium text-[#F2F0EB]">
-                          {item.productName}
-                        </td>
-
-                        <td className="py-3.5 font-mono text-neutral-400 font-bold">
-                          {item.sku}
-                        </td>
-
-                        <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                          {item.size}
-                        </td>
-
-                        <td className="py-3.5 font-sans">
-                          <div className="flex items-center gap-2">
-                            {item.colourHex && (
-                              <span
-                                className="w-3 h-3 rounded-full border border-white/20 shrink-0"
-                                style={{ backgroundColor: item.colourHex }}
-                              />
-                            )}
-                            <span className="text-neutral-300">{item.colour}</span>
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 font-mono text-base font-bold text-[#F2F0EB]">
-                          {item.availableStock}
-                        </td>
-
-                        <td className="py-3.5 font-mono text-neutral-400">
-                          {item.reservedStock}
-                        </td>
-
-                        <td className="py-3.5 font-mono text-neutral-400">
-                          {item.soldStock}
-                        </td>
-
-                        <td className="py-3.5">
-                          <span
-                            className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded ${
-                              item.status === 'IN_STOCK'
-                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
-                                : item.status === 'LOW_STOCK'
-                                ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
-                                : 'bg-rose-950 text-rose-300 border border-rose-800/40'
-                            }`}
-                          >
-                            {(item.status || 'IN_STOCK').replace('_', ' ')}
+              <div>
+                {/* MOBILE VARIANT CARDS (< md) */}
+                <div className="md:hidden space-y-3">
+                  {inventory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-xl bg-[#181818] border border-[#262626] space-y-3"
+                    >
+                      {/* Top row: Title + SKU + Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-semibold text-sm text-[#F2F0EB]">
+                            {item.productName}
+                          </h3>
+                          <span className="text-[10px] font-mono text-neutral-400 block mt-0.5">
+                            {item.sku}
                           </span>
-                        </td>
+                        </div>
+                        <span
+                          className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded shrink-0 ${
+                            item.status === 'IN_STOCK'
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                              : item.status === 'LOW_STOCK'
+                              ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                              : 'bg-rose-950 text-rose-300 border border-rose-800/40'
+                          }`}
+                        >
+                          {(item.status || 'IN_STOCK').replace('_', ' ')}
+                        </span>
+                      </div>
 
-                        <td className="py-3.5 text-right space-x-1.5">
-                          <button
-                            onClick={() => {
-                              setRestockingItem(item);
-                              setRestockQty(10);
-                            }}
-                            className="px-2 py-1 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono text-[10px] uppercase hover:bg-white cursor-pointer"
-                          >
-                            RESTOCK
-                          </button>
+                      {/* Variant Specs */}
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="font-mono bg-white/10 px-2 py-0.5 rounded font-bold text-[#F2F0EB]">
+                          Size {item.size}
+                        </span>
+                        <div className="flex items-center gap-1.5 font-sans text-neutral-300">
+                          {item.colourHex && (
+                            <span
+                              className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                              style={{ backgroundColor: item.colourHex }}
+                            />
+                          )}
+                          <span>{item.colour}</span>
+                        </div>
+                      </div>
 
-                          <button
-                            onClick={() => {
-                              setAdjustingItem(item);
-                              setAdjustQty(1);
-                            }}
-                            className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-[10px] uppercase cursor-pointer"
-                          >
-                            ADJUST
-                          </button>
+                      {/* Stock counts */}
+                      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                        <div>
+                          <span className="text-[9px] text-neutral-500 uppercase block">Available</span>
+                          <span className={`text-base font-bold ${
+                            item.availableStock <= 5 ? 'text-amber-400' : 'text-[#F2F0EB]'
+                          }`}>
+                            {item.availableStock}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-neutral-500 uppercase block">Reserved</span>
+                          <span className="text-neutral-400">{item.reservedStock}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-neutral-500 uppercase block">Sold</span>
+                          <span className="text-neutral-400">{item.soldStock}</span>
+                        </div>
+                      </div>
 
-                          <button
-                            onClick={() => handleOpenHistory(item)}
-                            className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                            title="View Ledger History"
-                          >
-                            <History className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setRestockingItem(item);
+                            setRestockQty(10);
+                          }}
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition-colors min-h-[42px]"
+                        >
+                          RESTOCK
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAdjustingItem(item);
+                            setAdjustQty(1);
+                          }}
+                          className="flex-1 py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs uppercase font-bold flex items-center justify-center cursor-pointer transition-colors min-h-[42px]"
+                        >
+                          ADJUST
+                        </button>
+                        <button
+                          onClick={() => handleOpenHistory(item)}
+                          className="p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center cursor-pointer min-h-[42px] min-w-[42px] shrink-0"
+                          title="View Ledger History"
+                          aria-label="View Ledger History"
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* DESKTOP VARIANT TABLE (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[720px]">
+                    <thead>
+                      <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
+                        <th className="py-3 font-normal">Garment / Piece</th>
+                        <th className="py-3 font-normal">SKU</th>
+                        <th className="py-3 font-normal">Size</th>
+                        <th className="py-3 font-normal">Color</th>
+                        <th className="py-3 font-normal">Available</th>
+                        <th className="py-3 font-normal">Reserved</th>
+                        <th className="py-3 font-normal">Sold</th>
+                        <th className="py-3 font-normal">Status</th>
+                        <th className="py-3 font-normal text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[#202020]">
+                      {inventory.map((item) => (
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3.5 font-medium text-[#F2F0EB]">
+                            {item.productName}
+                          </td>
+
+                          <td className="py-3.5 font-mono text-neutral-400 font-bold">
+                            {item.sku}
+                          </td>
+
+                          <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
+                            {item.size}
+                          </td>
+
+                          <td className="py-3.5 font-sans">
+                            <div className="flex items-center gap-2">
+                              {item.colourHex && (
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                                  style={{ backgroundColor: item.colourHex }}
+                                />
+                              )}
+                              <span className="text-neutral-300">{item.colour}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 font-mono text-base font-bold text-[#F2F0EB]">
+                            {item.availableStock}
+                          </td>
+
+                          <td className="py-3.5 font-mono text-neutral-400">
+                            {item.reservedStock}
+                          </td>
+
+                          <td className="py-3.5 font-mono text-neutral-400">
+                            {item.soldStock}
+                          </td>
+
+                          <td className="py-3.5">
+                            <span
+                              className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded ${
+                                item.status === 'IN_STOCK'
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                                  : item.status === 'LOW_STOCK'
+                                  ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                                  : 'bg-rose-950 text-rose-300 border border-rose-800/40'
+                              }`}
+                            >
+                              {(item.status || 'IN_STOCK').replace('_', ' ')}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 text-right space-x-1.5">
+                            <button
+                              onClick={() => {
+                                setRestockingItem(item);
+                                setRestockQty(10);
+                              }}
+                              className="px-2 py-1 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono text-[10px] uppercase hover:bg-white cursor-pointer"
+                            >
+                              RESTOCK
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setAdjustingItem(item);
+                                setAdjustQty(1);
+                              }}
+                              className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-[10px] uppercase cursor-pointer"
+                            >
+                              ADJUST
+                            </button>
+
+                            <button
+                              onClick={() => handleOpenHistory(item)}
+                              className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                              title="View Ledger History"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -422,8 +576,8 @@ export const InventoryView: React.FC = () => {
       {/* 4. RESTOCK MODAL */}
       {/* ------------------------------------------------------------- */}
       {restockingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-md bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-md bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-3 mb-4">
               <div>
                 <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest block">
@@ -435,7 +589,8 @@ export const InventoryView: React.FC = () => {
               </div>
               <button
                 onClick={() => setRestockingItem(null)}
-                className="text-neutral-400 hover:text-white"
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -459,7 +614,7 @@ export const InventoryView: React.FC = () => {
                   required
                   value={restockQty}
                   onChange={(e) => setRestockQty(Number(e.target.value))}
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-lg font-bold"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-base sm:text-lg font-bold min-h-[42px]"
                 />
               </div>
 
@@ -473,7 +628,7 @@ export const InventoryView: React.FC = () => {
                   value={restockRef}
                   onChange={(e) => setRestockRef(e.target.value)}
                   placeholder="e.g. BATCH-RESTOCK-02"
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-sm sm:text-xs min-h-[42px]"
                 />
               </div>
 
@@ -486,22 +641,22 @@ export const InventoryView: React.FC = () => {
                   value={restockReason}
                   onChange={(e) => setRestockReason(e.target.value)}
                   placeholder="Atelier finished batch delivery"
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden text-sm sm:text-xs min-h-[42px]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
                   onClick={() => setRestockingItem(null)}
-                  className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
+                  className="px-4 py-2.5 rounded-lg text-neutral-400 hover:text-white font-mono min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-mono uppercase text-xs transition-all disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-mono uppercase text-xs transition-all disabled:opacity-50 min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   {submitting ? 'RECORDING...' : 'CONFIRM RESTOCK'}
                 </button>
@@ -515,8 +670,8 @@ export const InventoryView: React.FC = () => {
       {/* 5. ADJUST STOCK MODAL */}
       {/* ------------------------------------------------------------- */}
       {adjustingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-md bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-md bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-3 mb-4">
               <div>
                 <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest block">
@@ -528,7 +683,8 @@ export const InventoryView: React.FC = () => {
               </div>
               <button
                 onClick={() => setAdjustingItem(null)}
-                className="text-neutral-400 hover:text-white"
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -549,7 +705,7 @@ export const InventoryView: React.FC = () => {
                 <select
                   value={adjustType}
                   onChange={(e) => setAdjustType(e.target.value as any)}
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono min-h-[42px]"
                 >
                   <option value="ADJUSTMENT">ADJUSTMENT (Count correction)</option>
                   <option value="DAMAGE">DAMAGE (Write-off damaged pieces)</option>
@@ -567,7 +723,7 @@ export const InventoryView: React.FC = () => {
                   required
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(Number(e.target.value))}
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-lg font-bold"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-base sm:text-lg font-bold min-h-[42px]"
                 />
               </div>
 
@@ -581,7 +737,7 @@ export const InventoryView: React.FC = () => {
                   value={adjustRef}
                   onChange={(e) => setAdjustRef(e.target.value)}
                   placeholder="e.g. AUDIT-MARCH-2026"
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-sm sm:text-xs min-h-[42px]"
                 />
               </div>
 
@@ -595,22 +751,22 @@ export const InventoryView: React.FC = () => {
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
                   placeholder="Describe reason for this manual stock change"
-                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden text-sm sm:text-xs min-h-[42px]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-[#242424]">
                 <button
                   type="button"
                   onClick={() => setAdjustingItem(null)}
-                  className="px-4 py-2 rounded text-neutral-400 hover:text-white font-mono"
+                  className="px-4 py-2.5 rounded-lg text-neutral-400 hover:text-white font-mono min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono uppercase text-xs transition-all disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono uppercase text-xs transition-all disabled:opacity-50 min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
                   {submitting ? 'ADJUSTING...' : 'APPLY ADJUSTMENT'}
                 </button>
@@ -624,8 +780,8 @@ export const InventoryView: React.FC = () => {
       {/* 6. VIEW VARIANT LEDGER HISTORY MODAL */}
       {/* ------------------------------------------------------------- */}
       {historyItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs font-sans">
-          <div className="w-full max-w-2xl bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs font-sans">
+          <div className="w-full max-w-2xl bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#242424] pb-3 mb-4">
               <div>
                 <span className="text-[10px] font-mono text-[#A3A199] uppercase tracking-widest block">
@@ -637,7 +793,8 @@ export const InventoryView: React.FC = () => {
               </div>
               <button
                 onClick={() => setHistoryItem(null)}
-                className="text-neutral-400 hover:text-white"
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
