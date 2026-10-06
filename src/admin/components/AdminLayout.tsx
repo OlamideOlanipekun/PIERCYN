@@ -130,6 +130,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       badgeColor: 'bg-rose-700 text-white',
     },
     { id: 'customers', label: 'Customers', icon: Users },
+    { id: 'affiliates', label: 'Affiliates', icon: TrendingUp },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'audit', label: 'Audit Log', icon: History },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -161,6 +162,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         return {
           title: 'Customer Directory',
           subtitle: 'Atelier clients, lifetime spending & historical purchase logs',
+        };
+      case 'affiliates':
+        return {
+          title: 'Creator & Affiliate Program',
+          subtitle: 'Partner applications, commission ledger, referral links & weekly bank payouts',
         };
       case 'analytics':
         return {

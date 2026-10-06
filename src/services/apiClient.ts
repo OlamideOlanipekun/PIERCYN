@@ -135,6 +135,7 @@ export const api = {
     paymentMethod: 'paystack' | 'transfer' | 'mock';
     items: { variantId: string; quantity: number }[];
     discountCode?: string;
+    affiliateCode?: string;
   }) {
     const res = await fetch(`${API_BASE}/orders`, {
       method: 'POST',

@@ -40,7 +40,7 @@ export type SortOption =
   | 'PRICE: HIGH TO LOW' 
   | 'BEST SELLING';
 
-export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product';
+export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product' | 'affiliate';
 
 export interface ProductColor {
   name: string;

@@ -202,7 +202,13 @@ export interface DbOrder {
   createdAt: string;
   updatedAt: string;
   items: DbOrderItem[];
+  // Affiliate attribution (immutable snapshot at order creation)
+  affiliateId?: string;
+  affiliateLinkId?: string;
+  affiliateCode?: string;         // Referral code snapshot
+  affiliateAttributedAt?: string; // ISO timestamp of click attribution
 }
+
 
 export interface DbPayment {
   id: string;

@@ -26,6 +26,8 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
+import { AffiliateApp } from './affiliate/AffiliateApp';
+import { initAffiliateTracking } from './utils/affiliateTracking';
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -48,6 +50,12 @@ const MainLayout: React.FC = () => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
+  const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
+
+  // Initialize affiliate click tracking once on mount
+  useEffect(() => {
+    initAffiliateTracking();
+  }, []);
 
   // Compute deduplicated homepage products from real backend catalog
   const { justDropped, mensFashion } = useMemo(
@@ -61,11 +69,20 @@ const MainLayout: React.FC = () => {
 
     if (rawPath.startsWith('/admin')) {
       setIsAdminView(true);
+      setIsAffiliateView(false);
       document.title = 'PIERCYN — Operations Control Room';
       return;
     }
 
+    if (rawPath.startsWith('/affiliate')) {
+      setIsAffiliateView(true);
+      setIsAdminView(false);
+      document.title = 'PIERCYN Creator & Affiliate Portal';
+      return;
+    }
+
     setIsAdminView(false);
+    setIsAffiliateView(false);
 
     if (rawPath === '/shop') {
       setActivePage('shop');
@@ -218,6 +235,18 @@ const MainLayout: React.FC = () => {
       <AdminApp
         onBackToStore={() => {
           setIsAdminView(false);
+          window.history.pushState({}, '', '/');
+          document.title = 'PIERCYN — Look Good. Spend Less.';
+        }}
+      />
+    );
+  }
+
+  if (isAffiliateView) {
+    return (
+      <AffiliateApp
+        onBackToShop={() => {
+          setIsAffiliateView(false);
           window.history.pushState({}, '', '/');
           document.title = 'PIERCYN — Look Good. Spend Less.';
         }}

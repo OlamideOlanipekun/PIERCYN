@@ -8,11 +8,14 @@ import { CustomerService } from '../customers/customerService';
 import { ShippingService } from '../shipping/shippingService';
 import { AnalyticsService } from '../analytics/analyticsService';
 import { AuditService } from './auditService';
+import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
 import { dbStore, DbOrder, OrderStatusType } from '../../db/store';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { z } from 'zod';
 
 export const adminRouter = Router();
+
+adminRouter.use('/affiliates', affiliateAdminRouter);
 
 // Mutable store settings initialized from COMMERCE_CONFIG
 export const storeSettingsState = {

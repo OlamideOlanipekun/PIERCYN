@@ -10,6 +10,7 @@ import { ShippingService } from '../modules/shipping/shippingService';
 import { EventService } from '../services/eventService';
 import { AuthService } from '../services/authService';
 import { adminRouter } from '../modules/admin/adminRouter';
+import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
 import {
   AddToCartSchema,
   UpdateCartItemSchema,
@@ -24,8 +25,9 @@ import {
 
 export const apiRouter = Router();
 
-// Mount admin routes (protected by requireAdmin middleware internally)
+// Mount admin and affiliate routes
 apiRouter.use('/admin', adminRouter);
+apiRouter.use('/affiliate', affiliateRouter);
 
 // Helper: extract session ID from headers or query string
 const getSessionId = (req: Request): string => {
@@ -162,14 +164,15 @@ apiRouter.post('/checkout/quote', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/orders', (req: Request, res: Response) => {
+apiRouter.post('/orders', async (req: Request, res: Response) => {
   try {
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
 
-    const order = CheckoutService.createOrder({
+    const order = await CheckoutService.createOrder({
       ...validated,
       sessionId,
+      affiliateCode: validated.affiliateCode, // Forward referral code for attribution
     });
 
     // Clear cart on successful order creation
@@ -181,6 +184,7 @@ apiRouter.post('/orders', (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: msg });
   }
 });
+
 
 // Lookup order list by customer email or session
 apiRouter.get('/orders', (req: Request, res: Response) => {

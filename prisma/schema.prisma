@@ -25,6 +25,27 @@ enum AdminRole {
   ADMIN
 }
 
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum CommissionStatus {
+  PENDING
+  AVAILABLE
+  PAID
+  REVERSED
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
 enum ProductStatus {
   DRAFT
   ACTIVE
@@ -467,6 +488,14 @@ model Order {
 
   paidAt         DateTime?
 
+  // Affiliate attribution snapshot (immutable after order creation)
+  affiliateId          String?
+  affiliate            Affiliate?          @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  affiliateLinkId      String?
+  affiliateLink        AffiliateLink?      @relation(fields: [affiliateLinkId], references: [id], onDelete: SetNull)
+  affiliateCode        String?             // Snapshot of referral code at time of purchase
+  affiliateAttributedAt DateTime?          // When the click attribution occurred
+
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -475,6 +504,7 @@ model Order {
   shipment       Shipment?
   statusHistory  OrderStatusHistory[]
   events         AnalyticsEvent[]
+  commissions    AffiliateCommission[]
 
   @@index([orderNumber])
   @@index([status])
@@ -482,6 +512,8 @@ model Order {
   @@index([customerEmail])
   @@index([customerId])
   @@index([createdAt])
+  @@index([affiliateId])
+  @@index([affiliateCode])
 }
 
 // ============================================================
@@ -515,6 +547,8 @@ model OrderItem {
   totalNGN      Int           // unitPriceNGN * quantity (server-calculated)
 
   createdAt     DateTime      @default(now())
+
+  commissions   AffiliateCommission[]
 
   @@index([orderId])
   @@index([sku])
@@ -695,4 +729,212 @@ model Notification {
 
   @@index([recipient])
   @@index([status])
+}
+
+// ============================================================
+// AFFILIATE SYSTEM
+// Production-grade affiliate/referral domain integrated into
+// the existing PIERCYN commerce system.
+// Commission currency: INTEGER (Kobo) — never floats.
+// Referral codes: unique, uppercase, 8–12 chars.
+// Attribution: 30-day last-valid-click window.
+// ============================================================
+
+// Affiliate account — owns referral links and earns commissions
+model Affiliate {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+
+  // Social / promotion profile
+  instagram    String?
+  tiktok       String?
+  otherSocials String?         // JSON array of { platform, handle }
+  promotionChannels String?    // JSON array of channels
+  audienceSize String?         // e.g. "10k-50k"
+  promotionExperience String?
+
+  status       AffiliateStatus @default(PENDING)
+  isActive     Boolean         @default(false)  // true only when ACTIVE
+
+  // Payout banking details (stored server-side only)
+  bankName     String?
+  accountNumber String?
+  accountName  String?
+
+  // Approval metadata
+  appliedAt    DateTime        @default(now())
+  approvedAt   DateTime?
+  approvedBy   String?         // adminId
+  rejectedAt   DateTime?
+  rejectedBy   String?         // adminId
+  rejectionReason String?
+  suspendedAt  DateTime?
+  suspendedBy  String?         // adminId
+  suspensionReason String?
+
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  links        AffiliateLink[]
+  clicks       AffiliateClick[]
+  attributions AffiliateAttribution[]
+  commissions  AffiliateCommission[]
+  payouts      AffiliatePayout[]
+  orders       Order[]
+
+  @@index([email])
+  @@index([status])
+}
+
+// Affiliate referral link — generates unique ?ref=CODE URLs
+model AffiliateLink {
+  id           String    @id @default(cuid())
+  affiliateId  String
+  affiliate    Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  // Link configuration
+  name         String                // Human-readable name e.g. "December Tees Campaign"
+  referralCode String    @unique     // e.g. "KELVIN42" — unique across entire system
+  destination  String                // e.g. "/collections/mens-tshirts" or "/shop"
+  destinationType String @default("collection") // "collection" | "product" | "homepage"
+
+  isActive     Boolean   @default(true)
+  disabledAt   DateTime?
+  disabledBy   String?   // adminId
+
+  // Aggregated stats (updated by triggers/jobs — fast reads)
+  clickCount   Int       @default(0)
+  orderCount   Int       @default(0)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  clicks       AffiliateClick[]
+  attributions AffiliateAttribution[]
+  commissions  AffiliateCommission[]
+  orders       Order[]
+
+  @@index([affiliateId])
+  @@index([referralCode])
+  @@index([isActive])
+}
+
+// Individual click event — one record per visit through an affiliate link
+model AffiliateClick {
+  id            String        @id @default(cuid())
+  affiliateId   String
+  affiliate     Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  affiliateLinkId String
+  affiliateLink AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+
+  sessionId     String?       // piercyn_session_id from localStorage
+  customerId    String?       // if authenticated customer clicked
+  ipHash        String?       // SHA-256 hash of IP (privacy-safe, not raw IP)
+  userAgent     String?       // browser/device info (truncated)
+  landingPage   String?       // the destination URL clicked to
+  referrerUrl   String?       // where the customer came from
+
+  createdAt     DateTime      @default(now())
+
+  @@index([affiliateId])
+  @@index([affiliateLinkId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// Active attribution — maps a session to an affiliate for 30 days
+// LAST VALID CLICK WINS: upsert by sessionId, update if newer valid click
+model AffiliateAttribution {
+  id              String        @id @default(cuid())
+  sessionId       String        @unique  // piercyn_session_id — one attribution per session
+  affiliateId     String
+  affiliate       Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  affiliateLinkId String
+  affiliateLink   AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+  referralCode    String        // snapshot of referral code
+  clickedAt       DateTime      // timestamp of the click that set this attribution
+  expiresAt       DateTime      // clickedAt + 30 days
+
+  customerId      String?       // if logged-in customer — for self-referral detection
+  customerEmail   String?       // email snapshot for self-referral detection
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([sessionId])
+  @@index([affiliateId])
+  @@index([expiresAt])
+}
+
+// Per-item commission record — idempotent via unique(affiliateId, orderItemId)
+model AffiliateCommission {
+  id              String           @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  orderId         String
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId     String
+  orderItem       OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  affiliateLinkId String?
+  affiliateLink   AffiliateLink?   @relation(fields: [affiliateLinkId], references: [id], onDelete: SetNull)
+
+  amountKobo      Int              // Commission in Kobo (₦500 = 50000 kobo)
+  status          CommissionStatus @default(PENDING)
+
+  // Lifecycle timestamps
+  eligibleAt      DateTime?        // When it became AVAILABLE
+  paidAt          DateTime?        // When it was included in a payout
+  reversedAt      DateTime?        // When it was reversed
+  reversalReason  String?
+
+  // Payout reference
+  payoutId        String?
+  payout          AffiliatePayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // CRITICAL: prevents duplicate commission for same item
+  @@unique([affiliateId, orderItemId])
+  @@index([affiliateId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([status])
+  @@index([payoutId])
+}
+
+// Manual payout request — admin reviews and marks paid
+model AffiliatePayout {
+  id              String        @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amountKobo      Int           // Requested payout amount in Kobo
+  status          PayoutStatus  @default(PENDING)
+
+  // Banking snapshot at time of request (immutable)
+  bankName        String
+  accountNumber   String
+  accountName     String
+
+  // Admin processing
+  adminNote       String?
+  paymentReference String?     // Reference from manual bank transfer
+  processedBy     String?      // adminId who marked paid/rejected
+  processedAt     DateTime?
+
+  requestedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  commissions     AffiliateCommission[]
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([requestedAt])
 }

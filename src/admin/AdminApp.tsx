@@ -8,6 +8,7 @@ import { OrderDetailModal } from './views/OrderDetailModal';
 import { ProductsView } from './views/ProductsView';
 import { InventoryView } from './views/InventoryView';
 import { CustomersView } from './views/CustomersView';
+import { AffiliatesView } from './views/AffiliatesView';
 import { AnalyticsView } from './views/AnalyticsView';
 import { AuditLogView } from './views/AuditLogView';
 import { SettingsView } from './views/SettingsView';
@@ -33,6 +34,7 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     else if (path.includes('/admin/products')) setActiveTab('products');
     else if (path.includes('/admin/inventory')) setActiveTab('inventory');
     else if (path.includes('/admin/customers')) setActiveTab('customers');
+    else if (path.includes('/admin/affiliates')) setActiveTab('affiliates');
     else if (path.includes('/admin/analytics')) setActiveTab('analytics');
     else if (path.includes('/admin/audit')) setActiveTab('audit');
     else if (path.includes('/admin/settings')) setActiveTab('settings');
@@ -96,6 +98,8 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
         {activeTab === 'customers' && (
           <CustomersView onOpenOrder={(orderId) => setSelectedOrderId(orderId)} />
         )}
+
+        {activeTab === 'affiliates' && <AffiliatesView />}
 
         {activeTab === 'analytics' && <AnalyticsView />}
 

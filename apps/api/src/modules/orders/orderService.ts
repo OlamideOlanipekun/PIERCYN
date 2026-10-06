@@ -1,5 +1,6 @@
 import { prisma } from '../../db/prisma';
 import { InventoryService } from '../inventory/inventoryService';
+import { CommissionService } from '../affiliate/commissionService';
 
 export const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
   PENDING_PAYMENT: ['PAID', 'CANCELLED', 'FAILED'],
@@ -145,9 +146,9 @@ export class OrderService {
       );
     }
 
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       const isPaid = newStatus === 'PAID';
-      const updated = await tx.order.update({
+      const updatedOrder = await tx.order.update({
         where: { id: existing.id },
         data: {
           status: newStatus as any,
@@ -173,15 +174,30 @@ export class OrderService {
         await InventoryService.releaseReservation(existing.orderNumber, tx);
       }
 
-      return updated;
+      return updatedOrder;
     });
+
+    // Handle affiliate commission side-effects asynchronously/safely
+    try {
+      if (newStatus === 'PAID') {
+        await CommissionService.processOrderCommission(existing.id);
+      } else if (newStatus === 'DELIVERED' || newStatus === 'COMPLETED') {
+        await CommissionService.markCommissionsAvailable(existing.id);
+      } else if (['CANCELLED', 'REFUNDED', 'RETURNED'].includes(newStatus)) {
+        await CommissionService.reverseCommissions(existing.id, note || `Order ${newStatus}`);
+      }
+    } catch (commErr: any) {
+      console.error(`[COMMISSION_ERROR] Failed updating commission for order ${existing.id}:`, commErr.message);
+    }
+
+    return updated;
   }
 
   public static async markOrderPaid(
     orderNumber: string,
     providerReference: string = 'SYS-REF'
   ) {
-    return prisma.$transaction(async (tx) => {
+    const orderRes = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { orderNumber },
         include: { items: true },
@@ -258,6 +274,14 @@ export class OrderService {
 
       return updatedOrder;
     });
+
+    try {
+      await CommissionService.processOrderCommission(orderRes.id);
+    } catch (commErr: any) {
+      console.error(`[COMMISSION_ERROR] Failed to process commission in markOrderPaid:`, commErr.message);
+    }
+
+    return orderRes;
   }
 
   public static async cancelOrder(orderNumber: string, reason: string = 'User cancellation') {

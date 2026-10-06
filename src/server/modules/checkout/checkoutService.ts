@@ -5,6 +5,7 @@ import { InventoryService } from '../inventory/inventoryService';
 import { CustomerService } from '../customers/customerService';
 import { dbStore, DbOrder, DbOrderItem } from '../../db/store';
 import { EventService } from '../../services/eventService';
+import { AffiliateService } from '../affiliate/affiliateService';
 
 export interface CheckoutQuote {
   cart: CalculatedCart;
@@ -34,6 +35,7 @@ export interface CreateOrderInput {
   items: { variantId: string; quantity: number }[];
   discountCode?: string;
   sessionId?: string;
+  affiliateCode?: string; // Optional: referral code from localStorage attribution
 }
 
 export class CheckoutService {
@@ -111,7 +113,8 @@ export class CheckoutService {
   /**
    * Create an authoritative order with snapshot item data and atomic inventory reservation
    */
-  public static createOrder(input: CreateOrderInput): DbOrder {
+  public static async createOrder(input: CreateOrderInput): Promise<DbOrder> {
+
     const sessionId = input.sessionId || `sess-${Date.now()}`;
     const quote = this.calculateQuote(
       sessionId,
@@ -167,7 +170,37 @@ export class CheckoutService {
       createdAt: now,
     }));
 
-    // 4. Create Order Record
+    // 4. Resolve Affiliate Attribution (non-blocking — never fail the order)
+    let affiliateId: string | undefined;
+    let affiliateLinkId: string | undefined;
+    let resolvedAffiliateCode: string | undefined;
+    let affiliateAttributedAt: string | undefined;
+    try {
+      const affCode = input.affiliateCode?.trim().toUpperCase();
+      const attribution = await AffiliateService.resolveAttribution(sessionId, affCode);
+      if (attribution) {
+        // SELF-REFERRAL GUARD: compare customer email vs affiliate email
+        const affCheck = await AffiliateService.getProfile(attribution.affiliateId).catch(() => null);
+        const custEmail = input.customer.email.toLowerCase().trim();
+        const affEmail = affCheck?.email?.toLowerCase().trim();
+        if (!affEmail || custEmail !== affEmail) {
+          affiliateId = attribution.affiliateId;
+          affiliateLinkId = attribution.affiliateLinkId;
+          resolvedAffiliateCode = attribution.referralCode;
+          affiliateAttributedAt = (attribution.clickedAt instanceof Date
+            ? attribution.clickedAt
+            : new Date(attribution.clickedAt as any)
+          ).toISOString();
+        } else {
+          console.log(`[AFFILIATE] Self-referral blocked for customer ${custEmail}`);
+        }
+      }
+    } catch (affErr: any) {
+      // Never let affiliate resolution crash a real order
+      console.warn('[AFFILIATE] Attribution resolution failed (non-critical):', affErr?.message);
+    }
+
+    // 5. Create Order Record
     const paymentMethodLabel =
       input.paymentMethod === 'paystack'
         ? 'Paystack'
@@ -207,6 +240,11 @@ export class CheckoutService {
       createdAt: now,
       updatedAt: now,
       items: orderItems,
+      // Affiliate attribution snapshot (immutable)
+      affiliateId,
+      affiliateLinkId,
+      affiliateCode: resolvedAffiliateCode,
+      affiliateAttributedAt,
     };
 
     dbStore.orders.set(order.id, order);

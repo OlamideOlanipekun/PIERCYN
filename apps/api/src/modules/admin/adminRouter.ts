@@ -9,6 +9,7 @@ import { CustomerService } from '../customers/customerService';
 import { ShippingService } from '../shipping/shippingService';
 import { AnalyticsService } from '../analytics/analyticsService';
 import { AuditService } from './auditService';
+import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { z } from 'zod';
@@ -20,6 +21,8 @@ const supabaseAdmin = createClient(
 );
 
 export const adminRouter = Router();
+
+adminRouter.use('/affiliates', affiliateAdminRouter);
 
 export const storeSettingsState = {
   storeName: 'PIERCYN',

@@ -10,6 +10,7 @@ import { ShippingService } from '../modules/shipping/shippingService';
 import { EventService } from '../services/eventService';
 import { AuthService } from '../services/authService';
 import { adminRouter } from '../modules/admin/adminRouter';
+import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
 import {
   AddToCartSchema,
   UpdateCartItemSchema,
@@ -24,6 +25,7 @@ import {
 export const apiRouter = Router();
 
 apiRouter.use('/admin', adminRouter);
+apiRouter.use('/affiliate', affiliateRouter);
 
 const getSessionId = (req: Request): string => {
   return (req.headers['x-session-id'] as string) || (req.query.sessionId as string) || 'guest-session';

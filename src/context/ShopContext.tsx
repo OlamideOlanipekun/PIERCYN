@@ -4,6 +4,7 @@ import { eventTracker } from '../services/eventTracker';
 import { api } from '../services/apiClient';
 import { catalogService, mapServerProduct } from '../services/catalogService';
 import { resolveProductVariant } from '../utils/variants';
+import { getActiveAffiliateCode } from '../utils/affiliateTracking';
 
 export interface CreateOrderPayload {
   customer: CustomerInfo;
@@ -11,6 +12,7 @@ export interface CreateOrderPayload {
   paymentMethod: 'paystack' | 'transfer' | 'mock';
   items: { variantId: string; quantity: number }[];
   discountCode?: string;
+  affiliateCode?: string;
 }
 
 interface ShopContextType {
@@ -617,12 +619,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Authoritative Server-Side Order Creation
   const createOrder = async (orderPayload: CreateOrderPayload): Promise<Order> => {
+    const affiliateCode = orderPayload.affiliateCode || getActiveAffiliateCode() || undefined;
     const res = await api.createOrder({
       customer: orderPayload.customer,
       shippingRegion: orderPayload.shippingRegion,
       paymentMethod: orderPayload.paymentMethod,
       items: orderPayload.items,
       discountCode: orderPayload.discountCode || appliedPromoCode || undefined,
+      affiliateCode,
     });
 
     if (!res.success || !res.data) {

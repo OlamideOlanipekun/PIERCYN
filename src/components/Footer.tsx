@@ -97,6 +97,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               >
                 CONTACT US
               </a>
+              <button
+                id="footer-affiliate-program"
+                onClick={() => {
+                  window.history.pushState({}, '', '/affiliate');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                AFFILIATE PROGRAM
+              </button>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { CartService, CalculatedCart } from '../cart/cartService';
 import { ShippingService } from '../shipping/shippingService';
 import { InventoryService } from '../inventory/inventoryService';
 import { CustomerService } from '../customers/customerService';
+import { AffiliateService } from '../affiliate/affiliateService';
 import { prisma } from '../../db/prisma';
 import { generateOrderNumber } from '@piercyn/utils';
 
@@ -33,6 +34,7 @@ export interface CreateOrderInput {
   paymentMethod: 'paystack' | 'transfer' | 'mock';
   items: { variantId: string; quantity: number }[];
   discountCode?: string;
+  affiliateCode?: string;
   sessionId?: string;
 }
 
@@ -96,6 +98,9 @@ export class CheckoutService {
 
     const orderNumber = generateOrderNumber();
 
+    // Resolve affiliate attribution (from explicit code or session cookie/attribution table)
+    const attribution = await AffiliateService.resolveAttribution(sessionId, input.affiliateCode);
+
     const createdOrder = await prisma.$transaction(async (tx) => {
       // 1. Transactional stock reservation
       for (const item of input.items) {
@@ -156,6 +161,8 @@ export class CheckoutService {
           paymentMethod: paymentMethodLabel,
           paymentStatus: 'PENDING',
           status: 'PENDING_PAYMENT',
+          affiliateId: attribution?.affiliateId || null,
+          affiliateLinkId: attribution?.affiliateLinkId || null,
           items: {
             create: quote.cart.items.map((line) => ({
               variantId: line.variantId,

@@ -42,4 +42,13 @@ export const COMMERCE_CONFIG = {
     { code: 'LAGOS26', discountPercent: 15, description: '15% Lagos Launch Discount' },
     { code: 'PIERCYN10', discountPercent: 10, description: '10% Welcome Discount' },
   ],
+
+  // Affiliate System Configuration (Single Source of Truth)
+  AFFILIATE: {
+    COMMISSION_PER_PRODUCT_KOBO: 50000, // ₦500 = 50,000 kobo per qualifying delivered product
+    ATTRIBUTION_WINDOW_DAYS: 30,         // Days an affiliate click is valid for attribution
+    MIN_PAYOUT_KOBO: 50000,              // ₦500 minimum payout threshold (50,000 kobo)
+    RETURN_WINDOW_DAYS: 7,               // Days after delivery before commission becomes AVAILABLE
+    REFERRAL_CODE_PREFIX_LENGTH: 4,      // How many chars from name to use in code prefix
+  },
 };

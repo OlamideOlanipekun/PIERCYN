@@ -276,6 +276,59 @@ class AdminApiClient {
       method: 'POST',
     });
   }
+
+  // 12. Affiliate & Creator Program Administration
+  public async getAffiliateOverview(): Promise<any> {
+    return this.request('/affiliates/overview');
+  }
+
+  public async getAffiliates(params?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<any[]> {
+    const qs = new URLSearchParams(params as any).toString();
+    return this.request(`/affiliates${qs ? `?${qs}` : ''}`);
+  }
+
+  public async getAffiliate(id: string): Promise<any> {
+    return this.request(`/affiliates/${id}`);
+  }
+
+  public async reviewAffiliate(
+    id: string,
+    action: 'APPROVE' | 'REJECT',
+    notes?: string
+  ): Promise<any> {
+    return this.request(`/affiliates/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, adminNotes: notes, rejectionReason: notes }),
+    });
+  }
+
+  public async updateAffiliateStatus(
+    id: string,
+    status: 'ACTIVE' | 'SUSPENDED',
+    reason?: string
+  ): Promise<any> {
+    return this.request(`/affiliates/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status, reason }),
+    });
+  }
+
+  public async getAffiliatePayouts(params?: { status?: string; limit?: number; offset?: number }): Promise<any[]> {
+    const qs = new URLSearchParams(params as any).toString();
+    return this.request(`/affiliates/payouts/all${qs ? `?${qs}` : ''}`);
+  }
+
+  public async processAffiliatePayout(
+    id: string,
+    action: 'PROCESSING' | 'PAID' | 'REJECTED',
+    notes?: string,
+    payoutReference?: string
+  ): Promise<any> {
+    return this.request(`/affiliates/payouts/${id}/process`, {
+      method: 'POST',
+      body: JSON.stringify({ action, notes, payoutReference }),
+    });
+  }
 }
 
 export const AdminApi = new AdminApiClient();

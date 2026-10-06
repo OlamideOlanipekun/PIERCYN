@@ -6,7 +6,7 @@ interface HeroSectionProps {
 }
 
 // Configurable Vercel Blob URLs
-const HERO_VIDEO_DESKTOP = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Model_walking_on_street_20260922160521.mp4';
+const HERO_VIDEO_DESKTOP = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Models_showcasing_streetwear_fas%E2%80%A6_20261006164607.mp4';
 const HERO_POSTER_IMAGE = 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop';
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {

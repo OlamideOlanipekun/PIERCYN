@@ -52,6 +52,7 @@ export const CreateOrderSchema = z.object({
   paymentMethod: PaymentMethodEnum,
   items: z.array(AddToCartSchema).min(1, 'Cart cannot be empty'),
   discountCode: z.string().optional(),
+  affiliateCode: z.string().optional(),
 });
 
 export const VerifyPaymentSchema = z.object({

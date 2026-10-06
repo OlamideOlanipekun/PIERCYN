@@ -4,6 +4,7 @@ export type AdminNavTab =
   | 'products'
   | 'inventory'
   | 'customers'
+  | 'affiliates'
   | 'analytics'
   | 'audit'
   | 'settings';
