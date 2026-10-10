@@ -252,9 +252,9 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="w-12 h-12 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center text-[#C9A96E] mb-6">
                     <CreditCard className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-serif text-white mb-2">Automated Bank Withdrawals</h3>
+                  <h3 className="text-lg font-serif text-white mb-2">Manual Bank Payouts</h3>
                   <p className="text-sm text-[#888888] leading-relaxed font-light">
-                    Request automated bank transfers to GTBank, Access, Zenith, Kuda, or any Nigerian commercial bank. Low minimum payout of just ₦2,500.
+                    Request a manual bank payout to your Nigerian account once your available balance reaches ₦500. PIERCYN Finance reviews and completes approved payouts.
                   </p>
                 </div>
               </div>
@@ -347,7 +347,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   },
                   {
                     step: '04',
-                    title: 'Direct Bank Payouts',
+                    title: 'Manual Bank Payouts',
                     desc: 'Withdraw your accumulated royalties directly to your Nigerian bank account anytime.',
                   },
                 ].map((item, idx) => (
@@ -378,7 +378,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   },
                   {
                     q: 'How and when do I receive payment?',
-                    a: 'Commissions become available once the customer return window (7 days) has passed. You can request payouts at any time directly to your Nigerian bank account once your balance reaches ₦2,500.',
+                    a: 'Commissions become available once the customer return window (7 days) has passed. You can request a manual payout to your Nigerian bank account once your available balance reaches ₦500.',
                   },
                   {
                     q: 'What happens if a customer returns or cancels an order?',

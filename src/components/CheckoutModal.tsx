@@ -15,7 +15,6 @@ export const CheckoutModal: React.FC = () => {
     isCheckoutOpen,
     setIsCheckoutOpen,
     createOrder,
-    setIsOrderConfirmedOpen,
     showToast,
   } = useShop();
 
@@ -127,14 +126,16 @@ export const CheckoutModal: React.FC = () => {
           setErrorMessage(paymentRes.message || 'Payment could not be completed. Your reservation is held; you can complete bank transfer or WhatsApp confirmation.');
           setIsSubmitting(false);
           setIsCheckoutOpen(false);
-          setIsOrderConfirmedOpen(true);
+          window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
           return;
         }
       }
 
       setIsSubmitting(false);
       setIsCheckoutOpen(false);
-      setIsOrderConfirmedOpen(true);
+      window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
       showToast('Order confirmed by PIERCYN Atelier!');
     } catch (err: any) {
       console.error('[CHECKOUT_SUBMIT_ERROR]', err);

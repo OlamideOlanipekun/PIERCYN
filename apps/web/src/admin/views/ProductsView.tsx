@@ -37,6 +37,8 @@ export const ProductsView: React.FC = () => {
   const [formPriceNGN, setFormPriceNGN] = useState<number>(35000);
   const [formCostPriceNGN, setFormCostPriceNGN] = useState<number>(14000);
   const [formImage, setFormImage] = useState('');
+  const [formImages, setFormImages] = useState<File[]>([]);
+  const [formImagePreviews, setFormImagePreviews] = useState<string[]>([]);
   const [formGsm, setFormGsm] = useState('280 GSM');
   const [formFit, setFormFit] = useState('Relaxed Boxy Cut');
   const [formFabric, setFormFabric] = useState('100% Heavyweight Cotton');
@@ -61,6 +63,13 @@ export const ProductsView: React.FC = () => {
   useEffect(() => {
     fetchProducts();
   }, [categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    const previews = formImages.map((file) => URL.createObjectURL(file));
+    setFormImagePreviews(previews);
+
+    return () => previews.forEach((preview) => URL.revokeObjectURL(preview));
+  }, [formImages]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,13 +117,21 @@ export const ProductsView: React.FC = () => {
         },
       ];
 
+      const uploadedImages = await Promise.all(formImages.map((file) => AdminApi.uploadProductImage(file)));
+      const imageUrls = [
+        ...uploadedImages.map((image) => image.publicUrl),
+        ...(formImage.trim() ? [formImage.trim()] : []),
+      ];
+
       await AdminApi.createProduct({
         name: formName,
         description: formDescription,
         categoryId: formCategory,
         priceNGN: Number(formPriceNGN),
         costPriceNGN: Number(formCostPriceNGN),
-        images: formImage ? [formImage] : ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'],
+        images: imageUrls.length > 0
+          ? imageUrls
+          : ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'],
         gsm: formGsm,
         fit: formFit,
         fabric: formFabric,
@@ -125,6 +142,8 @@ export const ProductsView: React.FC = () => {
       setIsAddModalOpen(false);
       setFormName('');
       setFormDescription('');
+      setFormImage('');
+      setFormImages([]);
       await fetchProducts();
     } catch (err: any) {
       setError(err.message || 'Failed to create product.');
@@ -427,7 +446,7 @@ export const ProductsView: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
-                    Image URL
+                    Backup Image URL
                   </label>
                   <input
                     type="url"
@@ -437,6 +456,34 @@ export const ProductsView: React.FC = () => {
                     className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                  Product Images
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  onChange={(e) => setFormImages(Array.from(e.target.files || []))}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] file:mr-3 file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-[#F2F0EB]"
+                />
+                <p className="mt-1 text-[10px] text-neutral-500">
+                  JPEG, PNG, WebP, or GIF. Up to 3 MB per image. {formImages.length > 0 ? `${formImages.length} selected.` : ''}
+                </p>
+                {formImages.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formImagePreviews.map((preview, index) => (
+                      <img
+                        key={`${formImages[index].name}-${formImages[index].lastModified}`}
+                        src={preview}
+                        alt={formImages[index].name}
+                        className="h-16 w-16 rounded object-cover border border-[#2D2D2D]"
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

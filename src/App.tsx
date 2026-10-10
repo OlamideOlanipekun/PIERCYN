@@ -23,6 +23,9 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { OrderConfirmationModal } from './components/OrderConfirmationModal';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { CollectionPage } from './components/CollectionPage';
+import { OrderPage } from './components/OrderPage';
+import { NotFoundPage } from './components/NotFoundPage';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
@@ -45,10 +48,12 @@ const WhyPiercynSection: React.FC = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { products, getProductBySlug, setQuickViewProduct, setActiveLook } = useShop();
+  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts } = useShop();
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
 
@@ -84,7 +89,7 @@ const MainLayout: React.FC = () => {
     setIsAdminView(false);
     setIsAffiliateView(false);
 
-    if (rawPath === '/shop') {
+    if (rawPath === '/shop' || rawPath === '/collections') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Shop All';
@@ -100,8 +105,9 @@ const MainLayout: React.FC = () => {
       setActivePage('about');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — About';
-    } else if (rawPath.startsWith('/product/')) {
-      const slug = rawPath.replace('/product/', '');
+    } else if (rawPath.startsWith('/products/') || rawPath.startsWith('/product/')) {
+      const slug = rawPath.replace(/^\/products?\//, '');
+      if (rawPath.startsWith('/product/')) window.history.replaceState({}, '', `/products/${slug}${window.location.search}`);
       setActivePage('product');
       
       const foundInCache = products.find(
@@ -113,8 +119,10 @@ const MainLayout: React.FC = () => {
 
       if (foundInCache) {
         setCurrentPdpProduct(foundInCache);
+        setIsLoadingProduct(false);
         document.title = `${foundInCache.name} — PIERCYN`;
       } else {
+        setIsLoadingProduct(true);
         getProductBySlug(slug).then((backendProduct) => {
           if (backendProduct) {
             setCurrentPdpProduct(backendProduct);
@@ -123,15 +131,32 @@ const MainLayout: React.FC = () => {
             setCurrentPdpProduct(null);
             document.title = 'Piece Not Found — PIERCYN';
           }
+          setIsLoadingProduct(false);
         }).catch(() => {
           setCurrentPdpProduct(null);
+          setIsLoadingProduct(false);
           document.title = 'Piece Not Found — PIERCYN';
         });
       }
-    } else {
+    } else if (rawPath.startsWith('/collections/')) {
+      setRouteParam(rawPath.replace('/collections/', ''));
+      setActivePage('collection');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Collection';
+    } else if (rawPath.startsWith('/order/success/')) {
+      setRouteParam(rawPath.replace('/order/success/', ''));
+      setActivePage('orderSuccess');
+    } else if (rawPath.startsWith('/orders/')) {
+      setRouteParam(rawPath.replace('/orders/', ''));
+      setActivePage('orderTracking');
+    } else if (rawPath === '/') {
       setActivePage('home');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Look Good. Spend Less.';
+    } else {
+      setActivePage('notFound');
+      setCurrentPdpProduct(null);
+      document.title = 'Page Not Found — PIERCYN';
     }
   };
 
@@ -175,6 +200,11 @@ const MainLayout: React.FC = () => {
       about: '/about',
       account: '/account',
       product: '/shop',
+      collection: '/collections',
+      orderSuccess: '/',
+      orderTracking: '/',
+      notFound: '/',
+      affiliate: '/affiliate',
     };
 
     const targetUrl = pathMap[page] || '/';
@@ -194,6 +224,11 @@ const MainLayout: React.FC = () => {
       about: 'PIERCYN — About',
       account: 'PIERCYN — Account',
       product: 'PIERCYN',
+      collection: 'PIERCYN — Collection',
+      orderSuccess: 'Order Confirmed — PIERCYN',
+      orderTracking: 'Order Tracking — PIERCYN',
+      notFound: 'Page Not Found — PIERCYN',
+      affiliate: 'PIERCYN Creator & Affiliate Portal',
     };
 
     document.title = titleMap[page] || 'PIERCYN';
@@ -218,7 +253,7 @@ const MainLayout: React.FC = () => {
     setQuickViewProduct(null);
 
     const slug = product.slug || product.id.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const targetUrl = `/product/${slug}`;
+    const targetUrl = `/products/${slug}`;
     if (window.location.pathname !== targetUrl) {
       window.history.pushState({ productId: product.id }, '', targetUrl);
     }
@@ -269,11 +304,19 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       {activePage === 'product' ? (
-        <ProductDetailsPage
+        isLoadingProduct ? <main className="min-h-screen bg-[#F2F0EB] pt-32 text-center text-sm text-[#6E6B65]">Loading piece…</main> : <ProductDetailsPage
           product={currentPdpProduct}
           onSelectPage={handleSelectPage}
           onViewProduct={handleViewProduct}
         />
+      ) : activePage === 'collection' ? (
+        <CollectionPage slug={routeParam} products={products} loading={isLoadingProducts} error={catalogError} onRetry={refreshProducts} onViewProduct={handleViewProduct} onBackToShop={() => handleSelectPage('shop')} onNotFound={() => setActivePage('notFound')} />
+      ) : activePage === 'orderSuccess' ? (
+        <OrderPage orderId={routeParam} mode="success" onShop={() => handleSelectPage('shop')} />
+      ) : activePage === 'orderTracking' ? (
+        <OrderPage orderId={routeParam} mode="tracking" onShop={() => handleSelectPage('shop')} />
+      ) : activePage === 'notFound' ? (
+        <NotFoundPage onShop={() => handleSelectPage('shop')} />
       ) : activePage === 'shop' ? (
         <ShopPage
           products={products}
@@ -329,7 +372,7 @@ const MainLayout: React.FC = () => {
       {/* Modals & Drawers */}
       <CartDrawer />
       <QuickViewModal />
-      <SearchModal />
+      <SearchModal onViewProduct={handleViewProduct} />
       <SizeGuideModal />
       <CheckoutModal />
       <OrderConfirmationModal />

@@ -669,7 +669,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       paymentStatus: o.paymentStatus,
       orderStatus: o.orderStatus === 'PENDING_PAYMENT' ? 'CONFIRMED' : o.orderStatus,
       createdAt: o.createdAt,
+      orderAccessToken: o.orderAccessToken,
     };
+
+    if (mappedOrder.orderAccessToken) {
+      localStorage.setItem(`piercyn_order_access_${mappedOrder.id}`, mappedOrder.orderAccessToken);
+    }
 
     setOrders((prev) => [mappedOrder, ...prev]);
     setLastCreatedOrder(mappedOrder);

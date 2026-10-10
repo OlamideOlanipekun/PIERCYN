@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AffiliateAuthService, AffiliateUserResponse } from './affiliateAuthService';
+import { prisma } from '../../db/prisma';
 
 export interface AuthenticatedAffiliateRequest extends Request {
   affiliate?: AffiliateUserResponse;
@@ -34,20 +35,26 @@ export async function requireAffiliate(
     });
   }
 
-  // Only ACTIVE affiliates can access protected dashboard endpoints
-  if (affiliate.status !== 'ACTIVE') {
+  // Token claims are intentionally not the authority for current account status:
+  // an administrator may suspend or reject an affiliate after a token was issued.
+  const currentAffiliate = await prisma.affiliate.findUnique({
+    where: { id: affiliate.id },
+    select: { id: true, email: true, firstName: true, lastName: true, status: true, isActive: true, createdAt: true },
+  });
+  if (!currentAffiliate || currentAffiliate.status !== 'ACTIVE' || !currentAffiliate.isActive) {
+    const status = currentAffiliate?.status || affiliate.status;
     return res.status(403).json({
       success: false,
       error:
-        affiliate.status === 'PENDING'
+        status === 'PENDING'
           ? 'Your application is under review. Access is granted after approval.'
-          : affiliate.status === 'SUSPENDED'
+          : status === 'SUSPENDED'
           ? 'Your affiliate account has been suspended.'
           : 'Your affiliate access has been revoked.',
     });
   }
 
-  req.affiliate = affiliate;
+  req.affiliate = { ...currentAffiliate, createdAt: currentAffiliate.createdAt.toISOString() };
   next();
 }
 
@@ -81,13 +88,17 @@ export async function requireAffiliateLoose(
     });
   }
 
-  if (affiliate.status === 'REJECTED') {
+  const currentAffiliate = await prisma.affiliate.findUnique({
+    where: { id: affiliate.id },
+    select: { id: true, email: true, firstName: true, lastName: true, status: true, isActive: true, createdAt: true },
+  });
+  if (!currentAffiliate || currentAffiliate.status === 'REJECTED') {
     return res.status(403).json({
       success: false,
       error: 'Your affiliate application was not approved.',
     });
   }
 
-  req.affiliate = affiliate;
+  req.affiliate = { ...currentAffiliate, createdAt: currentAffiliate.createdAt.toISOString() };
   next();
 }

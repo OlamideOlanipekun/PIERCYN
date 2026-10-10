@@ -6,7 +6,7 @@ function expressApiPlugin(): Plugin {
   return {
     name: 'express-api-plugin',
     async configureServer(server) {
-      const { app } = await import('./src/server/app');
+      const { app } = await server.ssrLoadModule('./src/server/app.ts');
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
         if (url.startsWith('/api') || url.startsWith('/health')) {
@@ -18,9 +18,14 @@ function expressApiPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
   return {
-    plugins: [react(), tailwindcss(), expressApiPlugin()],
+    // The Express bridge is development-only. Loading it during a production
+    // build makes Node resolve the workspace TypeScript config package before
+    // Vite can transform it.
+    plugins: command === 'serve'
+      ? [react(), tailwindcss(), expressApiPlugin()]
+      : [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

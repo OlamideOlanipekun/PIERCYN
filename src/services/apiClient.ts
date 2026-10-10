@@ -151,8 +151,10 @@ export const api = {
     return parseResponse(res);
   },
 
-  async getOrder(orderId: string) {
-    const res = await fetch(`${API_BASE}/orders/${orderId}`, { headers: getHeaders() });
+  async getOrder(orderId: string, orderAccessToken: string) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+      headers: { ...getHeaders(), 'x-order-access-token': orderAccessToken },
+    });
     return parseResponse(res);
   },
 

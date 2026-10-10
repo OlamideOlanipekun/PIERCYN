@@ -38,7 +38,8 @@ export const CreateAffiliateLinkSchema = z.object({
     .string()
     .trim()
     .min(1, 'Destination is required')
-    .regex(/^\//, 'Destination must start with /'),
+    .regex(/^\/(?!\/)/, 'Destination must be an internal path starting with /')
+    .refine((destination) => !/[?#]/.test(destination), 'Destination cannot contain a query string or fragment'),
   destinationType: z.enum(['collection', 'product', 'homepage']).default('collection'),
 });
 
@@ -78,7 +79,7 @@ export const RequestPayoutSchema = RequestAffiliatePayoutSchema;
 export const TrackAffiliateClickSchema = z.object({
   code: z.string().trim().min(3).max(20).optional(),
   referralCode: z.string().trim().min(3).max(20).optional(),
-  sessionId: z.string().min(1),
+  sessionId: z.string().trim().min(1).max(200),
   customerId: z.string().optional(),
   customerEmail: z.string().email().optional(),
   landingPage: z.string().max(500).optional(),

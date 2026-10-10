@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AdminAuthService } from './adminAuthService';
 import { requireAdmin, AuthenticatedAdminRequest } from './adminMiddleware';
 import { OrderService } from '../orders/orderService';
@@ -14,11 +14,21 @@ import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { z } from 'zod';
 
-// Supabase admin client — uses the service_role key to bypass RLS for storage uploads
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+// Storage is optional for API boot. Create the privileged client only on upload requests.
+let supabaseAdmin: SupabaseClient | null = null;
+
+function getSupabaseAdmin(): SupabaseClient {
+  if (supabaseAdmin) return supabaseAdmin;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error('Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to upload images.');
+  }
+
+  supabaseAdmin = createClient(url, serviceRoleKey);
+  return supabaseAdmin;
+}
 
 export const adminRouter = Router();
 
@@ -74,6 +84,15 @@ const CreateShipmentSchema = z.object({
   itemDescription: z.string().optional(),
 });
 
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+const UploadImageSchema = z.object({
+  fileBase64: z.string().min(1),
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string(),
+});
+
 const CreateProductSchema = z.object({
   name: z.string().min(2),
   slug: z.string().optional(),
@@ -117,7 +136,7 @@ const CreateProductSchema = z.object({
 
 const InventoryAdjustmentSchema = z.object({
   variantId: z.string().min(1),
-  quantity: z.number().int(),
+  quantity: z.number().int().positive(),
   type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN']),
   reference: z.string().min(1),
   reason: z.string().optional(),
@@ -174,28 +193,29 @@ adminRouter.post('/auth/logout', requireAdmin, async (req: AuthenticatedAdminReq
 // 1b. IMAGE UPLOAD (proxied via service-role to bypass RLS)
 adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
-    const { fileBase64, fileName, mimeType, bucket = 'products', folder = '' } = req.body as {
-      fileBase64: string;
-      fileName: string;
-      mimeType: string;
-      bucket?: string;
-      folder?: string;
-    };
+    const { fileBase64, mimeType } = UploadImageSchema.parse(req.body);
 
-    if (!fileBase64 || !fileName || !mimeType) {
-      return res.status(400).json({ success: false, error: 'fileBase64, fileName, and mimeType are required' });
+    if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+      return res.status(400).json({ success: false, error: 'Only JPEG, PNG, WebP, and GIF images are supported.' });
     }
 
     // Strip data URI prefix if present (e.g. "data:image/png;base64,")
     const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Data) || base64Data.length % 4 !== 0) {
+      return res.status(400).json({ success: false, error: 'The image payload is not valid base64 data.' });
+    }
     const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
+      return res.status(400).json({ success: false, error: 'Image must be between 1 byte and 3 MB.' });
+    }
 
-    const ext = fileName.split('.').pop();
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const filePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
+    const uniqueName = `${crypto.randomUUID()}.${extension}`;
+    const filePath = `products/${uniqueName}`;
 
-    const { error } = await supabaseAdmin.storage
-      .from(bucket)
+    const storage = getSupabaseAdmin();
+    const { error } = await storage.storage
+      .from('products')
       .upload(filePath, buffer, {
         cacheControl: '3600',
         upsert: false,
@@ -207,7 +227,7 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
       return res.status(500).json({ success: false, error: `Image upload failed: ${error.message}` });
     }
 
-    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+    const { data } = storage.storage.from('products').getPublicUrl(filePath);
 
     if (!data?.publicUrl) {
       return res.status(500).json({ success: false, error: 'Could not retrieve public URL after upload.' });
@@ -216,7 +236,8 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
     res.json({ success: true, data: { publicUrl: data.publicUrl } });
   } catch (err: any) {
     console.error('[UPLOAD_IMAGE]', err);
-    res.status(500).json({ success: false, error: err.message });
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 500).json({ success: false, error: message });
   }
 });
 
@@ -415,6 +436,10 @@ adminRouter.post('/inventory/adjust', requireAdmin, async (req: AuthenticatedAdm
       validated.reason,
       req.admin?.id
     );
+
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Inventory record not found.' });
+    }
 
     const newInv = await InventoryService.getVariantStock(validated.variantId);
     const newAvailable = newInv ? newInv.stockQuantity - newInv.reservedQuantity : prevAvailable;

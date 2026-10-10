@@ -15,7 +15,10 @@ export interface AdminLoginResult {
   token: string;
 }
 
-const HMAC_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'piercyn-atelier-secret-key-2026';
+const HMAC_SECRET =
+  process.env.ADMIN_JWT_SECRET ||
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV !== 'production' ? 'piercyn-local-development-secret' : '');
 
 const revokedTokens = new Set<string>();
 const adminSessions = new Map<string, { admin: AdminUserResponse; expiresAt: Date }>();
@@ -26,6 +29,9 @@ const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 function generateSignedToken(admin: AdminUserResponse): string {
+  if (!HMAC_SECRET) {
+    throw new Error('Admin authentication is not configured. Set ADMIN_JWT_SECRET or JWT_SECRET.');
+  }
   const payload = {
     id: admin.id,
     email: admin.email,
@@ -84,8 +90,14 @@ export class AdminAuthService {
       // If DB is offline / during mock tests
     }
 
-    // Default development fallback if database unseeded / test env
-    if (!passwordMatches && (pass === 'piercyn2026' || pass === 'piercynAdmin2026') && email.toLowerCase().includes('admin')) {
+    // Seed credentials are for local development and automated tests only. They
+    // must never provide an administrative backdoor in a deployed environment.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      !passwordMatches &&
+      (pass === 'piercyn2026' || pass === 'piercynAdmin2026') &&
+      email.toLowerCase().includes('admin')
+    ) {
       passwordMatches = true;
       adminRecord = {
         id: 'admin_root',
@@ -114,6 +126,7 @@ export class AdminAuthService {
 
   public static verifyToken(token: string): AdminUserResponse | null {
     if (!token || !token.startsWith('adm_tok_')) return null;
+    if (!HMAC_SECRET) return null;
     if (revokedTokens.has(token)) return null;
 
     // 1. Stateless HMAC token verification (resilient across serverless Lambda instances)
@@ -165,4 +178,3 @@ export class AdminAuthService {
     return true;
   }
 }
-

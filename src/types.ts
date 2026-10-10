@@ -40,7 +40,7 @@ export type SortOption =
   | 'PRICE: HIGH TO LOW' 
   | 'BEST SELLING';
 
-export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product' | 'affiliate';
+export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product' | 'collection' | 'orderSuccess' | 'orderTracking' | 'notFound' | 'affiliate';
 
 export interface ProductColor {
   name: string;
@@ -153,6 +153,7 @@ export interface Order {
   paymentStatus: 'PAID' | 'PENDING' | 'FAILED';
   orderStatus: 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   createdAt: string;
+  orderAccessToken?: string;
 }
 
 export interface PaymentDetails {

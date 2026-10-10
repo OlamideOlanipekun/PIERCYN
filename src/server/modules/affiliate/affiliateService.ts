@@ -13,12 +13,12 @@ import { AffiliateAuthService } from './affiliateAuthService';
 const ATTRIBUTION_WINDOW_DAYS = COMMERCE_CONFIG.AFFILIATE.ATTRIBUTION_WINDOW_DAYS;
 const MIN_PAYOUT_KOBO = COMMERCE_CONFIG.AFFILIATE.MIN_PAYOUT_KOBO;
 
-/** Generate a unique referral code like "KELV42" */
+/** Generate a cryptographically-random referral code suffix. */
 function generateReferralCode(firstName: string, lastName: string): string {
   const prefix = (firstName.slice(0, 4) + lastName.slice(0, 2))
     .toUpperCase()
-    .replace(/[^A-Z]/g, '');
-  const suffix = Math.floor(10 + Math.random() * 90).toString(); // 2-digit
+    .replace(/[^A-Z]/g, '') || 'AFF';
+  const suffix = crypto.randomBytes(5).toString('hex').toUpperCase();
   return `${prefix}${suffix}`;
 }
 
@@ -277,7 +277,7 @@ export class AffiliateService {
       where: { referralCode: cleanCode },
       include: { affiliate: true },
     });
-    if (!link) return null;
+    if (!link || !link.isActive || link.affiliate.status !== 'ACTIVE') return null;
 
     return {
       id: link.id,

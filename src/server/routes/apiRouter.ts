@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { ProductService } from '../modules/products/productService';
 import { CartService } from '../modules/cart/cartService';
 import { CheckoutService } from '../modules/checkout/checkoutService';
@@ -42,6 +43,40 @@ const getAuthToken = (req: Request): string => {
   }
   return (req.headers['x-auth-token'] as string) || '';
 };
+
+const orderAccessSecret =
+  process.env.ORDER_ACCESS_TOKEN_SECRET ||
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
+
+function createOrderAccessToken(orderId: string): string {
+  if (!orderAccessSecret) {
+    throw new Error('Order access token signing is not configured. Set ORDER_ACCESS_TOKEN_SECRET.');
+  }
+  const payload = Buffer.from(JSON.stringify({ orderId, nonce: crypto.randomBytes(24).toString('hex') })).toString('base64url');
+  const signature = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
+  return `ord_${payload}.${signature}`;
+}
+
+function getAuthorizedOrderId(req: Request): string | null {
+  const token = req.headers['x-order-access-token'];
+  if (typeof token !== 'string' || !token.startsWith('ord_') || !orderAccessSecret) return null;
+
+  const [payload, signature] = token.slice(4).split('.');
+  if (!payload || !signature) return null;
+
+  const expected = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
+
+  try {
+    const orderId = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).orderId;
+    return typeof orderId === 'string' ? orderId : null;
+  } catch {
+    return null;
+  }
+}
 
 // -------------------------------------------------------------
 // 1. PRODUCTS & CATEGORIES (Public)
@@ -166,6 +201,9 @@ apiRouter.post('/checkout/quote', (req: Request, res: Response) => {
 
 apiRouter.post('/orders', async (req: Request, res: Response) => {
   try {
+    if (!orderAccessSecret) {
+      return res.status(503).json({ success: false, error: 'Guest order tracking is not configured.' });
+    }
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
 
@@ -178,7 +216,7 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
     // Clear cart on successful order creation
     CartService.clearCart(sessionId);
 
-    res.status(201).json({ success: true, data: order });
+    res.status(201).json({ success: true, data: { ...order, orderAccessToken: createOrderAccessToken(order.id) } });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
@@ -187,23 +225,18 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
 
 
 // Lookup order list by customer email or session
-apiRouter.get('/orders', (req: Request, res: Response) => {
-  try {
-    const { email, status } = req.query;
-    const orders = OrderService.getAllOrders({
-      email: email as string,
-      status: status as any,
-    });
-    res.json({ success: true, count: orders.length, data: orders });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+apiRouter.get('/orders', (_req: Request, res: Response) => {
+  res.status(404).json({ success: false, error: 'Order listing is available only to authorized administrators.' });
 });
 
 // Lookup order by ID or order number (for order confirmation page)
 apiRouter.get('/orders/:id', (req: Request, res: Response) => {
+  const authorizedOrderId = getAuthorizedOrderId(req);
+  if (!authorizedOrderId) {
+    return res.status(404).json({ success: false, error: 'Order not found' });
+  }
   const order = OrderService.getOrderDetail(req.params.id);
-  if (!order) {
+  if (!order || order.id !== authorizedOrderId) {
     return res.status(404).json({ success: false, error: 'Order not found' });
   }
   res.json({ success: true, data: order });

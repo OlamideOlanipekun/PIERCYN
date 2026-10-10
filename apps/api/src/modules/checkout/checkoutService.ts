@@ -98,8 +98,36 @@ export class CheckoutService {
 
     const orderNumber = generateOrderNumber();
 
-    // Resolve affiliate attribution (from explicit code or session cookie/attribution table)
+    // Resolve and snapshot attribution before checkout. The order must never rely on
+    // browser storage or a later link lookup to determine commission ownership.
     const attribution = await AffiliateService.resolveAttribution(sessionId, input.affiliateCode);
+    let affiliateAttribution: {
+      affiliateId: string;
+      affiliateLinkId: string;
+      referralCode: string;
+      clickedAt: Date;
+    } | null = null;
+
+    if (attribution) {
+      const affiliate = await prisma.affiliate.findUnique({
+        where: { id: attribution.affiliateId },
+        select: { email: true, status: true, isActive: true },
+      });
+      const customerEmail = input.customer.email.trim().toLowerCase();
+
+      if (
+        affiliate?.status === 'ACTIVE' &&
+        affiliate.isActive &&
+        affiliate.email.trim().toLowerCase() !== customerEmail
+      ) {
+        affiliateAttribution = {
+          affiliateId: attribution.affiliateId,
+          affiliateLinkId: attribution.affiliateLinkId,
+          referralCode: attribution.referralCode,
+          clickedAt: new Date(attribution.clickedAt),
+        };
+      }
+    }
 
     const createdOrder = await prisma.$transaction(async (tx) => {
       // 1. Transactional stock reservation
@@ -161,8 +189,10 @@ export class CheckoutService {
           paymentMethod: paymentMethodLabel,
           paymentStatus: 'PENDING',
           status: 'PENDING_PAYMENT',
-          affiliateId: attribution?.affiliateId || null,
-          affiliateLinkId: attribution?.affiliateLinkId || null,
+          affiliateId: affiliateAttribution?.affiliateId || null,
+          affiliateLinkId: affiliateAttribution?.affiliateLinkId || null,
+          affiliateCode: affiliateAttribution?.referralCode || null,
+          affiliateAttributedAt: affiliateAttribution?.clickedAt || null,
           items: {
             create: quote.cart.items.map((line) => ({
               variantId: line.variantId,
@@ -205,8 +235,15 @@ export class CheckoutService {
         },
       });
 
+      if (affiliateAttribution) {
+        await tx.affiliateLink.update({
+          where: { id: affiliateAttribution.affiliateLinkId },
+          data: { orderCount: { increment: 1 } },
+        });
+      }
+
       return order;
-    });
+    }, { isolationLevel: 'Serializable' });
 
     // Clear session cart
     await CartService.clearCart(sessionId);

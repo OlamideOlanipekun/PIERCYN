@@ -190,6 +190,27 @@ class AdminApiClient {
     });
   }
 
+  public async uploadProductImage(file: File): Promise<{ publicUrl: string }> {
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      throw new Error('Only JPEG, PNG, WebP, and GIF images are supported.');
+    }
+    if (file.size === 0 || file.size > 3 * 1024 * 1024) {
+      throw new Error('Each image must be between 1 byte and 3 MB.');
+    }
+
+    const fileBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Unable to read the selected image.'));
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsDataURL(file);
+    });
+
+    return this.request<{ publicUrl: string }>('/upload-image', {
+      method: 'POST',
+      body: JSON.stringify({ fileBase64, fileName: file.name, mimeType: file.type }),
+    });
+  }
+
   // 4. Inventory
   public async getInventory(params?: {
     lowStockOnly?: boolean;

@@ -28,15 +28,21 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
 
   // Sync tab from URL path
   useEffect(() => {
-    const path = window.location.pathname.toLowerCase();
-    if (path.includes('/admin/orders')) setActiveTab('orders');
-    else if (path.includes('/admin/products')) setActiveTab('products');
-    else if (path.includes('/admin/inventory')) setActiveTab('inventory');
-    else if (path.includes('/admin/customers')) setActiveTab('customers');
-    else if (path.includes('/admin/analytics')) setActiveTab('analytics');
-    else if (path.includes('/admin/audit')) setActiveTab('audit');
-    else if (path.includes('/admin/settings')) setActiveTab('settings');
-    else setActiveTab('dashboard');
+    const syncTabFromLocation = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes('/admin/orders')) setActiveTab('orders');
+      else if (path.includes('/admin/products')) setActiveTab('products');
+      else if (path.includes('/admin/inventory')) setActiveTab('inventory');
+      else if (path.includes('/admin/customers')) setActiveTab('customers');
+      else if (path.includes('/admin/analytics')) setActiveTab('analytics');
+      else if (path.includes('/admin/audit')) setActiveTab('audit');
+      else if (path.includes('/admin/settings')) setActiveTab('settings');
+      else setActiveTab('dashboard');
+    };
+
+    syncTabFromLocation();
+    window.addEventListener('popstate', syncTabFromLocation);
+    return () => window.removeEventListener('popstate', syncTabFromLocation);
   }, []);
 
   const handleSelectTab = (tab: AdminNavTab) => {

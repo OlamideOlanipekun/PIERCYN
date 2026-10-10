@@ -3,6 +3,7 @@ import { Product, ProductCategory } from '../types';
 import { useShop } from '../context/ShopContext';
 import { Filter, SlidersHorizontal, X, Check, Search, ArrowUpDown } from 'lucide-react';
 import { eventTracker } from '../services/eventTracker';
+import { ProductCard } from './ProductCard';
 
 interface ShopPageProps {
   products: Product[];
@@ -265,99 +266,15 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 </button>
               </div>
             ) : (
-              /* DYNAMIC PRODUCT GRID WITH EDITORIAL BREAKS */
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {filteredProducts.map((product, index) => {
-                  const isFeaturedBreak = index === 2 && filteredProducts.length >= 4;
-
-                  return (
-                    <div
-                      key={product.id}
-                      className={`group bg-[#E8E6E1]/40 p-3 sm:p-4 rounded-xl border border-[#DAD8D1]/60 flex flex-col justify-between hover:shadow-xs transition-all ${
-                        isFeaturedBreak ? 'col-span-2 lg:col-span-2 flex-col sm:flex-row gap-4' : ''
-                      }`}
-                    >
-                      {/* Product Image Component with 2nd Image Swap */}
-                      <div
-                        onClick={() => onViewProduct(product)}
-                        className={`cursor-pointer overflow-hidden rounded-lg bg-neutral-200 relative ${
-                          isFeaturedBreak ? 'sm:w-1/2 aspect-[4/5]' : 'aspect-[3/4] w-full mb-3'
-                        }`}
-                      >
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0"
-                        />
-                        {product.images[1] ? (
-                          <img
-                            src={product.images[1]}
-                            alt={`${product.name} alternate view`}
-                            className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                          />
-                        ) : (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-500"
-                          />
-                        )}
-
-                        {/* Price Badge Overlay */}
-                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-[#141414]/90 text-[#F2F0EB] text-[10px] font-mono font-bold rounded">
-                          ₦{product.priceNGN.toLocaleString()}
-                        </div>
-                      </div>
-
-                      {/* Details & Quick Action */}
-                      <div className={`flex flex-col justify-between ${isFeaturedBreak ? 'sm:w-1/2 justify-center' : ''}`}>
-                        <div>
-                          <span className="text-[10px] font-mono uppercase tracking-widest text-[#141414]/50 block mb-1">
-                            {product.category}
-                          </span>
-                          <h3
-                            onClick={() => onViewProduct(product)}
-                            className="font-sans text-xs sm:text-sm font-bold text-[#141414] hover:underline cursor-pointer truncate mb-1"
-                          >
-                            {product.name}
-                          </h3>
-                          {isFeaturedBreak && (
-                            <p className="text-xs text-[#141414]/70 line-clamp-3 mb-4 font-sans leading-relaxed">
-                              {product.description}
-                            </p>
-                          )}
-
-                          {/* Color Swatch Preview */}
-                          <div className="flex items-center gap-1.5 my-2">
-                            {product.colors.slice(0, 3).map((col) => (
-                              <span
-                                key={col.name}
-                                className="w-3 h-3 rounded-full border border-black/20"
-                                style={{ backgroundColor: col.hex }}
-                                title={col.name}
-                              />
-                            ))}
-                            {product.colors.length > 3 && (
-                              <span className="text-[10px] font-mono text-[#141414]/50">
-                                +{product.colors.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Add To Bag & Quick View */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-[#DAD8D1]/60">
-                          <button
-                            onClick={() => addToCart(product)}
-                            className="flex-1 py-2 bg-[#141414] text-[#F2F0EB] text-[11px] font-semibold uppercase tracking-wider rounded-full hover:bg-black transition-colors"
-                          >
-                            QUICK ADD
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              /* DYNAMIC PRODUCT GRID */
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onViewProduct={onViewProduct}
+                  />
+                ))}
               </div>
             )}
           </main>

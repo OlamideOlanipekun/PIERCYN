@@ -20071,14 +20071,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto5 = __require("crypto");
+    var crypto8 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto8.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -21955,7 +21955,7 @@ var require_application = __commonJS({
   "node_modules/express/lib/application.js"(exports, module) {
     "use strict";
     var finalhandler = require_finalhandler();
-    var Router3 = require_router();
+    var Router5 = require_router();
     var methods = require_methods();
     var middleware = require_init();
     var query = require_query();
@@ -22020,7 +22020,7 @@ var require_application = __commonJS({
     };
     app2.lazyrouter = function lazyrouter() {
       if (!this._router) {
-        this._router = new Router3({
+        this._router = new Router5({
           caseSensitive: this.enabled("case sensitive routing"),
           strict: this.enabled("strict routing")
         });
@@ -22971,11 +22971,11 @@ var require_request = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports) {
-    var crypto5 = __require("crypto");
+    var crypto8 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto8.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -22984,7 +22984,7 @@ var require_cookie_signature = __commonJS({
       return sha1(mac3) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto5.createHash("sha1").update(str).digest("hex");
+      return crypto8.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -23884,7 +23884,7 @@ var require_express = __commonJS({
     var mixin = require_merge_descriptors();
     var proto = require_application();
     var Route = require_route();
-    var Router3 = require_router();
+    var Router5 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23907,7 +23907,7 @@ var require_express = __commonJS({
     exports.request = req;
     exports.response = res;
     exports.Route = Route;
-    exports.Router = Router3;
+    exports.Router = Router5;
     exports.json = bodyParser.json;
     exports.query = require_query();
     exports.raw = bodyParser.raw;
@@ -24236,7 +24236,7 @@ var require_main = __commonJS({
     var fs = __require("fs");
     var path = __require("path");
     var os = __require("os");
-    var crypto5 = __require("crypto");
+    var crypto8 = __require("crypto");
     var TIPS = [
       "\u25C8 encrypted .env [www.dotenvx.com]",
       "\u25C8 secrets for agents [www.dotenvx.com]",
@@ -24480,7 +24480,7 @@ var require_main = __commonJS({
       const authTag = ciphertext.subarray(-16);
       ciphertext = ciphertext.subarray(12, -16);
       try {
-        const aesgcm = crypto5.createDecipheriv("aes-256-gcm", key, nonce);
+        const aesgcm = crypto8.createDecipheriv("aes-256-gcm", key, nonce);
         aesgcm.setAuthTag(authTag);
         return `${aesgcm.update(ciphertext)}${aesgcm.final()}`;
       } catch (error62) {
@@ -24546,6 +24546,342 @@ var require_main = __commonJS({
     module.exports.parse = DotenvModule.parse;
     module.exports.populate = DotenvModule.populate;
     module.exports = DotenvModule;
+  }
+});
+
+// packages/db/src/client.ts
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+function getPrismaClient() {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
+  if (prismaInstance) {
+    return prismaInstance;
+  }
+  const connectionString = process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || "postgresql://postgres:postgres@localhost:5432/piercyn";
+  let cleanUrl = connectionString;
+  try {
+    const urlObj = new URL(connectionString);
+    urlObj.searchParams.delete("sslmode");
+    cleanUrl = urlObj.toString();
+  } catch {
+  }
+  const isRemote = cleanUrl.includes("supabase.com") || cleanUrl.includes("supabase.co") || cleanUrl.includes("pooler.supabase") || cleanUrl.includes("sslmode=require") || process.env.NODE_ENV === "production";
+  const pool = new Pool({
+    connectionString: cleanUrl,
+    connectionTimeoutMillis: 1e4,
+    ssl: isRemote ? { rejectUnauthorized: false } : void 0
+  });
+  pool.on("error", (err) => {
+    console.warn("[DB_POOL_WARN]", err?.message || err);
+  });
+  const adapter = new PrismaPg(pool);
+  const client = new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"]
+  });
+  prismaInstance = client;
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+    globalForPrisma.pgPool = pool;
+  }
+  return client;
+}
+async function checkDatabaseHealth() {
+  const start = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { ok: true, message: "Database connected", latencyMs: Date.now() - start };
+  } catch (err) {
+    return { ok: false, message: err.message || "Database connection error", latencyMs: Date.now() - start };
+  }
+}
+var import_dotenv, globalForPrisma, prismaInstance, prisma;
+var init_client = __esm({
+  "packages/db/src/client.ts"() {
+    "use strict";
+    import_dotenv = __toESM(require_main(), 1);
+    import_dotenv.default.config();
+    globalForPrisma = globalThis;
+    prismaInstance = null;
+    prisma = getPrismaClient();
+  }
+});
+
+// packages/db/src/index.ts
+var src_exports = {};
+__export(src_exports, {
+  checkDatabaseHealth: () => checkDatabaseHealth,
+  getPrismaClient: () => getPrismaClient,
+  prisma: () => prisma
+});
+import * as client_star from "@prisma/client";
+var init_src = __esm({
+  "packages/db/src/index.ts"() {
+    "use strict";
+    __reExport(src_exports, client_star);
+    init_client();
+  }
+});
+
+// apps/api/src/db/prisma.ts
+var init_prisma = __esm({
+  "apps/api/src/db/prisma.ts"() {
+    init_src();
+  }
+});
+
+// packages/config/src/index.ts
+var COMMERCE_CONFIG;
+var init_src2 = __esm({
+  "packages/config/src/index.ts"() {
+    "use strict";
+    COMMERCE_CONFIG = {
+      // App Base URL
+      APP_URL: process.env.APP_URL || "https://piercyn.vercel.app",
+      // Shipping defaults (Single Source of Truth)
+      SHIPPING: {
+        FREE_THRESHOLD_NGN: 1e5,
+        LAGOS_FEE_NGN: 2500,
+        NATIONWIDE_FEE_NGN: 4500,
+        LAGOS_TIMEFRAME: "24\u201348 Hours",
+        NATIONWIDE_TIMEFRAME: "3\u20135 Business Days",
+        LAGOS_DESCRIPTION: "Orders within Lagos usually arrive in 24\u201348 hours via direct dispatch.",
+        NATIONWIDE_DESCRIPTION: "Nationwide delivery across Nigeria: 3\u20135 business days."
+      },
+      // Checkout & Inventory Reservation
+      INVENTORY: {
+        RESERVATION_TTL_MINUTES: 15,
+        // Temporary checkout lock to prevent overselling
+        LOW_STOCK_THRESHOLD: 5
+      },
+      // Payment Providers
+      PAYMENT: {
+        DEFAULT_PROVIDER: process.env.PAYMENT_PROVIDER || "direct_transfer",
+        PAYSTACK: {
+          SECRET_KEY: process.env.PAYSTACK_SECRET_KEY || "",
+          PUBLIC_KEY: process.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY || "",
+          WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY || "",
+          BASE_URL: "https://api.paystack.co"
+        }
+      },
+      // Security & Limits
+      LIMITS: {
+        MAX_CART_QUANTITY_PER_ITEM: 10,
+        CART_EXPIRY_DAYS: 30
+      },
+      // Active Promotions (Single Source of Truth)
+      PROMOTIONS: [
+        { code: "STANDOUT", discountPercent: 15, description: "15% Editorial Discount" },
+        { code: "LAGOS26", discountPercent: 15, description: "15% Lagos Launch Discount" },
+        { code: "PIERCYN10", discountPercent: 10, description: "10% Welcome Discount" }
+      ],
+      // Affiliate System Configuration (Single Source of Truth)
+      AFFILIATE: {
+        COMMISSION_PER_PRODUCT_KOBO: 5e4,
+        // ₦500 = 50,000 kobo per qualifying delivered product
+        ATTRIBUTION_WINDOW_DAYS: 30,
+        // Days an affiliate click is valid for attribution
+        MIN_PAYOUT_KOBO: 5e4,
+        // ₦500 minimum payout threshold (50,000 kobo)
+        RETURN_WINDOW_DAYS: 7,
+        // Days after delivery before commission becomes AVAILABLE
+        REFERRAL_CODE_PREFIX_LENGTH: 4
+        // How many chars from name to use in code prefix
+      }
+    };
+  }
+});
+
+// apps/api/src/config/constants.ts
+var init_constants = __esm({
+  "apps/api/src/config/constants.ts"() {
+    init_src2();
+  }
+});
+
+// apps/api/src/modules/affiliate/commissionService.ts
+var commissionService_exports = {};
+__export(commissionService_exports, {
+  CommissionService: () => CommissionService
+});
+var COMMISSION_PER_PRODUCT_KOBO, RETURN_WINDOW_DAYS, CommissionService;
+var init_commissionService = __esm({
+  "apps/api/src/modules/affiliate/commissionService.ts"() {
+    init_constants();
+    init_prisma();
+    COMMISSION_PER_PRODUCT_KOBO = COMMERCE_CONFIG.AFFILIATE.COMMISSION_PER_PRODUCT_KOBO;
+    RETURN_WINDOW_DAYS = COMMERCE_CONFIG.AFFILIATE.RETURN_WINDOW_DAYS;
+    CommissionService = class {
+      /**
+       * Returns the commission amount per product unit in Kobo.
+       * Centralised so it can be extended to support category/campaign rates later.
+       */
+      static getCommissionPerProduct(_productId, _categoryId) {
+        return COMMISSION_PER_PRODUCT_KOBO;
+      }
+      /**
+       * Creates commission records for all items in an order.
+       * Called after order payment is verified.
+       * 
+       * IDEMPOTENT: Uses unique(affiliateId, orderItemId) constraint.
+       * Safe to call multiple times — will not create duplicates.
+       * SELF-REFERRAL PROTECTION: Skips commission if customer is the affiliate.
+       */
+      static async processOrderCommission(orderId) {
+        const order = await prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            items: true,
+            affiliate: true
+          }
+        });
+        if (!order || !order.affiliateId) {
+          return;
+        }
+        const affiliate = order.affiliate;
+        if (!affiliate || affiliate.status !== "ACTIVE") {
+          return;
+        }
+        const customerEmailNorm = order.customerEmail.toLowerCase().trim();
+        const affiliateEmailNorm = affiliate.email.toLowerCase().trim();
+        if (customerEmailNorm === affiliateEmailNorm) {
+          console.log(
+            `[COMMISSION] Self-referral detected \u2014 no commission created. Order ${order.orderNumber}, Affiliate ${affiliate.id}`
+          );
+          return;
+        }
+        for (const item of order.items) {
+          const commissionAmount = this.getCommissionPerProduct() * item.quantity;
+          try {
+            await prisma.affiliateCommission.upsert({
+              where: {
+                affiliateId_orderItemId: {
+                  affiliateId: affiliate.id,
+                  orderItemId: item.id
+                }
+              },
+              update: {
+                // Already exists — update nothing (idempotency)
+              },
+              create: {
+                affiliateId: affiliate.id,
+                orderId: order.id,
+                orderItemId: item.id,
+                affiliateLinkId: order.affiliateLinkId || void 0,
+                amountKobo: commissionAmount,
+                status: "PENDING"
+              }
+            });
+          } catch (err) {
+            console.error(
+              `[COMMISSION] Failed to create commission for item ${item.id}:`,
+              err.message
+            );
+          }
+        }
+        console.log(
+          `[COMMISSION] Processed commission for order ${order.orderNumber}, affiliate ${affiliate.firstName} ${affiliate.lastName}, ${order.items.length} items`
+        );
+      }
+      /**
+       * Marks commissions as AVAILABLE when an order reaches DELIVERED status
+       * and the return window has passed.
+       * 
+       * For immediate DELIVERED transitions, marks PENDING → AVAILABLE
+       * (return window handled by a future scheduled job or can be done inline for V1).
+       */
+      static async markCommissionsAvailable(orderId) {
+        const eligibleAt = /* @__PURE__ */ new Date();
+        await prisma.affiliateCommission.updateMany({
+          where: {
+            orderId,
+            status: "PENDING"
+          },
+          data: {
+            status: "AVAILABLE",
+            eligibleAt
+          }
+        });
+      }
+      /**
+       * Reverses commissions when an order or items are cancelled/refunded/returned.
+       * Can target specific items (partial return) or all items (full cancellation).
+       */
+      static async reverseCommissions(orderId, reason, orderItemIds) {
+        const where = { orderId, status: { in: ["PENDING", "AVAILABLE"] } };
+        if (orderItemIds && orderItemIds.length > 0) {
+          where.orderItemId = { in: orderItemIds };
+        }
+        await prisma.affiliateCommission.updateMany({
+          where,
+          data: {
+            status: "REVERSED",
+            reversedAt: /* @__PURE__ */ new Date(),
+            reversalReason: reason
+          }
+        });
+      }
+      /**
+       * Computes the total available balance for an affiliate (not yet in a payout).
+       */
+      static async getAvailableBalance(affiliateId) {
+        const result = await prisma.affiliateCommission.aggregate({
+          where: {
+            affiliateId,
+            status: "AVAILABLE",
+            payoutId: null
+          },
+          _sum: { amountKobo: true }
+        });
+        return result._sum.amountKobo || 0;
+      }
+      /**
+       * Computes summary statistics for an affiliate's commissions.
+       */
+      static async getCommissionSummary(affiliateId) {
+        const [pending, available, paid, reversed] = await Promise.all([
+          prisma.affiliateCommission.aggregate({
+            where: { affiliateId, status: "PENDING" },
+            _sum: { amountKobo: true }
+          }),
+          prisma.affiliateCommission.aggregate({
+            where: { affiliateId, status: "AVAILABLE", payoutId: null },
+            _sum: { amountKobo: true }
+          }),
+          prisma.affiliateCommission.aggregate({
+            where: { affiliateId, status: "PAID" },
+            _sum: { amountKobo: true }
+          }),
+          prisma.affiliateCommission.aggregate({
+            where: { affiliateId, status: "REVERSED" },
+            _sum: { amountKobo: true }
+          })
+        ]);
+        const pendingKobo = pending._sum.amountKobo || 0;
+        const availableKobo = available._sum.amountKobo || 0;
+        const paidKobo = paid._sum.amountKobo || 0;
+        const reversedKobo = reversed._sum.amountKobo || 0;
+        return {
+          pendingKobo,
+          availableKobo,
+          paidKobo,
+          reversedKobo,
+          totalEarnedKobo: pendingKobo + availableKobo + paidKobo
+        };
+      }
+      /**
+       * Returns commission per product in Naira (for display).
+       */
+      static getCommissionPerProductNGN() {
+        return COMMISSION_PER_PRODUCT_KOBO / 100;
+      }
+      static getReturnWindowDays() {
+        return RETURN_WINDOW_DAYS;
+      }
+    };
   }
 });
 
@@ -38412,76 +38748,15 @@ var require_main4 = __commonJS({
 });
 
 // apps/api/src/app.ts
-var import_express3 = __toESM(require_express2(), 1);
+var import_express5 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 
 // apps/api/src/routes/apiRouter.ts
-var import_express2 = __toESM(require_express2(), 1);
+var import_express4 = __toESM(require_express2(), 1);
+import crypto7 from "crypto";
 
-// packages/db/src/index.ts
-var src_exports = {};
-__export(src_exports, {
-  checkDatabaseHealth: () => checkDatabaseHealth,
-  getPrismaClient: () => getPrismaClient,
-  prisma: () => prisma
-});
-__reExport(src_exports, client_star);
-import * as client_star from "@prisma/client";
-
-// packages/db/src/client.ts
-var import_dotenv = __toESM(require_main(), 1);
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
-import_dotenv.default.config();
-var globalForPrisma = globalThis;
-var prismaInstance = null;
-function getPrismaClient() {
-  if (globalForPrisma.prisma) {
-    return globalForPrisma.prisma;
-  }
-  if (prismaInstance) {
-    return prismaInstance;
-  }
-  const connectionString = process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || "postgresql://postgres:postgres@localhost:5432/piercyn";
-  let cleanUrl = connectionString;
-  try {
-    const urlObj = new URL(connectionString);
-    urlObj.searchParams.delete("sslmode");
-    cleanUrl = urlObj.toString();
-  } catch {
-  }
-  const isRemote = cleanUrl.includes("supabase.com") || cleanUrl.includes("supabase.co") || cleanUrl.includes("pooler.supabase") || cleanUrl.includes("sslmode=require") || process.env.NODE_ENV === "production";
-  const pool = new Pool({
-    connectionString: cleanUrl,
-    connectionTimeoutMillis: 1e4,
-    ssl: isRemote ? { rejectUnauthorized: false } : void 0
-  });
-  pool.on("error", (err) => {
-    console.warn("[DB_POOL_WARN]", err?.message || err);
-  });
-  const adapter = new PrismaPg(pool);
-  const client = new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"]
-  });
-  prismaInstance = client;
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = client;
-    globalForPrisma.pgPool = pool;
-  }
-  return client;
-}
-var prisma = getPrismaClient();
-async function checkDatabaseHealth() {
-  const start = Date.now();
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return { ok: true, message: "Database connected", latencyMs: Date.now() - start };
-  } catch (err) {
-    return { ok: false, message: err.message || "Database connection error", latencyMs: Date.now() - start };
-  }
-}
+// apps/api/src/modules/products/productService.ts
+init_prisma();
 
 // packages/utils/src/index.ts
 function slugify(text) {
@@ -38795,7 +39070,11 @@ var ProductService = class {
   }
 };
 
+// apps/api/src/modules/cart/cartService.ts
+init_prisma();
+
 // apps/api/src/modules/inventory/inventoryService.ts
+init_prisma();
 var InventoryService = class {
   static async getVariantStock(variantId) {
     return prisma.inventory.findUnique({
@@ -39114,50 +39393,8 @@ var InventoryService = class {
   }
 };
 
-// packages/config/src/index.ts
-var COMMERCE_CONFIG = {
-  // App Base URL
-  APP_URL: process.env.APP_URL || "https://piercyn.vercel.app",
-  // Shipping defaults (Single Source of Truth)
-  SHIPPING: {
-    FREE_THRESHOLD_NGN: 1e5,
-    LAGOS_FEE_NGN: 2500,
-    NATIONWIDE_FEE_NGN: 4500,
-    LAGOS_TIMEFRAME: "24\u201348 Hours",
-    NATIONWIDE_TIMEFRAME: "3\u20135 Business Days",
-    LAGOS_DESCRIPTION: "Orders within Lagos usually arrive in 24\u201348 hours via direct dispatch.",
-    NATIONWIDE_DESCRIPTION: "Nationwide delivery across Nigeria: 3\u20135 business days."
-  },
-  // Checkout & Inventory Reservation
-  INVENTORY: {
-    RESERVATION_TTL_MINUTES: 15,
-    // Temporary checkout lock to prevent overselling
-    LOW_STOCK_THRESHOLD: 5
-  },
-  // Payment Providers
-  PAYMENT: {
-    DEFAULT_PROVIDER: process.env.PAYMENT_PROVIDER || "direct_transfer",
-    PAYSTACK: {
-      SECRET_KEY: process.env.PAYSTACK_SECRET_KEY || "",
-      PUBLIC_KEY: process.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY || "",
-      WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY || "",
-      BASE_URL: "https://api.paystack.co"
-    }
-  },
-  // Security & Limits
-  LIMITS: {
-    MAX_CART_QUANTITY_PER_ITEM: 10,
-    CART_EXPIRY_DAYS: 30
-  },
-  // Active Promotions (Single Source of Truth)
-  PROMOTIONS: [
-    { code: "STANDOUT", discountPercent: 15, description: "15% Editorial Discount" },
-    { code: "LAGOS26", discountPercent: 15, description: "15% Lagos Launch Discount" },
-    { code: "PIERCYN10", discountPercent: 10, description: "10% Welcome Discount" }
-  ]
-};
-
 // apps/api/src/modules/cart/cartService.ts
+init_constants();
 var CartService = class {
   static async calculateItems(sessionId, rawItems) {
     const items = [];
@@ -39325,6 +39562,13 @@ var CartService = class {
     }
   }
 };
+
+// apps/api/src/modules/checkout/checkoutService.ts
+init_constants();
+
+// apps/api/src/modules/shipping/shippingService.ts
+init_constants();
+init_prisma();
 
 // apps/api/src/modules/shipping/kwikCourier.ts
 var KwikCourierAdapter = class {
@@ -39543,6 +39787,7 @@ var ShippingService = class {
 };
 
 // apps/api/src/modules/customers/customerService.ts
+init_prisma();
 var CustomerService = class {
   static async findOrCreateCustomer(input2, txPrisma) {
     const client = txPrisma || prisma;
@@ -39645,665 +39890,7 @@ var CustomerService = class {
   }
 };
 
-// apps/api/src/modules/checkout/checkoutService.ts
-var CheckoutService = class {
-  static async calculateQuote(sessionId, shippingRegion, items, discountCode) {
-    const cart = await CartService.calculateItems(sessionId, items);
-    let discountNGN = 0;
-    let promoDescription;
-    if (discountCode) {
-      const cleanCode = discountCode.trim().toUpperCase();
-      const promo = COMMERCE_CONFIG.PROMOTIONS.find((p) => p.code === cleanCode);
-      if (promo) {
-        discountNGN = Math.round(cart.subtotalNGN * promo.discountPercent / 100);
-        promoDescription = promo.description;
-      }
-    }
-    const deliveryFeeNGN = await ShippingService.calculateFee(shippingRegion, cart.subtotalNGN);
-    const finalTotal = Math.max(0, cart.subtotalNGN + deliveryFeeNGN - discountNGN);
-    const shippingMethodName = shippingRegion === "lagos" ? "Lagos Doorstep (24\u201348 Hours)" : "Nationwide Nigeria (3\u20135 Business Days)";
-    const isEligible = cart.isValid && cart.items.length > 0;
-    return {
-      cart,
-      shippingRegion,
-      shippingMethodName,
-      subtotalNGN: cart.subtotalNGN,
-      deliveryFeeNGN,
-      discountNGN,
-      discountDescription: promoDescription,
-      totalNGN: finalTotal,
-      isEligibleForCheckout: isEligible,
-      errors: cart.validationErrors
-    };
-  }
-  static async createOrder(input2) {
-    const sessionId = input2.sessionId || `sess-${Date.now()}`;
-    const quote = await this.calculateQuote(
-      sessionId,
-      input2.shippingRegion,
-      input2.items,
-      input2.discountCode
-    );
-    if (!quote.isEligibleForCheckout) {
-      throw new Error(`Checkout validation failed: ${quote.errors.join(", ")}`);
-    }
-    const orderNumber = generateOrderNumber();
-    const createdOrder = await prisma.$transaction(async (tx) => {
-      for (const item of input2.items) {
-        const reserved = await InventoryService.reserveStock(
-          item.variantId,
-          item.quantity,
-          orderNumber,
-          COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
-          tx
-        );
-        if (!reserved) {
-          throw new Error(`Stock reservation failed for variant ${item.variantId}. It may have just sold out.`);
-        }
-      }
-      const customer = await CustomerService.findOrCreateCustomer(
-        {
-          email: input2.customer.email,
-          fullName: input2.customer.fullName,
-          phone: input2.customer.phone,
-          address: {
-            addressLine: input2.customer.address,
-            city: input2.customer.city,
-            state: input2.customer.state
-          }
-        },
-        tx
-      );
-      const paymentMethodLabel = input2.paymentMethod === "paystack" ? "PAYSTACK" : input2.paymentMethod === "mock" ? "MOCK" : "DIRECT_TRANSFER";
-      const order = await tx.order.create({
-        data: {
-          orderNumber,
-          customerId: customer.id,
-          customerFirstName: input2.customer.fullName.split(" ")[0] || "Customer",
-          customerLastName: input2.customer.fullName.split(" ").slice(1).join(" ") || "PIERCYN",
-          customerEmail: input2.customer.email.toLowerCase().trim(),
-          customerPhone: input2.customer.phone,
-          deliveryAddress: input2.customer.address,
-          deliveryCity: input2.customer.city,
-          deliveryState: input2.customer.state,
-          orderNote: input2.customer.orderNote,
-          subtotalNGN: quote.subtotalNGN,
-          deliveryFeeNGN: quote.deliveryFeeNGN,
-          discountNGN: quote.discountNGN,
-          totalNGN: quote.totalNGN,
-          currency: "NGN",
-          shippingMethodKey: quote.shippingRegion,
-          shippingMethodName: quote.shippingMethodName,
-          paymentMethod: paymentMethodLabel,
-          paymentStatus: "PENDING",
-          status: "PENDING_PAYMENT",
-          items: {
-            create: quote.cart.items.map((line) => ({
-              variantId: line.variantId,
-              productId: line.productId,
-              productName: line.productName,
-              sku: line.sku,
-              colour: line.colour,
-              size: line.size,
-              unitPriceNGN: line.unitPriceNGN,
-              costPriceNGN: line.costPriceNGN,
-              totalNGN: line.lineTotalNGN,
-              image: line.image,
-              quantity: line.quantity
-            }))
-          },
-          statusHistory: {
-            create: {
-              fromStatus: "PENDING_PAYMENT",
-              toStatus: "PENDING_PAYMENT",
-              changedBy: "SYSTEM",
-              note: "Order placed, awaiting payment authorization"
-            }
-          },
-          events: {
-            create: {
-              sessionId,
-              customerId: customer.id,
-              eventType: "CHECKOUT_STARTED",
-              metadata: JSON.stringify({
-                orderNumber,
-                totalNGN: quote.totalNGN,
-                itemCount: quote.cart.items.length
-              })
-            }
-          }
-        },
-        include: {
-          items: true,
-          statusHistory: true
-        }
-      });
-      return order;
-    });
-    await CartService.clearCart(sessionId);
-    return createdOrder;
-  }
-};
-
-// apps/api/src/modules/orders/orderService.ts
-var VALID_ORDER_TRANSITIONS = {
-  PENDING_PAYMENT: ["PAID", "CANCELLED", "FAILED"],
-  PAID: ["PROCESSING", "CANCELLED", "REFUNDED"],
-  PROCESSING: ["PACKED", "CANCELLED", "REFUNDED"],
-  PACKED: ["SHIPPED", "CANCELLED"],
-  SHIPPED: ["DELIVERED", "RETURNED", "FAILED"],
-  DELIVERED: ["COMPLETED", "RETURNED", "EXCHANGED"],
-  COMPLETED: ["RETURNED", "REFUNDED"],
-  CANCELLED: [],
-  FAILED: ["PENDING_PAYMENT"],
-  RETURNED: ["REFUNDED", "EXCHANGED"],
-  REFUNDED: [],
-  EXCHANGED: ["PROCESSING"]
-};
-var OrderService = class {
-  static async getOrder(identifier) {
-    const order = await prisma.order.findFirst({
-      where: {
-        OR: [{ id: identifier }, { orderNumber: identifier }]
-      },
-      include: {
-        items: true,
-        statusHistory: {
-          orderBy: { createdAt: "asc" }
-        },
-        payments: true,
-        shipment: true
-      }
-    });
-    if (!order) return null;
-    return {
-      ...order,
-      orderStatus: order.status,
-      customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
-      shippingAddressLine: order.deliveryAddress,
-      shippingCity: order.deliveryCity,
-      shippingState: order.deliveryState,
-      timeline: order.statusHistory.map((sh) => ({
-        status: sh.toStatus,
-        timestamp: sh.createdAt.toISOString(),
-        note: sh.note
-      })),
-      createdAt: order.createdAt.toISOString(),
-      updatedAt: order.updatedAt.toISOString()
-    };
-  }
-  static async getOrderDetail(identifier) {
-    return this.getOrder(identifier);
-  }
-  static async getAllOrders(filter) {
-    const where = {};
-    if (filter?.status && filter.status !== "ALL") {
-      where.status = filter.status;
-    }
-    if (filter?.email) {
-      where.customerEmail = { equals: filter.email, mode: "insensitive" };
-    }
-    if (filter?.search) {
-      const s = filter.search.toLowerCase();
-      where.OR = [
-        { orderNumber: { contains: s, mode: "insensitive" } },
-        { customerFirstName: { contains: s, mode: "insensitive" } },
-        { customerLastName: { contains: s, mode: "insensitive" } },
-        { customerEmail: { contains: s, mode: "insensitive" } },
-        { customerPhone: { contains: s } }
-      ];
-    }
-    if (filter?.startDate || filter?.endDate) {
-      where.createdAt = {};
-      if (filter.startDate) where.createdAt.gte = new Date(filter.startDate);
-      if (filter.endDate) where.createdAt.lte = new Date(filter.endDate);
-    }
-    const orders = await prisma.order.findMany({
-      where,
-      include: {
-        items: true,
-        statusHistory: { orderBy: { createdAt: "asc" } },
-        shipment: true
-      },
-      orderBy: { createdAt: "desc" },
-      take: filter?.limit,
-      skip: filter?.offset
-    });
-    return orders.map((o) => ({
-      ...o,
-      orderStatus: o.status,
-      customerName: `${o.customerFirstName} ${o.customerLastName}`.trim(),
-      shippingAddressLine: o.deliveryAddress,
-      shippingCity: o.deliveryCity,
-      shippingState: o.deliveryState,
-      timeline: o.statusHistory.map((sh) => ({
-        status: sh.toStatus,
-        timestamp: sh.createdAt.toISOString(),
-        note: sh.note
-      })),
-      createdAt: o.createdAt.toISOString(),
-      updatedAt: o.updatedAt.toISOString()
-    }));
-  }
-  static async updateStatus(orderIdentifier, newStatus, note, updatedBy = "ADMIN") {
-    const existing = await prisma.order.findFirst({
-      where: {
-        OR: [{ id: orderIdentifier }, { orderNumber: orderIdentifier }]
-      }
-    });
-    if (!existing) {
-      throw new Error(`Order ${orderIdentifier} not found`);
-    }
-    const currentStatus = existing.status;
-    const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
-    if (!allowed.includes(newStatus)) {
-      throw new Error(
-        `Invalid order status transition from ${currentStatus} to ${newStatus}. Allowed: ${allowed.join(", ") || "None"}`
-      );
-    }
-    return prisma.$transaction(async (tx) => {
-      const isPaid = newStatus === "PAID";
-      const updated = await tx.order.update({
-        where: { id: existing.id },
-        data: {
-          status: newStatus,
-          ...isPaid ? { paymentStatus: "PAID", paidAt: /* @__PURE__ */ new Date() } : {}
-        },
-        include: {
-          items: true,
-          statusHistory: true
-        }
-      });
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: existing.id,
-          fromStatus: currentStatus,
-          toStatus: newStatus,
-          changedBy: updatedBy,
-          note: note || `Status transitioned to ${newStatus} by ${updatedBy}`
-        }
-      });
-      if (newStatus === "CANCELLED") {
-        await InventoryService.releaseReservation(existing.orderNumber, tx);
-      }
-      return updated;
-    });
-  }
-  static async markOrderPaid(orderNumber, providerReference = "SYS-REF") {
-    return prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({
-        where: { orderNumber },
-        include: { items: true }
-      });
-      if (!order) {
-        throw new Error(`Order not found: ${orderNumber}`);
-      }
-      if (order.paymentStatus === "PAID") {
-        return order;
-      }
-      const now = /* @__PURE__ */ new Date();
-      const updatedOrder = await tx.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: "PAID",
-          status: "PAID",
-          paidAt: now
-        },
-        include: { items: true }
-      });
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: order.id,
-          fromStatus: order.status,
-          toStatus: "PAID",
-          changedBy: "SYSTEM",
-          note: `Payment confirmed via reference ${providerReference}`
-        }
-      });
-      await tx.payment.upsert({
-        where: { providerReference },
-        update: {
-          status: "SUCCESS",
-          paidAt: now
-        },
-        create: {
-          orderId: order.id,
-          providerReference,
-          amountNGN: order.totalNGN,
-          currency: "NGN",
-          status: "SUCCESS",
-          paidAt: now
-        }
-      });
-      for (const item of order.items) {
-        if (item.variantId) {
-          await InventoryService.finalizeSale(item.variantId, item.quantity, order.orderNumber, tx);
-        }
-      }
-      await tx.analyticsEvent.create({
-        data: {
-          orderId: order.id,
-          customerId: order.customerId,
-          eventType: "PURCHASE_COMPLETED",
-          metadata: JSON.stringify({
-            orderNumber: order.orderNumber,
-            totalNGN: order.totalNGN,
-            providerReference
-          })
-        }
-      });
-      return updatedOrder;
-    });
-  }
-  static async cancelOrder(orderNumber, reason = "User cancellation") {
-    return this.updateStatus(orderNumber, "CANCELLED", reason);
-  }
-};
-
-// apps/api/src/modules/payments/paymentService.ts
-import crypto2 from "crypto";
-var DirectTransferProvider = class {
-  name = "Direct Bank Transfer";
-  providerType = "DIRECT_TRANSFER";
-  async initialize(params) {
-    const ref = `PCY-TRF-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
-    return {
-      success: true,
-      provider: "DIRECT_TRANSFER",
-      providerReference: ref,
-      message: "Bank transfer instructions sent. Awaiting confirmation."
-    };
-  }
-  async verify(reference) {
-    return { success: false, providerReference: reference, amountNGN: 0, orderNumber: "" };
-  }
-  verifyWebhookSignature() {
-    return true;
-  }
-};
-var MockPaymentProvider = class {
-  name = "Mock Payment (Dev Only)";
-  providerType = "MOCK";
-  async initialize(params) {
-    const ref = `MOCK-${Date.now()}`;
-    return {
-      success: true,
-      provider: "MOCK",
-      providerReference: ref,
-      authorizationUrl: `/checkout/mock-pay?ref=${ref}`,
-      message: "Mock payment initialized"
-    };
-  }
-  async verify(reference) {
-    return {
-      success: true,
-      providerReference: reference,
-      amountNGN: 1e6,
-      orderNumber: reference,
-      paidAt: (/* @__PURE__ */ new Date()).toISOString(),
-      rawResponse: { status: "success", gateway_response: "Mock success" }
-    };
-  }
-  verifyWebhookSignature() {
-    return true;
-  }
-};
-var PaystackPaymentProvider = class {
-  name = "Paystack";
-  providerType = "PAYSTACK";
-  secretKey;
-  webhookSecret;
-  constructor() {
-    this.secretKey = COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY;
-    this.webhookSecret = COMMERCE_CONFIG.PAYMENT.PAYSTACK.WEBHOOK_SECRET;
-  }
-  async initialize(params) {
-    if (!this.secretKey) {
-      return new DirectTransferProvider().initialize(params);
-    }
-    try {
-      const response = await fetch(
-        `${COMMERCE_CONFIG.PAYMENT.PAYSTACK.BASE_URL}/transaction/initialize`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.secretKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email: params.customerEmail,
-            // Paystack amounts in minor units (Kobo)
-            amount: params.amountNGN * 100,
-            reference: params.orderNumber,
-            callback_url: params.callbackUrl || `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${params.orderNumber}`,
-            metadata: {
-              customer_name: params.customerName,
-              customer_phone: params.customerPhone,
-              order_number: params.orderNumber
-            }
-          })
-        }
-      );
-      const data = await response.json();
-      if (!data.status) throw new Error(data.message || "Paystack init failed");
-      return {
-        success: true,
-        provider: "PAYSTACK",
-        providerReference: data.data.reference,
-        authorizationUrl: data.data.authorization_url,
-        accessCode: data.data.access_code,
-        message: "Paystack authorization URL generated"
-      };
-    } catch (err) {
-      console.error("[PAYSTACK_INIT_ERROR]", err);
-      return {
-        success: false,
-        provider: "PAYSTACK",
-        providerReference: params.orderNumber,
-        message: err.message || "Unable to connect to Paystack"
-      };
-    }
-  }
-  async verify(reference) {
-    if (!this.secretKey) {
-      return { success: false, providerReference: reference, amountNGN: 0, orderNumber: reference };
-    }
-    try {
-      const response = await fetch(
-        `${COMMERCE_CONFIG.PAYMENT.PAYSTACK.BASE_URL}/transaction/verify/${encodeURIComponent(reference)}`,
-        {
-          headers: { Authorization: `Bearer ${this.secretKey}` }
-        }
-      );
-      const data = await response.json();
-      const isSuccess = data.status && data.data?.status === "success";
-      return {
-        success: isSuccess,
-        providerReference: reference,
-        amountNGN: isSuccess ? Math.round((data.data.amount || 0) / 100) : 0,
-        orderNumber: data.data?.metadata?.order_number || reference,
-        paidAt: isSuccess ? data.data.paid_at || (/* @__PURE__ */ new Date()).toISOString() : void 0,
-        rawResponse: data
-      };
-    } catch (err) {
-      console.error("[PAYSTACK_VERIFY_ERROR]", err);
-      return { success: false, providerReference: reference, amountNGN: 0, orderNumber: reference };
-    }
-  }
-  verifyWebhookSignature(signature, rawBody) {
-    if (process.env.NODE_ENV === "test" || !this.webhookSecret) return true;
-    const hash3 = crypto2.createHmac("sha512", this.webhookSecret).update(rawBody).digest("hex");
-    return hash3 === signature;
-  }
-};
-var PaymentService = class {
-  static provider = COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY ? new PaystackPaymentProvider() : new MockPaymentProvider();
-  static setProvider(p) {
-    this.provider = p;
-  }
-  static getProvider() {
-    return this.provider;
-  }
-  static async verifyPayment(orderNumberOrRef, reference) {
-    const ref = reference || orderNumberOrRef;
-    const order = await OrderService.getOrder(orderNumberOrRef) || await OrderService.getOrder(ref);
-    if (order) {
-      await OrderService.markOrderPaid(order.orderNumber, ref);
-      return {
-        success: true,
-        providerReference: ref,
-        amountNGN: order.totalNGN,
-        orderNumber: order.orderNumber,
-        paidAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-    }
-    return {
-      success: true,
-      providerReference: ref,
-      amountNGN: 0,
-      orderNumber: ref,
-      paidAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-  }
-  static async initializePayment(orderNumber, callbackUrl) {
-    const order = await OrderService.getOrder(orderNumber);
-    if (!order) throw new Error(`Order not found: ${orderNumber}`);
-    return this.provider.initialize({
-      orderNumber: order.orderNumber,
-      amountNGN: order.totalNGN,
-      customerEmail: order.customerEmail,
-      customerName: order.customerName,
-      customerPhone: order.customerPhone,
-      callbackUrl
-    });
-  }
-};
-
-// apps/api/src/modules/payments/webhookService.ts
-var WebhookService = class {
-  static async handlePaystackWebhook(signature, rawBody, payload) {
-    const provider = PaymentService.getProvider();
-    const isValidSignature = provider.verifyWebhookSignature(signature, rawBody);
-    if (!isValidSignature && process.env.NODE_ENV === "production") {
-      return {
-        received: true,
-        processed: false,
-        idempotentDuplicate: false,
-        message: "Invalid webhook signature"
-      };
-    }
-    const event = payload?.event;
-    const data = payload?.data;
-    const reference = data?.reference;
-    if (!reference) {
-      return {
-        received: true,
-        processed: false,
-        idempotentDuplicate: false,
-        message: "Missing transaction reference"
-      };
-    }
-    const existingPayment = await prisma.payment.findUnique({
-      where: { providerReference: reference }
-    });
-    if (existingPayment && existingPayment.status === "SUCCESS") {
-      return {
-        received: true,
-        processed: true,
-        idempotentDuplicate: true,
-        message: "Webhook event already processed (idempotent duplicate)"
-      };
-    }
-    if (event === "charge.success" && data.status === "success") {
-      const orderNumber = data.metadata?.order_number || reference;
-      const order = await OrderService.getOrder(orderNumber);
-      if (order) {
-        await OrderService.markOrderPaid(order.orderNumber, reference);
-        await prisma.payment.upsert({
-          where: { providerReference: reference },
-          update: {
-            status: "SUCCESS",
-            paidAt: data.paid_at ? new Date(data.paid_at) : /* @__PURE__ */ new Date(),
-            rawMetadata: JSON.stringify(data)
-          },
-          create: {
-            orderId: order.id,
-            providerReference: reference,
-            amountNGN: order.totalNGN,
-            currency: "NGN",
-            status: "SUCCESS",
-            paidAt: data.paid_at ? new Date(data.paid_at) : /* @__PURE__ */ new Date(),
-            rawMetadata: JSON.stringify(data)
-          }
-        });
-      }
-    }
-    return {
-      received: true,
-      processed: true,
-      idempotentDuplicate: false,
-      message: `Webhook ${event} processed successfully`
-    };
-  }
-};
-
-// apps/api/src/services/eventService.ts
-var EventService = class {
-  static async track(event) {
-    const eventTypeMap = {
-      product_view: "PRODUCT_VIEW",
-      PRODUCT_VIEW: "PRODUCT_VIEW",
-      add_to_cart: "ADD_TO_CART",
-      ADD_TO_CART: "ADD_TO_CART",
-      checkout_started: "CHECKOUT_STARTED",
-      CHECKOUT_STARTED: "CHECKOUT_STARTED",
-      purchase: "PURCHASE_COMPLETED",
-      purchase_completed: "PURCHASE_COMPLETED",
-      PURCHASE_COMPLETED: "PURCHASE_COMPLETED"
-    };
-    const mappedType = eventTypeMap[event.eventType] || "PRODUCT_VIEW";
-    try {
-      return await prisma.analyticsEvent.create({
-        data: {
-          sessionId: event.sessionId,
-          customerId: event.customerId,
-          productId: event.productId,
-          variantId: event.variantId,
-          orderId: event.orderId,
-          eventType: mappedType,
-          metadata: event.metadata ? JSON.stringify(event.metadata) : void 0
-        }
-      });
-    } catch {
-      return null;
-    }
-  }
-  static async getAnalyticsSummary() {
-    const events = await prisma.analyticsEvent.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 500
-    });
-    let productViews = 0;
-    let addToCart = 0;
-    let checkoutStarted = 0;
-    let purchases = 0;
-    for (const evt of events) {
-      if (evt.eventType === "PRODUCT_VIEW") productViews++;
-      else if (evt.eventType === "ADD_TO_CART") addToCart++;
-      else if (evt.eventType === "CHECKOUT_STARTED") checkoutStarted++;
-      else if (evt.eventType === "PURCHASE_COMPLETED") purchases++;
-    }
-    return {
-      productViews,
-      addToCart,
-      checkoutStarted,
-      purchases,
-      conversionRate: productViews > 0 ? (purchases / productViews * 100).toFixed(1) + "%" : "0%"
-    };
-  }
-};
-
-// apps/api/src/services/authService.ts
+// apps/api/src/modules/affiliate/affiliateService.ts
 import crypto3 from "crypto";
 
 // node_modules/bcryptjs/index.js
@@ -42029,9 +41616,1679 @@ var bcryptjs_default = {
   decodeBase64
 };
 
-// apps/api/src/services/authService.ts
-var HMAC_SECRET = process.env.CUSTOMER_JWT_SECRET || process.env.JWT_SECRET || "piercyn-customer-session-secret-2026";
+// apps/api/src/modules/affiliate/affiliateService.ts
+init_constants();
+init_prisma();
+
+// apps/api/src/modules/affiliate/affiliateAuthService.ts
+import crypto2 from "crypto";
+init_prisma();
+var HMAC_SECRET = process.env.AFFILIATE_JWT_SECRET || process.env.JWT_SECRET || "piercyn-affiliate-secret-key-2026";
 var revokedTokens = /* @__PURE__ */ new Set();
+var affiliateSessions = /* @__PURE__ */ new Map();
+var SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1e3;
+function generateSignedToken(affiliate) {
+  const payload = {
+    id: affiliate.id,
+    email: affiliate.email,
+    firstName: affiliate.firstName,
+    lastName: affiliate.lastName,
+    status: affiliate.status,
+    createdAt: affiliate.createdAt instanceof Date ? affiliate.createdAt.toISOString() : affiliate.createdAt,
+    exp: Date.now() + SESSION_DURATION_MS,
+    iat: Date.now(),
+    nonce: crypto2.randomBytes(8).toString("hex")
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto2.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+  return `aff_tok_${payloadB64}.${signature}`;
+}
+var AffiliateAuthService = class {
+  /** Public wrapper — generates a signed token for a given affiliate record. */
+  static generateToken(affiliate) {
+    const token = generateSignedToken(affiliate);
+    affiliateSessions.set(token, {
+      affiliate,
+      expiresAt: new Date(Date.now() + SESSION_DURATION_MS)
+    });
+    return token;
+  }
+  static async login(email3, password) {
+    const dbAffiliate = await prisma.affiliate.findUnique({
+      where: { email: email3.toLowerCase().trim() }
+    });
+    if (!dbAffiliate) {
+      throw new Error("No affiliate account found with this email address.");
+    }
+    if (dbAffiliate.status === "REJECTED") {
+      throw new Error("Your affiliate application was not approved.");
+    }
+    const passwordMatches = await bcryptjs_default.compare(password, dbAffiliate.passwordHash);
+    if (!passwordMatches) {
+      throw new Error("Invalid credentials. Please check your email and password.");
+    }
+    const affiliateRecord = {
+      id: dbAffiliate.id,
+      email: dbAffiliate.email,
+      firstName: dbAffiliate.firstName,
+      lastName: dbAffiliate.lastName,
+      status: dbAffiliate.status,
+      createdAt: dbAffiliate.createdAt.toISOString()
+    };
+    await prisma.affiliate.update({
+      where: { id: dbAffiliate.id },
+      data: { lastLoginAt: /* @__PURE__ */ new Date() }
+    });
+    const token = generateSignedToken(affiliateRecord);
+    affiliateSessions.set(token, {
+      affiliate: affiliateRecord,
+      expiresAt: new Date(Date.now() + SESSION_DURATION_MS)
+    });
+    return { affiliate: affiliateRecord, token };
+  }
+  static verifyToken(token) {
+    if (!token || !token.startsWith("aff_tok_")) return null;
+    if (revokedTokens.has(token)) return null;
+    const raw = token.slice("aff_tok_".length);
+    if (raw.includes(".")) {
+      try {
+        const [payloadB64, signature] = raw.split(".");
+        if (payloadB64 && signature) {
+          const expectedSig = crypto2.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+          const sigBuffer = Buffer.from(signature);
+          const expBuffer = Buffer.from(expectedSig);
+          if (sigBuffer.length === expBuffer.length && crypto2.timingSafeEqual(sigBuffer, expBuffer)) {
+            const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+            if (payload.exp && payload.exp > Date.now() && typeof payload.createdAt === "string") {
+              return {
+                id: payload.id,
+                email: payload.email,
+                firstName: payload.firstName,
+                lastName: payload.lastName,
+                status: payload.status,
+                createdAt: payload.createdAt
+              };
+            }
+          }
+        }
+      } catch {
+      }
+    }
+    const session = affiliateSessions.get(token);
+    if (!session) return null;
+    if (session.expiresAt < /* @__PURE__ */ new Date()) {
+      affiliateSessions.delete(token);
+      return null;
+    }
+    return session.affiliate;
+  }
+  static logout(token) {
+    revokedTokens.add(token);
+    affiliateSessions.delete(token);
+  }
+};
+
+// apps/api/src/modules/affiliate/affiliateService.ts
+var ATTRIBUTION_WINDOW_DAYS = COMMERCE_CONFIG.AFFILIATE.ATTRIBUTION_WINDOW_DAYS;
+var MIN_PAYOUT_KOBO = COMMERCE_CONFIG.AFFILIATE.MIN_PAYOUT_KOBO;
+function generateReferralCode(firstName, lastName) {
+  const prefix = (firstName.slice(0, 4) + lastName.slice(0, 2)).toUpperCase().replace(/[^A-Z]/g, "") || "AFF";
+  const suffix = crypto3.randomBytes(5).toString("hex").toUpperCase();
+  return `${prefix}${suffix}`;
+}
+async function generateUniqueReferralCode(firstName, lastName) {
+  let attempts = 0;
+  while (attempts < 20) {
+    const code = generateReferralCode(firstName, lastName);
+    const existing = await prisma.affiliateLink.findUnique({ where: { referralCode: code } });
+    if (!existing) return code;
+    attempts++;
+  }
+  return `AFF${crypto3.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+var AffiliateService = class {
+  // ─── APPLICATION ──────────────────────────────────────────────────────────
+  static async apply(data) {
+    const email3 = data.email.trim().toLowerCase();
+    const existing = await prisma.affiliate.findUnique({ where: { email: email3 } });
+    if (existing) {
+      throw new Error("An affiliate account with this email already exists.");
+    }
+    const passwordHash = await bcryptjs_default.hash(data.password.trim(), 10);
+    const affiliate = await prisma.affiliate.create({
+      data: {
+        email: email3,
+        passwordHash,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        phone: data.phone?.trim() || null,
+        instagram: data.instagram?.trim() || null,
+        tiktok: data.tiktok?.trim() || null,
+        otherSocials: data.otherSocials || null,
+        promotionChannels: data.promotionChannels || null,
+        audienceSize: data.audienceSize || null,
+        promotionExperience: data.promotionExperience?.trim() || null,
+        status: "PENDING",
+        isActive: false
+      }
+    });
+    const token = AffiliateAuthService.generateToken({
+      id: affiliate.id,
+      email: affiliate.email,
+      firstName: affiliate.firstName,
+      lastName: affiliate.lastName,
+      status: affiliate.status,
+      createdAt: affiliate.createdAt
+    });
+    return {
+      affiliate: {
+        id: affiliate.id,
+        email: affiliate.email,
+        firstName: affiliate.firstName,
+        lastName: affiliate.lastName,
+        status: affiliate.status,
+        appliedAt: affiliate.appliedAt.toISOString(),
+        createdAt: affiliate.createdAt.toISOString()
+      },
+      token
+    };
+  }
+  static async applyForAffiliate(data) {
+    return this.apply(data);
+  }
+  // ─── PROFILE ──────────────────────────────────────────────────────────────
+  static async getAffiliateById(affiliateId) {
+    return this.getProfile(affiliateId);
+  }
+  static async getProfile(affiliateId) {
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      include: {
+        links: {
+          where: { isActive: true },
+          orderBy: { createdAt: "desc" },
+          take: 5
+        }
+      }
+    });
+    if (!affiliate) throw new Error("Affiliate not found");
+    return {
+      id: affiliate.id,
+      email: affiliate.email,
+      firstName: affiliate.firstName,
+      lastName: affiliate.lastName,
+      phone: affiliate.phone,
+      instagram: affiliate.instagram,
+      tiktok: affiliate.tiktok,
+      otherSocials: affiliate.otherSocials,
+      promotionChannels: affiliate.promotionChannels,
+      audienceSize: affiliate.audienceSize,
+      status: affiliate.status,
+      bankName: affiliate.bankName,
+      accountNumber: affiliate.accountNumber,
+      accountNumberMasked: affiliate.accountNumber ? `****${affiliate.accountNumber.slice(-4)}` : null,
+      accountName: affiliate.accountName,
+      appliedAt: affiliate.appliedAt.toISOString(),
+      approvedAt: affiliate.approvedAt?.toISOString() || null,
+      createdAt: affiliate.createdAt.toISOString()
+    };
+  }
+  static async updateProfile(affiliateId, data) {
+    const updated = await prisma.affiliate.update({
+      where: { id: affiliateId },
+      data: {
+        instagram: data.instagram !== void 0 ? data.instagram.trim() : void 0,
+        tiktok: data.tiktok !== void 0 ? data.tiktok.trim() : void 0,
+        otherSocials: data.otherSocials !== void 0 ? data.otherSocials : void 0,
+        promotionChannels: data.promotionChannels !== void 0 ? data.promotionChannels : void 0,
+        audienceSize: data.audienceSize !== void 0 ? data.audienceSize : void 0,
+        bankName: data.bankName !== void 0 ? data.bankName.trim() : void 0,
+        accountNumber: data.accountNumber !== void 0 ? data.accountNumber.trim() : void 0,
+        accountName: data.accountName !== void 0 ? data.accountName.trim() : void 0
+      }
+    });
+    return {
+      success: true,
+      id: updated.id,
+      bankName: updated.bankName,
+      accountNumber: updated.accountNumber,
+      accountName: updated.accountName,
+      instagram: updated.instagram,
+      tiktok: updated.tiktok
+    };
+  }
+  // ─── LINKS ────────────────────────────────────────────────────────────────
+  static async createLink(affiliateId, data) {
+    const affiliate = await prisma.affiliate.findUnique({ where: { id: affiliateId } });
+    if (!affiliate || affiliate.status !== "ACTIVE") {
+      throw new Error("Only active affiliates can create referral links.");
+    }
+    const referralCode = await generateUniqueReferralCode(
+      affiliate.firstName,
+      affiliate.lastName
+    );
+    const link = await prisma.affiliateLink.create({
+      data: {
+        affiliateId,
+        name: data.name.trim(),
+        referralCode,
+        destination: data.destination.trim(),
+        destinationType: data.destinationType || "collection",
+        isActive: true
+      }
+    });
+    const appUrl = COMMERCE_CONFIG.APP_URL;
+    return {
+      id: link.id,
+      name: link.name,
+      referralCode: link.referralCode,
+      destination: link.destination,
+      destinationType: link.destinationType,
+      fullUrl: `${appUrl}${link.destination}?ref=${link.referralCode}`,
+      isActive: link.isActive,
+      clickCount: link.clickCount,
+      orderCount: link.orderCount,
+      createdAt: link.createdAt.toISOString()
+    };
+  }
+  /** Compatibility alias used by the affiliate router. */
+  static async createAffiliateLink(affiliateId, data) {
+    return this.createLink(affiliateId, data);
+  }
+  static async getLinks(affiliateId) {
+    const links = await prisma.affiliateLink.findMany({
+      where: { affiliateId },
+      orderBy: { createdAt: "desc" }
+    });
+    const appUrl = COMMERCE_CONFIG.APP_URL;
+    return links.map((link) => ({
+      id: link.id,
+      name: link.name,
+      referralCode: link.referralCode,
+      destination: link.destination,
+      destinationType: link.destinationType,
+      fullUrl: `${appUrl}${link.destination}?ref=${link.referralCode}`,
+      isActive: link.isActive,
+      clickCount: link.clickCount,
+      orderCount: link.orderCount,
+      createdAt: link.createdAt.toISOString(),
+      updatedAt: link.updatedAt.toISOString()
+    }));
+  }
+  /** Compatibility alias used by the affiliate router. */
+  static async getAffiliateLinks(affiliateId) {
+    return this.getLinks(affiliateId);
+  }
+  static async getLinkByCode(code) {
+    const cleanCode = code.trim().toUpperCase();
+    const link = await prisma.affiliateLink.findUnique({
+      where: { referralCode: cleanCode },
+      include: { affiliate: true }
+    });
+    if (!link || !link.isActive || link.affiliate.status !== "ACTIVE") return null;
+    return {
+      id: link.id,
+      code: link.referralCode,
+      destination: link.destination,
+      destinationType: link.destinationType,
+      isActive: link.isActive,
+      affiliate: {
+        id: link.affiliate.id,
+        firstName: link.affiliate.firstName,
+        lastName: link.affiliate.lastName,
+        status: link.affiliate.status
+      }
+    };
+  }
+  // ─── ATTRIBUTION / CLICK TRACKING ─────────────────────────────────────────
+  static async validateReferralCode(referralCode) {
+    const link = await prisma.affiliateLink.findUnique({
+      where: { referralCode: referralCode.toUpperCase() },
+      include: { affiliate: true }
+    });
+    if (!link || !link.isActive) return null;
+    if (!link.affiliate || link.affiliate.status !== "ACTIVE") return null;
+    const appUrl = COMMERCE_CONFIG.APP_URL;
+    return {
+      affiliateId: link.affiliateId,
+      affiliateLinkId: link.id,
+      referralCode: link.referralCode,
+      destination: link.destination,
+      destinationType: link.destinationType,
+      fullUrl: `${appUrl}${link.destination}?ref=${link.referralCode}`,
+      affiliateName: `${link.affiliate.firstName} ${link.affiliate.lastName}`.trim()
+    };
+  }
+  static async trackClick(data) {
+    const codeToUse = (data.code || data.referralCode || "").trim().toUpperCase();
+    const validated = await this.validateReferralCode(codeToUse);
+    if (!validated) {
+      throw new Error("Invalid or inactive referral code.");
+    }
+    const now = /* @__PURE__ */ new Date();
+    const expiresAt = new Date(now.getTime() + ATTRIBUTION_WINDOW_DAYS * 24 * 60 * 60 * 1e3);
+    let ipHash = data.ipHash;
+    if (!ipHash && data.ipAddress) {
+      ipHash = crypto3.createHash("sha256").update(data.ipAddress).digest("hex");
+    }
+    await prisma.affiliateClick.create({
+      data: {
+        affiliateId: validated.affiliateId,
+        affiliateLinkId: validated.affiliateLinkId,
+        sessionId: data.sessionId,
+        customerId: data.customerId || null,
+        ipHash: ipHash || null,
+        userAgent: data.userAgent ? data.userAgent.substring(0, 500) : null,
+        landingPage: data.landingPage || null,
+        referrerUrl: data.referrer || data.referrerUrl || null
+      }
+    });
+    await prisma.affiliateLink.update({
+      where: { id: validated.affiliateLinkId },
+      data: { clickCount: { increment: 1 } }
+    });
+    const attribution = await prisma.affiliateAttribution.upsert({
+      where: { sessionId: data.sessionId },
+      update: {
+        affiliateId: validated.affiliateId,
+        affiliateLinkId: validated.affiliateLinkId,
+        referralCode: validated.referralCode,
+        clickedAt: now,
+        expiresAt,
+        customerId: data.customerId || void 0,
+        customerEmail: data.customerEmail || void 0
+      },
+      create: {
+        sessionId: data.sessionId,
+        affiliateId: validated.affiliateId,
+        affiliateLinkId: validated.affiliateLinkId,
+        referralCode: validated.referralCode,
+        clickedAt: now,
+        expiresAt,
+        customerId: data.customerId || null,
+        customerEmail: data.customerEmail || null
+      }
+    });
+    return {
+      success: true,
+      attribution: {
+        id: attribution.id,
+        sessionId: attribution.sessionId,
+        affiliateId: attribution.affiliateId,
+        referralCode: attribution.referralCode,
+        expiresAt: attribution.expiresAt.toISOString()
+      },
+      link: {
+        id: validated.affiliateLinkId,
+        code: validated.referralCode,
+        destination: validated.destination,
+        destinationType: validated.destinationType
+      }
+    };
+  }
+  static async recordClick(data) {
+    return this.trackClick(data);
+  }
+  static async getAttribution(sessionId) {
+    const attribution = await prisma.affiliateAttribution.findUnique({
+      where: { sessionId },
+      include: {
+        affiliate: true,
+        affiliateLink: true
+      }
+    });
+    if (!attribution) return null;
+    if (attribution.expiresAt < /* @__PURE__ */ new Date()) return null;
+    if (!attribution.affiliate || attribution.affiliate.status !== "ACTIVE") return null;
+    if (!attribution.affiliateLink || !attribution.affiliateLink.isActive) return null;
+    return {
+      affiliateId: attribution.affiliateId,
+      affiliateLinkId: attribution.affiliateLinkId,
+      referralCode: attribution.referralCode,
+      customerEmail: attribution.customerEmail || void 0,
+      clickedAt: attribution.clickedAt,
+      expiresAt: attribution.expiresAt
+    };
+  }
+  static async resolveAttribution(sessionId, explicitCode) {
+    if (explicitCode) {
+      const validated = await this.validateReferralCode(explicitCode);
+      if (validated) {
+        return {
+          affiliateId: validated.affiliateId,
+          affiliateLinkId: validated.affiliateLinkId,
+          referralCode: validated.referralCode,
+          clickedAt: /* @__PURE__ */ new Date()
+        };
+      }
+    }
+    return this.getAttribution(sessionId);
+  }
+  // ─── ORDERS ───────────────────────────────────────────────────────────────
+  static async getAttributedOrders(affiliateId, options) {
+    const orders = await prisma.order.findMany({
+      where: { affiliateId },
+      include: {
+        items: true,
+        commissions: {
+          where: { affiliateId }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: options?.limit || 50,
+      skip: options?.offset || 0
+    });
+    return orders.map((order) => {
+      const totalCommissionKobo = order.commissions.reduce(
+        (sum, c) => sum + c.amountKobo,
+        0
+      );
+      const commissionStatus = order.commissions.length === 0 ? "NONE" : order.commissions.every((c) => c.status === "PAID") ? "PAID" : order.commissions.every((c) => c.status === "REVERSED") ? "REVERSED" : order.commissions.some((c) => c.status === "AVAILABLE") ? "AVAILABLE" : "PENDING";
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        itemCount: order.items.reduce((sum, i) => sum + i.quantity, 0),
+        subtotalNGN: order.subtotalNGN,
+        totalNGN: order.totalNGN,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        commissionNGN: totalCommissionKobo / 100,
+        commissionStatus,
+        attributedAt: order.affiliateAttributedAt?.toISOString() || null,
+        createdAt: order.createdAt.toISOString()
+      };
+    });
+  }
+  static async getAffiliateOrders(affiliateId) {
+    return this.getAttributedOrders(affiliateId);
+  }
+  // ─── COMMISSIONS & EARNINGS ───────────────────────────────────────────────
+  static async getCommissions(affiliateId, options) {
+    const where = { affiliateId };
+    if (options?.status && options.status !== "ALL") {
+      where.status = options.status;
+    }
+    const commissions = await prisma.affiliateCommission.findMany({
+      where,
+      include: {
+        order: {
+          select: {
+            orderNumber: true,
+            status: true,
+            createdAt: true
+          }
+        },
+        orderItem: {
+          select: {
+            productName: true,
+            sku: true,
+            colour: true,
+            size: true,
+            quantity: true,
+            unitPriceNGN: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: options?.limit || 50,
+      skip: options?.offset || 0
+    });
+    return commissions.map((c) => ({
+      id: c.id,
+      orderId: c.orderId,
+      orderNumber: c.order?.orderNumber || "Unknown",
+      orderItemId: c.orderItemId,
+      productName: c.orderItem?.productName || "Product",
+      sku: c.orderItem?.sku || "",
+      colour: c.orderItem?.colour || "",
+      size: c.orderItem?.size || "",
+      quantity: c.orderItem?.quantity || 1,
+      unitPriceNGN: c.orderItem?.unitPriceNGN || 0,
+      amountKobo: c.amountKobo,
+      amountNGN: c.amountKobo / 100,
+      status: c.status,
+      eligibleAt: c.eligibleAt?.toISOString() || null,
+      paidAt: c.paidAt?.toISOString() || null,
+      reversedAt: c.reversedAt?.toISOString() || null,
+      reversalReason: c.reversalReason || null,
+      createdAt: c.createdAt.toISOString()
+    }));
+  }
+  static async getEarnings(affiliateId, statusFilter) {
+    return this.getCommissions(affiliateId, { status: statusFilter });
+  }
+  // ─── PAYOUTS ──────────────────────────────────────────────────────────────
+  static async requestPayout(affiliateId, data) {
+    const requestedKobo = Math.round(data.amountNGN * 100);
+    if (!Number.isSafeInteger(requestedKobo) || requestedKobo < MIN_PAYOUT_KOBO) {
+      throw new Error(`Minimum withdrawal amount is \u20A6${(MIN_PAYOUT_KOBO / 100).toLocaleString()}.`);
+    }
+    const payout = await prisma.$transaction(async (tx) => {
+      const affiliate = await tx.affiliate.findUnique({ where: { id: affiliateId } });
+      if (!affiliate || affiliate.status !== "ACTIVE") {
+        throw new Error("Only active affiliates can request payouts.");
+      }
+      const commissions = await tx.affiliateCommission.findMany({
+        where: { affiliateId, status: "AVAILABLE", payoutId: null },
+        orderBy: { eligibleAt: "asc" }
+      });
+      const availableKobo = commissions.reduce((sum, commission) => sum + commission.amountKobo, 0);
+      if (requestedKobo > availableKobo) {
+        throw new Error(`Requested amount exceeds your available balance of \u20A6${(availableKobo / 100).toLocaleString()}.`);
+      }
+      const reservedCommissionIds = [];
+      let remainingKobo = requestedKobo;
+      for (const commission of commissions) {
+        if (commission.amountKobo <= remainingKobo) {
+          reservedCommissionIds.push(commission.id);
+          remainingKobo -= commission.amountKobo;
+        }
+        if (remainingKobo === 0) break;
+      }
+      if (remainingKobo !== 0) {
+        throw new Error("Requested amount must match available commission increments.");
+      }
+      const newPayout = await tx.affiliatePayout.create({
+        data: {
+          affiliateId,
+          amountKobo: requestedKobo,
+          status: "PENDING",
+          bankName: data.bankName.trim(),
+          accountNumber: data.accountNumber.trim(),
+          accountName: data.accountName.trim()
+        }
+      });
+      await tx.affiliateCommission.updateMany({
+        where: {
+          id: { in: reservedCommissionIds },
+          payoutId: null
+        },
+        data: {
+          payoutId: newPayout.id
+        }
+      });
+      return newPayout;
+    }, { isolationLevel: "Serializable" });
+    return {
+      id: payout.id,
+      amountKobo: payout.amountKobo,
+      amountNGN: requestedKobo / 100,
+      status: payout.status,
+      bankName: payout.bankName,
+      accountNumberMasked: `****${payout.accountNumber.slice(-4)}`,
+      accountName: payout.accountName,
+      requestedAt: payout.requestedAt.toISOString()
+    };
+  }
+  static async getPayouts(affiliateId) {
+    const payouts = await prisma.affiliatePayout.findMany({
+      where: { affiliateId },
+      orderBy: { requestedAt: "desc" }
+    });
+    return payouts.map((p) => ({
+      id: p.id,
+      amountKobo: p.amountKobo,
+      amountNGN: p.amountKobo / 100,
+      status: p.status,
+      bankName: p.bankName,
+      accountNumber: p.accountNumber,
+      accountNumberMasked: `****${p.accountNumber.slice(-4)}`,
+      accountName: p.accountName,
+      paymentReference: p.paymentReference || null,
+      adminNote: p.adminNote || null,
+      processedAt: p.processedAt?.toISOString() || null,
+      requestedAt: p.requestedAt.toISOString()
+    }));
+  }
+  // ─── DASHBOARD STATS ──────────────────────────────────────────────────────
+  static async getDashboardStats(affiliateId) {
+    const { CommissionService: CommissionService2 } = await Promise.resolve().then(() => (init_commissionService(), commissionService_exports));
+    const [affiliate, commissionSummary, totalClicks, totalOrders, links, recentCommissions, recentPayouts] = await Promise.all([
+      this.getProfile(affiliateId),
+      CommissionService2.getCommissionSummary(affiliateId),
+      prisma.affiliateClick.count({ where: { affiliateId } }),
+      prisma.order.count({ where: { affiliateId } }),
+      prisma.affiliateLink.findMany({
+        where: { affiliateId },
+        select: { clickCount: true, orderCount: true }
+      }),
+      this.getCommissions(affiliateId, { limit: 10 }),
+      this.getPayouts(affiliateId)
+    ]);
+    const totalProductsSold = await prisma.affiliateCommission.count({
+      where: { affiliateId }
+    });
+    const revenueData = await prisma.order.aggregate({
+      where: { affiliateId, paymentStatus: "PAID" },
+      _sum: { totalNGN: true }
+    });
+    const conversionRate = totalClicks > 0 ? parseFloat((totalOrders / totalClicks * 100).toFixed(2)) : 0;
+    return {
+      affiliate,
+      earnings: {
+        pendingKobo: commissionSummary.pendingKobo,
+        pendingNGN: commissionSummary.pendingKobo / 100,
+        availableKobo: commissionSummary.availableKobo,
+        availableNGN: commissionSummary.availableKobo / 100,
+        paidKobo: commissionSummary.paidKobo,
+        paidNGN: commissionSummary.paidKobo / 100,
+        reversedKobo: commissionSummary.reversedKobo,
+        reversedNGN: commissionSummary.reversedKobo / 100,
+        totalEarnedKobo: commissionSummary.totalEarnedKobo,
+        totalEarnedNGN: commissionSummary.totalEarnedKobo / 100
+      },
+      metrics: {
+        totalClicks,
+        totalOrders,
+        totalProductsSold,
+        activeLinksCount: links.length,
+        conversionRatePercent: conversionRate,
+        averageOrderValueNGN: totalOrders > 0 ? Math.round((revenueData._sum.totalNGN || 0) / totalOrders) : 0
+      },
+      config: {
+        commissionPerProductNGN: CommissionService2.getCommissionPerProductNGN(),
+        returnWindowDays: CommissionService2.getReturnWindowDays(),
+        attributionWindowDays: ATTRIBUTION_WINDOW_DAYS,
+        minimumPayoutNGN: MIN_PAYOUT_KOBO / 100
+      },
+      recentCommissions,
+      recentPayouts,
+      recentClicks: []
+    };
+  }
+  // ─── ADMIN OPERATIONS ─────────────────────────────────────────────────────
+  static async getAllAffiliatesForAdmin(options) {
+    const where = {};
+    if (options?.status && options.status !== "ALL") {
+      where.status = options.status;
+    }
+    if (options?.search) {
+      where.OR = [
+        { email: { contains: options.search, mode: "insensitive" } },
+        { firstName: { contains: options.search, mode: "insensitive" } },
+        { lastName: { contains: options.search, mode: "insensitive" } }
+      ];
+    }
+    const affiliates = await prisma.affiliate.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            links: true,
+            clicks: true,
+            commissions: true,
+            orders: true
+          }
+        }
+      },
+      orderBy: { appliedAt: "desc" },
+      take: options?.limit || 50,
+      skip: options?.offset || 0
+    });
+    return affiliates.map((a) => ({
+      id: a.id,
+      email: a.email,
+      name: `${a.firstName} ${a.lastName}`.trim(),
+      firstName: a.firstName,
+      lastName: a.lastName,
+      phone: a.phone,
+      instagram: a.instagram,
+      tiktok: a.tiktok,
+      audienceSize: a.audienceSize,
+      promotionChannels: a.promotionChannels,
+      promotionExperience: a.promotionExperience,
+      status: a.status,
+      isActive: a.isActive,
+      bankName: a.bankName,
+      accountNumber: a.accountNumber,
+      accountName: a.accountName,
+      appliedAt: a.appliedAt.toISOString(),
+      approvedAt: a.approvedAt?.toISOString() || null,
+      suspendedAt: a.suspendedAt?.toISOString() || null,
+      rejectedAt: a.rejectedAt?.toISOString() || null,
+      rejectionReason: a.rejectionReason || null,
+      suspensionReason: a.suspensionReason || null,
+      stats: {
+        linksCount: a._count.links,
+        clicksCount: a._count.clicks,
+        ordersCount: a._count.orders,
+        commissionsCount: a._count.commissions
+      }
+    }));
+  }
+  static async getAffiliateDetailForAdmin(affiliateId) {
+    const affiliate = await prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      include: {
+        links: {
+          orderBy: { createdAt: "desc" }
+        },
+        commissions: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: {
+            order: { select: { orderNumber: true, status: true } }
+          }
+        },
+        payouts: {
+          orderBy: { requestedAt: "desc" }
+        }
+      }
+    });
+    if (!affiliate) return null;
+    const { CommissionService: CommissionService2 } = await Promise.resolve().then(() => (init_commissionService(), commissionService_exports));
+    const summary = await CommissionService2.getCommissionSummary(affiliateId);
+    return {
+      id: affiliate.id,
+      email: affiliate.email,
+      name: `${affiliate.firstName} ${affiliate.lastName}`.trim(),
+      firstName: affiliate.firstName,
+      lastName: affiliate.lastName,
+      phone: affiliate.phone,
+      instagram: affiliate.instagram,
+      tiktok: affiliate.tiktok,
+      otherSocials: affiliate.otherSocials,
+      promotionChannels: affiliate.promotionChannels,
+      audienceSize: affiliate.audienceSize,
+      promotionExperience: affiliate.promotionExperience,
+      status: affiliate.status,
+      isActive: affiliate.isActive,
+      bankName: affiliate.bankName,
+      accountNumber: affiliate.accountNumber,
+      accountName: affiliate.accountName,
+      appliedAt: affiliate.appliedAt.toISOString(),
+      approvedAt: affiliate.approvedAt?.toISOString() || null,
+      approvedBy: affiliate.approvedBy || null,
+      rejectedAt: affiliate.rejectedAt?.toISOString() || null,
+      rejectedBy: affiliate.rejectedBy || null,
+      rejectionReason: affiliate.rejectionReason || null,
+      suspendedAt: affiliate.suspendedAt?.toISOString() || null,
+      suspendedBy: affiliate.suspendedBy || null,
+      suspensionReason: affiliate.suspensionReason || null,
+      summary: {
+        pendingNGN: summary.pendingKobo / 100,
+        availableNGN: summary.availableKobo / 100,
+        paidNGN: summary.paidKobo / 100,
+        reversedNGN: summary.reversedKobo / 100,
+        totalEarnedNGN: summary.totalEarnedKobo / 100
+      },
+      links: affiliate.links,
+      recentCommissions: affiliate.commissions,
+      payouts: affiliate.payouts
+    };
+  }
+  static async reviewApplication(affiliateId, action, adminEmail, reason) {
+    const affiliate = await prisma.affiliate.findUnique({ where: { id: affiliateId } });
+    if (!affiliate) throw new Error("Affiliate not found");
+    const now = /* @__PURE__ */ new Date();
+    if (action === "APPROVE") {
+      const updated = await prisma.affiliate.update({
+        where: { id: affiliateId },
+        data: {
+          status: "ACTIVE",
+          isActive: true,
+          approvedAt: now,
+          approvedBy: adminEmail
+        }
+      });
+      return updated;
+    } else {
+      const updated = await prisma.affiliate.update({
+        where: { id: affiliateId },
+        data: {
+          status: "REJECTED",
+          isActive: false,
+          rejectedAt: now,
+          rejectedBy: adminEmail,
+          rejectionReason: reason || "Application did not meet minimum criteria"
+        }
+      });
+      return updated;
+    }
+  }
+  static async updateAffiliateStatus(affiliateId, status, adminEmail, reason) {
+    const affiliate = await prisma.affiliate.findUnique({ where: { id: affiliateId } });
+    if (!affiliate) throw new Error("Affiliate not found");
+    const now = /* @__PURE__ */ new Date();
+    if (status === "SUSPENDED") {
+      const updated = await prisma.affiliate.update({
+        where: { id: affiliateId },
+        data: {
+          status: "SUSPENDED",
+          isActive: false,
+          suspendedAt: now,
+          suspendedBy: adminEmail,
+          suspensionReason: reason || "Account suspended by administrator"
+        }
+      });
+      return updated;
+    } else {
+      const updated = await prisma.affiliate.update({
+        where: { id: affiliateId },
+        data: {
+          status: "ACTIVE",
+          isActive: true,
+          suspendedAt: null,
+          suspensionReason: null
+        }
+      });
+      return updated;
+    }
+  }
+  static async getAllPayoutsForAdmin(options) {
+    const where = {};
+    if (options?.status && options.status !== "ALL") {
+      where.status = options.status;
+    }
+    const payouts = await prisma.affiliatePayout.findMany({
+      where,
+      include: {
+        affiliate: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true
+          }
+        }
+      },
+      orderBy: { requestedAt: "desc" },
+      take: options?.limit || 50,
+      skip: options?.offset || 0
+    });
+    return payouts.map((p) => ({
+      id: p.id,
+      affiliateId: p.affiliateId,
+      affiliateName: `${p.affiliate.firstName} ${p.affiliate.lastName}`.trim(),
+      affiliateEmail: p.affiliate.email,
+      affiliatePhone: p.affiliate.phone,
+      amountKobo: p.amountKobo,
+      amountNGN: p.amountKobo / 100,
+      status: p.status,
+      bankName: p.bankName,
+      accountNumber: p.accountNumber,
+      accountName: p.accountName,
+      adminNote: p.adminNote,
+      paymentReference: p.paymentReference,
+      processedBy: p.processedBy,
+      processedAt: p.processedAt?.toISOString() || null,
+      requestedAt: p.requestedAt.toISOString()
+    }));
+  }
+  static async processPayout(payoutId, action, adminEmail, notes, paymentReference) {
+    const payout = await prisma.affiliatePayout.findUnique({
+      where: { id: payoutId }
+    });
+    if (!payout) throw new Error("Payout request not found");
+    const now = /* @__PURE__ */ new Date();
+    return prisma.$transaction(async (tx) => {
+      if (action === "PAID") {
+        const updated = await tx.affiliatePayout.update({
+          where: { id: payoutId },
+          data: {
+            status: "PAID",
+            paymentReference: paymentReference || `MANUAL-${Date.now()}`,
+            adminNote: notes || "Payout processed successfully",
+            processedBy: adminEmail,
+            processedAt: now
+          }
+        });
+        await tx.affiliateCommission.updateMany({
+          where: { payoutId: payout.id },
+          data: {
+            status: "PAID",
+            paidAt: now
+          }
+        });
+        return updated;
+      } else if (action === "REJECTED") {
+        const updated = await tx.affiliatePayout.update({
+          where: { id: payoutId },
+          data: {
+            status: "REJECTED",
+            adminNote: notes || "Payout request rejected",
+            processedBy: adminEmail,
+            processedAt: now
+          }
+        });
+        await tx.affiliateCommission.updateMany({
+          where: { payoutId: payout.id },
+          data: {
+            payoutId: null
+          }
+        });
+        return updated;
+      } else {
+        const updated = await tx.affiliatePayout.update({
+          where: { id: payoutId },
+          data: {
+            status: "APPROVED",
+            adminNote: notes || "Payout approved, queued for disbursement",
+            processedBy: adminEmail,
+            processedAt: now
+          }
+        });
+        return updated;
+      }
+    });
+  }
+};
+
+// apps/api/src/modules/checkout/checkoutService.ts
+init_prisma();
+var CheckoutService = class {
+  static async calculateQuote(sessionId, shippingRegion, items, discountCode) {
+    const cart = await CartService.calculateItems(sessionId, items);
+    let discountNGN = 0;
+    let promoDescription;
+    if (discountCode) {
+      const cleanCode = discountCode.trim().toUpperCase();
+      const promo = COMMERCE_CONFIG.PROMOTIONS.find((p) => p.code === cleanCode);
+      if (promo) {
+        discountNGN = Math.round(cart.subtotalNGN * promo.discountPercent / 100);
+        promoDescription = promo.description;
+      }
+    }
+    const deliveryFeeNGN = await ShippingService.calculateFee(shippingRegion, cart.subtotalNGN);
+    const finalTotal = Math.max(0, cart.subtotalNGN + deliveryFeeNGN - discountNGN);
+    const shippingMethodName = shippingRegion === "lagos" ? "Lagos Doorstep (24\u201348 Hours)" : "Nationwide Nigeria (3\u20135 Business Days)";
+    const isEligible = cart.isValid && cart.items.length > 0;
+    return {
+      cart,
+      shippingRegion,
+      shippingMethodName,
+      subtotalNGN: cart.subtotalNGN,
+      deliveryFeeNGN,
+      discountNGN,
+      discountDescription: promoDescription,
+      totalNGN: finalTotal,
+      isEligibleForCheckout: isEligible,
+      errors: cart.validationErrors
+    };
+  }
+  static async createOrder(input2) {
+    const sessionId = input2.sessionId || `sess-${Date.now()}`;
+    const quote = await this.calculateQuote(
+      sessionId,
+      input2.shippingRegion,
+      input2.items,
+      input2.discountCode
+    );
+    if (!quote.isEligibleForCheckout) {
+      throw new Error(`Checkout validation failed: ${quote.errors.join(", ")}`);
+    }
+    const orderNumber = generateOrderNumber();
+    const attribution = await AffiliateService.resolveAttribution(sessionId, input2.affiliateCode);
+    let affiliateAttribution = null;
+    if (attribution) {
+      const affiliate = await prisma.affiliate.findUnique({
+        where: { id: attribution.affiliateId },
+        select: { email: true, status: true, isActive: true }
+      });
+      const customerEmail = input2.customer.email.trim().toLowerCase();
+      if (affiliate?.status === "ACTIVE" && affiliate.isActive && affiliate.email.trim().toLowerCase() !== customerEmail) {
+        affiliateAttribution = {
+          affiliateId: attribution.affiliateId,
+          affiliateLinkId: attribution.affiliateLinkId,
+          referralCode: attribution.referralCode,
+          clickedAt: new Date(attribution.clickedAt)
+        };
+      }
+    }
+    const createdOrder = await prisma.$transaction(async (tx) => {
+      for (const item of input2.items) {
+        const reserved = await InventoryService.reserveStock(
+          item.variantId,
+          item.quantity,
+          orderNumber,
+          COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
+          tx
+        );
+        if (!reserved) {
+          throw new Error(`Stock reservation failed for variant ${item.variantId}. It may have just sold out.`);
+        }
+      }
+      const customer = await CustomerService.findOrCreateCustomer(
+        {
+          email: input2.customer.email,
+          fullName: input2.customer.fullName,
+          phone: input2.customer.phone,
+          address: {
+            addressLine: input2.customer.address,
+            city: input2.customer.city,
+            state: input2.customer.state
+          }
+        },
+        tx
+      );
+      const paymentMethodLabel = input2.paymentMethod === "paystack" ? "PAYSTACK" : input2.paymentMethod === "mock" ? "MOCK" : "DIRECT_TRANSFER";
+      const order = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: customer.id,
+          customerFirstName: input2.customer.fullName.split(" ")[0] || "Customer",
+          customerLastName: input2.customer.fullName.split(" ").slice(1).join(" ") || "PIERCYN",
+          customerEmail: input2.customer.email.toLowerCase().trim(),
+          customerPhone: input2.customer.phone,
+          deliveryAddress: input2.customer.address,
+          deliveryCity: input2.customer.city,
+          deliveryState: input2.customer.state,
+          orderNote: input2.customer.orderNote,
+          subtotalNGN: quote.subtotalNGN,
+          deliveryFeeNGN: quote.deliveryFeeNGN,
+          discountNGN: quote.discountNGN,
+          totalNGN: quote.totalNGN,
+          currency: "NGN",
+          shippingMethodKey: quote.shippingRegion,
+          shippingMethodName: quote.shippingMethodName,
+          paymentMethod: paymentMethodLabel,
+          paymentStatus: "PENDING",
+          status: "PENDING_PAYMENT",
+          affiliateId: affiliateAttribution?.affiliateId || null,
+          affiliateLinkId: affiliateAttribution?.affiliateLinkId || null,
+          affiliateCode: affiliateAttribution?.referralCode || null,
+          affiliateAttributedAt: affiliateAttribution?.clickedAt || null,
+          items: {
+            create: quote.cart.items.map((line) => ({
+              variantId: line.variantId,
+              productId: line.productId,
+              productName: line.productName,
+              sku: line.sku,
+              colour: line.colour,
+              size: line.size,
+              unitPriceNGN: line.unitPriceNGN,
+              costPriceNGN: line.costPriceNGN,
+              totalNGN: line.lineTotalNGN,
+              image: line.image,
+              quantity: line.quantity
+            }))
+          },
+          statusHistory: {
+            create: {
+              fromStatus: "PENDING_PAYMENT",
+              toStatus: "PENDING_PAYMENT",
+              changedBy: "SYSTEM",
+              note: "Order placed, awaiting payment authorization"
+            }
+          },
+          events: {
+            create: {
+              sessionId,
+              customerId: customer.id,
+              eventType: "CHECKOUT_STARTED",
+              metadata: JSON.stringify({
+                orderNumber,
+                totalNGN: quote.totalNGN,
+                itemCount: quote.cart.items.length
+              })
+            }
+          }
+        },
+        include: {
+          items: true,
+          statusHistory: true
+        }
+      });
+      if (affiliateAttribution) {
+        await tx.affiliateLink.update({
+          where: { id: affiliateAttribution.affiliateLinkId },
+          data: { orderCount: { increment: 1 } }
+        });
+      }
+      return order;
+    });
+    await CartService.clearCart(sessionId);
+    return createdOrder;
+  }
+};
+
+// apps/api/src/modules/orders/orderService.ts
+init_prisma();
+init_commissionService();
+var VALID_ORDER_TRANSITIONS = {
+  PENDING_PAYMENT: ["PAID", "CANCELLED", "FAILED"],
+  PAID: ["PROCESSING", "CANCELLED", "REFUNDED"],
+  PROCESSING: ["PACKED", "CANCELLED", "REFUNDED"],
+  PACKED: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED", "RETURNED", "FAILED"],
+  DELIVERED: ["COMPLETED", "RETURNED", "EXCHANGED"],
+  COMPLETED: ["RETURNED", "REFUNDED"],
+  CANCELLED: [],
+  FAILED: ["PENDING_PAYMENT"],
+  RETURNED: ["REFUNDED", "EXCHANGED"],
+  REFUNDED: [],
+  EXCHANGED: ["PROCESSING"]
+};
+var OrderService = class {
+  static async getOrder(identifier) {
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: identifier }, { orderNumber: identifier }]
+      },
+      include: {
+        items: true,
+        statusHistory: {
+          orderBy: { createdAt: "asc" }
+        },
+        payments: true,
+        shipment: true
+      }
+    });
+    if (!order) return null;
+    return {
+      ...order,
+      orderStatus: order.status,
+      customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+      shippingAddressLine: order.deliveryAddress,
+      shippingCity: order.deliveryCity,
+      shippingState: order.deliveryState,
+      timeline: order.statusHistory.map((sh) => ({
+        status: sh.toStatus,
+        timestamp: sh.createdAt.toISOString(),
+        note: sh.note
+      })),
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString()
+    };
+  }
+  static async getOrderDetail(identifier) {
+    return this.getOrder(identifier);
+  }
+  static async getAllOrders(filter) {
+    const where = {};
+    if (filter?.status && filter.status !== "ALL") {
+      where.status = filter.status;
+    }
+    if (filter?.email) {
+      where.customerEmail = { equals: filter.email, mode: "insensitive" };
+    }
+    if (filter?.search) {
+      const s = filter.search.toLowerCase();
+      where.OR = [
+        { orderNumber: { contains: s, mode: "insensitive" } },
+        { customerFirstName: { contains: s, mode: "insensitive" } },
+        { customerLastName: { contains: s, mode: "insensitive" } },
+        { customerEmail: { contains: s, mode: "insensitive" } },
+        { customerPhone: { contains: s } }
+      ];
+    }
+    if (filter?.startDate || filter?.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) where.createdAt.gte = new Date(filter.startDate);
+      if (filter.endDate) where.createdAt.lte = new Date(filter.endDate);
+    }
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: true,
+        statusHistory: { orderBy: { createdAt: "asc" } },
+        shipment: true
+      },
+      orderBy: { createdAt: "desc" },
+      take: filter?.limit,
+      skip: filter?.offset
+    });
+    return orders.map((o) => ({
+      ...o,
+      orderStatus: o.status,
+      customerName: `${o.customerFirstName} ${o.customerLastName}`.trim(),
+      shippingAddressLine: o.deliveryAddress,
+      shippingCity: o.deliveryCity,
+      shippingState: o.deliveryState,
+      timeline: o.statusHistory.map((sh) => ({
+        status: sh.toStatus,
+        timestamp: sh.createdAt.toISOString(),
+        note: sh.note
+      })),
+      createdAt: o.createdAt.toISOString(),
+      updatedAt: o.updatedAt.toISOString()
+    }));
+  }
+  static async updateStatus(orderIdentifier, newStatus, note, updatedBy = "ADMIN") {
+    const existing = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: orderIdentifier }, { orderNumber: orderIdentifier }]
+      }
+    });
+    if (!existing) {
+      throw new Error(`Order ${orderIdentifier} not found`);
+    }
+    const currentStatus = existing.status;
+    const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
+    if (!allowed.includes(newStatus)) {
+      throw new Error(
+        `Invalid order status transition from ${currentStatus} to ${newStatus}. Allowed: ${allowed.join(", ") || "None"}`
+      );
+    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const isPaid = newStatus === "PAID";
+      const updatedOrder = await tx.order.update({
+        where: { id: existing.id },
+        data: {
+          status: newStatus,
+          ...isPaid ? { paymentStatus: "PAID", paidAt: /* @__PURE__ */ new Date() } : {}
+        },
+        include: {
+          items: true,
+          statusHistory: true
+        }
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: existing.id,
+          fromStatus: currentStatus,
+          toStatus: newStatus,
+          changedBy: updatedBy,
+          note: note || `Status transitioned to ${newStatus} by ${updatedBy}`
+        }
+      });
+      if (newStatus === "CANCELLED") {
+        await InventoryService.releaseReservation(existing.orderNumber, tx);
+      }
+      return updatedOrder;
+    });
+    try {
+      if (newStatus === "PAID") {
+        await CommissionService.processOrderCommission(existing.id);
+      } else if (newStatus === "DELIVERED" || newStatus === "COMPLETED") {
+        await CommissionService.markCommissionsAvailable(existing.id);
+      } else if (["CANCELLED", "REFUNDED", "RETURNED"].includes(newStatus)) {
+        await CommissionService.reverseCommissions(existing.id, note || `Order ${newStatus}`);
+      }
+    } catch (commErr) {
+      console.error(`[COMMISSION_ERROR] Failed updating commission for order ${existing.id}:`, commErr.message);
+    }
+    return updated;
+  }
+  static async markOrderPaid(orderNumber, providerReference = "SYS-REF") {
+    const orderRes = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        include: { items: true }
+      });
+      if (!order) {
+        throw new Error(`Order not found: ${orderNumber}`);
+      }
+      if (order.paymentStatus === "PAID") {
+        return order;
+      }
+      const now = /* @__PURE__ */ new Date();
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: "PAID",
+          status: "PAID",
+          paidAt: now
+        },
+        include: { items: true }
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: "PAID",
+          changedBy: "SYSTEM",
+          note: `Payment confirmed via reference ${providerReference}`
+        }
+      });
+      await tx.payment.upsert({
+        where: { providerReference },
+        update: {
+          status: "SUCCESS",
+          paidAt: now
+        },
+        create: {
+          orderId: order.id,
+          providerReference,
+          amountNGN: order.totalNGN,
+          currency: "NGN",
+          status: "SUCCESS",
+          paidAt: now
+        }
+      });
+      for (const item of order.items) {
+        if (item.variantId) {
+          await InventoryService.finalizeSale(item.variantId, item.quantity, order.orderNumber, tx);
+        }
+      }
+      await tx.analyticsEvent.create({
+        data: {
+          orderId: order.id,
+          customerId: order.customerId,
+          eventType: "PURCHASE_COMPLETED",
+          metadata: JSON.stringify({
+            orderNumber: order.orderNumber,
+            totalNGN: order.totalNGN,
+            providerReference
+          })
+        }
+      });
+      return updatedOrder;
+    });
+    try {
+      await CommissionService.processOrderCommission(orderRes.id);
+    } catch (commErr) {
+      console.error(`[COMMISSION_ERROR] Failed to process commission in markOrderPaid:`, commErr.message);
+    }
+    return orderRes;
+  }
+  static async cancelOrder(orderNumber, reason = "User cancellation") {
+    return this.updateStatus(orderNumber, "CANCELLED", reason);
+  }
+};
+
+// apps/api/src/modules/payments/paymentService.ts
+init_constants();
+import crypto4 from "crypto";
+var DirectTransferProvider = class {
+  name = "Direct Bank Transfer";
+  providerType = "DIRECT_TRANSFER";
+  async initialize(params) {
+    const ref = `PCY-TRF-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
+    return {
+      success: true,
+      provider: "DIRECT_TRANSFER",
+      providerReference: ref,
+      message: "Bank transfer instructions sent. Awaiting confirmation."
+    };
+  }
+  async verify(reference) {
+    return { success: false, providerReference: reference, amountNGN: 0, orderNumber: "" };
+  }
+  verifyWebhookSignature() {
+    return true;
+  }
+};
+var MockPaymentProvider = class {
+  name = "Mock Payment (Dev Only)";
+  providerType = "MOCK";
+  async initialize(params) {
+    const ref = `MOCK-${Date.now()}`;
+    return {
+      success: true,
+      provider: "MOCK",
+      providerReference: ref,
+      authorizationUrl: `/checkout/mock-pay?ref=${ref}`,
+      message: "Mock payment initialized"
+    };
+  }
+  async verify(reference) {
+    return {
+      success: true,
+      providerReference: reference,
+      amountNGN: 1e6,
+      orderNumber: reference,
+      paidAt: (/* @__PURE__ */ new Date()).toISOString(),
+      rawResponse: { status: "success", gateway_response: "Mock success" }
+    };
+  }
+  verifyWebhookSignature() {
+    return true;
+  }
+};
+var PaystackPaymentProvider = class {
+  name = "Paystack";
+  providerType = "PAYSTACK";
+  secretKey;
+  webhookSecret;
+  constructor() {
+    this.secretKey = COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY;
+    this.webhookSecret = COMMERCE_CONFIG.PAYMENT.PAYSTACK.WEBHOOK_SECRET;
+  }
+  async initialize(params) {
+    if (!this.secretKey) {
+      return new DirectTransferProvider().initialize(params);
+    }
+    try {
+      const response = await fetch(
+        `${COMMERCE_CONFIG.PAYMENT.PAYSTACK.BASE_URL}/transaction/initialize`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.secretKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: params.customerEmail,
+            // Paystack amounts in minor units (Kobo)
+            amount: params.amountNGN * 100,
+            reference: params.orderNumber,
+            callback_url: params.callbackUrl || `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${params.orderNumber}`,
+            metadata: {
+              customer_name: params.customerName,
+              customer_phone: params.customerPhone,
+              order_number: params.orderNumber
+            }
+          })
+        }
+      );
+      const data = await response.json();
+      if (!data.status) throw new Error(data.message || "Paystack init failed");
+      return {
+        success: true,
+        provider: "PAYSTACK",
+        providerReference: data.data.reference,
+        authorizationUrl: data.data.authorization_url,
+        accessCode: data.data.access_code,
+        message: "Paystack authorization URL generated"
+      };
+    } catch (err) {
+      console.error("[PAYSTACK_INIT_ERROR]", err);
+      return {
+        success: false,
+        provider: "PAYSTACK",
+        providerReference: params.orderNumber,
+        message: err.message || "Unable to connect to Paystack"
+      };
+    }
+  }
+  async verify(reference) {
+    if (!this.secretKey) {
+      return { success: false, providerReference: reference, amountNGN: 0, orderNumber: reference };
+    }
+    try {
+      const response = await fetch(
+        `${COMMERCE_CONFIG.PAYMENT.PAYSTACK.BASE_URL}/transaction/verify/${encodeURIComponent(reference)}`,
+        {
+          headers: { Authorization: `Bearer ${this.secretKey}` }
+        }
+      );
+      const data = await response.json();
+      const isSuccess = data.status && data.data?.status === "success";
+      return {
+        success: isSuccess,
+        providerReference: reference,
+        amountNGN: isSuccess ? Math.round((data.data.amount || 0) / 100) : 0,
+        orderNumber: data.data?.metadata?.order_number || reference,
+        paidAt: isSuccess ? data.data.paid_at || (/* @__PURE__ */ new Date()).toISOString() : void 0,
+        rawResponse: data
+      };
+    } catch (err) {
+      console.error("[PAYSTACK_VERIFY_ERROR]", err);
+      return { success: false, providerReference: reference, amountNGN: 0, orderNumber: reference };
+    }
+  }
+  verifyWebhookSignature(signature, rawBody) {
+    if (process.env.NODE_ENV === "test" || !this.webhookSecret) return true;
+    const hash3 = crypto4.createHmac("sha512", this.webhookSecret).update(rawBody).digest("hex");
+    return hash3 === signature;
+  }
+};
+var PaymentService = class {
+  static provider = COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY ? new PaystackPaymentProvider() : new MockPaymentProvider();
+  static setProvider(p) {
+    this.provider = p;
+  }
+  static getProvider() {
+    return this.provider;
+  }
+  static async verifyPayment(orderNumberOrRef, reference) {
+    const ref = reference || orderNumberOrRef;
+    const order = await OrderService.getOrder(orderNumberOrRef) || await OrderService.getOrder(ref);
+    if (order) {
+      await OrderService.markOrderPaid(order.orderNumber, ref);
+      return {
+        success: true,
+        providerReference: ref,
+        amountNGN: order.totalNGN,
+        orderNumber: order.orderNumber,
+        paidAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+    return {
+      success: true,
+      providerReference: ref,
+      amountNGN: 0,
+      orderNumber: ref,
+      paidAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  static async initializePayment(orderNumber, callbackUrl) {
+    const order = await OrderService.getOrder(orderNumber);
+    if (!order) throw new Error(`Order not found: ${orderNumber}`);
+    return this.provider.initialize({
+      orderNumber: order.orderNumber,
+      amountNGN: order.totalNGN,
+      customerEmail: order.customerEmail,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      callbackUrl
+    });
+  }
+};
+
+// apps/api/src/modules/payments/webhookService.ts
+init_prisma();
+var WebhookService = class {
+  static async handlePaystackWebhook(signature, rawBody, payload) {
+    const provider = PaymentService.getProvider();
+    const isValidSignature = provider.verifyWebhookSignature(signature, rawBody);
+    if (!isValidSignature && process.env.NODE_ENV === "production") {
+      return {
+        received: true,
+        processed: false,
+        idempotentDuplicate: false,
+        message: "Invalid webhook signature"
+      };
+    }
+    const event = payload?.event;
+    const data = payload?.data;
+    const reference = data?.reference;
+    if (!reference) {
+      return {
+        received: true,
+        processed: false,
+        idempotentDuplicate: false,
+        message: "Missing transaction reference"
+      };
+    }
+    const existingPayment = await prisma.payment.findUnique({
+      where: { providerReference: reference }
+    });
+    if (existingPayment && existingPayment.status === "SUCCESS") {
+      return {
+        received: true,
+        processed: true,
+        idempotentDuplicate: true,
+        message: "Webhook event already processed (idempotent duplicate)"
+      };
+    }
+    if (event === "charge.success" && data.status === "success") {
+      const orderNumber = data.metadata?.order_number || reference;
+      const order = await OrderService.getOrder(orderNumber);
+      if (order) {
+        await OrderService.markOrderPaid(order.orderNumber, reference);
+        await prisma.payment.upsert({
+          where: { providerReference: reference },
+          update: {
+            status: "SUCCESS",
+            paidAt: data.paid_at ? new Date(data.paid_at) : /* @__PURE__ */ new Date(),
+            rawMetadata: JSON.stringify(data)
+          },
+          create: {
+            orderId: order.id,
+            providerReference: reference,
+            amountNGN: order.totalNGN,
+            currency: "NGN",
+            status: "SUCCESS",
+            paidAt: data.paid_at ? new Date(data.paid_at) : /* @__PURE__ */ new Date(),
+            rawMetadata: JSON.stringify(data)
+          }
+        });
+      }
+    }
+    return {
+      received: true,
+      processed: true,
+      idempotentDuplicate: false,
+      message: `Webhook ${event} processed successfully`
+    };
+  }
+};
+
+// apps/api/src/services/eventService.ts
+init_prisma();
+var EventService = class {
+  static async track(event) {
+    const eventTypeMap = {
+      product_view: "PRODUCT_VIEW",
+      PRODUCT_VIEW: "PRODUCT_VIEW",
+      add_to_cart: "ADD_TO_CART",
+      ADD_TO_CART: "ADD_TO_CART",
+      checkout_started: "CHECKOUT_STARTED",
+      CHECKOUT_STARTED: "CHECKOUT_STARTED",
+      purchase: "PURCHASE_COMPLETED",
+      purchase_completed: "PURCHASE_COMPLETED",
+      PURCHASE_COMPLETED: "PURCHASE_COMPLETED"
+    };
+    const mappedType = eventTypeMap[event.eventType] || "PRODUCT_VIEW";
+    try {
+      return await prisma.analyticsEvent.create({
+        data: {
+          sessionId: event.sessionId,
+          customerId: event.customerId,
+          productId: event.productId,
+          variantId: event.variantId,
+          orderId: event.orderId,
+          eventType: mappedType,
+          metadata: event.metadata ? JSON.stringify(event.metadata) : void 0
+        }
+      });
+    } catch {
+      return null;
+    }
+  }
+  static async getAnalyticsSummary() {
+    const events = await prisma.analyticsEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 500
+    });
+    let productViews = 0;
+    let addToCart = 0;
+    let checkoutStarted = 0;
+    let purchases = 0;
+    for (const evt of events) {
+      if (evt.eventType === "PRODUCT_VIEW") productViews++;
+      else if (evt.eventType === "ADD_TO_CART") addToCart++;
+      else if (evt.eventType === "CHECKOUT_STARTED") checkoutStarted++;
+      else if (evt.eventType === "PURCHASE_COMPLETED") purchases++;
+    }
+    return {
+      productViews,
+      addToCart,
+      checkoutStarted,
+      purchases,
+      conversionRate: productViews > 0 ? (purchases / productViews * 100).toFixed(1) + "%" : "0%"
+    };
+  }
+};
+
+// apps/api/src/services/authService.ts
+import crypto5 from "crypto";
+init_prisma();
+var HMAC_SECRET2 = process.env.CUSTOMER_JWT_SECRET || process.env.JWT_SECRET || "piercyn-customer-session-secret-2026";
+var revokedTokens2 = /* @__PURE__ */ new Set();
 var authSessions = /* @__PURE__ */ new Map();
 function createSignedToken(userId, email3) {
   const payload = {
@@ -42039,10 +43296,10 @@ function createSignedToken(userId, email3) {
     email: email3,
     exp: Date.now() + 30 * 24 * 60 * 60 * 1e3,
     iat: Date.now(),
-    nonce: crypto3.randomBytes(8).toString("hex")
+    nonce: crypto5.randomBytes(8).toString("hex")
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = crypto3.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+  const signature = crypto5.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
   return `tok_${payloadB64}.${signature}`;
 }
 function createSession(userId, email3) {
@@ -42144,7 +43401,7 @@ var AuthService = class {
   }
   static async getUserByToken(token) {
     if (!token) return null;
-    if (revokedTokens.has(token)) return null;
+    if (revokedTokens2.has(token)) return null;
     let targetUserId = null;
     let targetEmail = null;
     if (token.startsWith("tok_")) {
@@ -42153,10 +43410,10 @@ var AuthService = class {
         try {
           const [payloadB64, signature] = raw.split(".");
           if (payloadB64 && signature) {
-            const expectedSig = crypto3.createHmac("sha256", HMAC_SECRET).update(payloadB64).digest("base64url");
+            const expectedSig = crypto5.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
             const sigBuf = Buffer.from(signature);
             const expBuf = Buffer.from(expectedSig);
-            if (sigBuf.length === expBuf.length && crypto3.timingSafeEqual(sigBuf, expBuf)) {
+            if (sigBuf.length === expBuf.length && crypto5.timingSafeEqual(sigBuf, expBuf)) {
               const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
               if (payload.exp && payload.exp > Date.now()) {
                 targetUserId = payload.userId;
@@ -42223,13 +43480,13 @@ var AuthService = class {
     return null;
   }
   static logout(token) {
-    revokedTokens.add(token);
+    revokedTokens2.add(token);
     return authSessions.delete(token);
   }
 };
 
 // apps/api/src/modules/admin/adminRouter.ts
-var import_express = __toESM(require_express2(), 1);
+var import_express2 = __toESM(require_express2(), 1);
 
 // node_modules/@supabase/supabase-js/dist/index.mjs
 var dist_exports = {};
@@ -50405,27 +51662,28 @@ function shouldShowDeprecationWarning() {
 if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 20 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 22 or later. For more information, visit: https://github.com/orgs/supabase/discussions/45715");
 
 // apps/api/src/modules/admin/adminAuthService.ts
-import crypto4 from "crypto";
-var HMAC_SECRET2 = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "piercyn-atelier-secret-key-2026";
-var revokedTokens2 = /* @__PURE__ */ new Set();
+import crypto6 from "crypto";
+init_prisma();
+var HMAC_SECRET3 = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "piercyn-atelier-secret-key-2026";
+var revokedTokens3 = /* @__PURE__ */ new Set();
 var adminSessions = /* @__PURE__ */ new Map();
 var loginAttempts = /* @__PURE__ */ new Map();
 var MAX_LOGIN_ATTEMPTS = 5;
 var LOCKOUT_DURATION_MS = 5 * 60 * 1e3;
-var SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1e3;
-function generateSignedToken(admin) {
+var SESSION_DURATION_MS2 = 7 * 24 * 60 * 60 * 1e3;
+function generateSignedToken2(admin) {
   const payload = {
     id: admin.id,
     email: admin.email,
     name: admin.name,
     role: admin.role,
     createdAt: typeof admin.createdAt === "string" ? admin.createdAt : admin.createdAt.toISOString(),
-    exp: Date.now() + SESSION_DURATION_MS,
+    exp: Date.now() + SESSION_DURATION_MS2,
     iat: Date.now(),
-    nonce: crypto4.randomBytes(8).toString("hex")
+    nonce: crypto6.randomBytes(8).toString("hex")
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = crypto4.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
+  const signature = crypto6.createHmac("sha256", HMAC_SECRET3).update(payloadB64).digest("base64url");
   return `adm_tok_${payloadB64}.${signature}`;
 }
 var AdminAuthService = class {
@@ -50477,23 +51735,23 @@ var AdminAuthService = class {
       throw new Error("Invalid administrative credentials or insufficient permissions");
     }
     loginAttempts.delete(rateLimitKey);
-    const token = generateSignedToken(adminRecord);
-    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+    const token = generateSignedToken2(adminRecord);
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS2);
     adminSessions.set(token, { admin: adminRecord, expiresAt });
     return { admin: adminRecord, token };
   }
   static verifyToken(token) {
     if (!token || !token.startsWith("adm_tok_")) return null;
-    if (revokedTokens2.has(token)) return null;
+    if (revokedTokens3.has(token)) return null;
     const raw = token.slice("adm_tok_".length);
     if (raw.includes(".")) {
       try {
         const [payloadB64, signature] = raw.split(".");
         if (payloadB64 && signature) {
-          const expectedSig = crypto4.createHmac("sha256", HMAC_SECRET2).update(payloadB64).digest("base64url");
+          const expectedSig = crypto6.createHmac("sha256", HMAC_SECRET3).update(payloadB64).digest("base64url");
           const sigBuffer = Buffer.from(signature);
           const expBuffer = Buffer.from(expectedSig);
-          if (sigBuffer.length === expBuffer.length && crypto4.timingSafeEqual(sigBuffer, expBuffer)) {
+          if (sigBuffer.length === expBuffer.length && crypto6.timingSafeEqual(sigBuffer, expBuffer)) {
             const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
             if (payload.exp && payload.exp > Date.now()) {
               return {
@@ -50521,7 +51779,7 @@ var AdminAuthService = class {
     return this.verifyToken(token);
   }
   static logout(token) {
-    revokedTokens2.add(token);
+    revokedTokens3.add(token);
     adminSessions.delete(token);
     return true;
   }
@@ -50556,6 +51814,8 @@ function requireAdmin(req, res, next) {
 }
 
 // apps/api/src/modules/analytics/analyticsService.ts
+init_prisma();
+init_constants();
 var AnalyticsService = class {
   static async getAnalyticsSummary() {
     const orders = await prisma.order.findMany({
@@ -50821,6 +52081,7 @@ var AnalyticsService = class {
 };
 
 // apps/api/src/modules/admin/auditService.ts
+init_prisma();
 var AuditService = class {
   static async log(entry) {
     try {
@@ -50867,6 +52128,10 @@ var AuditService = class {
     }));
   }
 };
+
+// apps/api/src/modules/affiliate/affiliateAdminRouter.ts
+var import_express = __toESM(require_express2(), 1);
+init_prisma();
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -70536,12 +71801,268 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// apps/api/src/schemas/affiliate.ts
+var AffiliateApplySchema = external_exports.object({
+  email: external_exports.string().trim().email("A valid email address is required").max(150),
+  password: external_exports.string().min(6, "Password must be at least 6 characters").max(100),
+  firstName: external_exports.string().trim().min(1, "First name is required").max(50),
+  lastName: external_exports.string().trim().min(1, "Last name is required").max(50),
+  phone: external_exports.string().trim().min(7, "A valid phone number is required").max(25),
+  instagram: external_exports.string().trim().max(100).optional(),
+  tiktok: external_exports.string().trim().max(100).optional(),
+  otherSocials: external_exports.string().max(500).optional(),
+  promotionChannels: external_exports.string().max(500).optional(),
+  audienceSize: external_exports.string().max(50).optional(),
+  promotionExperience: external_exports.string().max(1e3).optional(),
+  agreedToTerms: external_exports.boolean().refine((v) => v === true, {
+    message: "You must agree to the affiliate terms and conditions."
+  })
+});
+var AffiliateLoginSchema = external_exports.object({
+  email: external_exports.string().trim().email("A valid email address is required"),
+  password: external_exports.string().min(1, "Password is required")
+});
+var CreateAffiliateLinkSchema = external_exports.object({
+  name: external_exports.string().trim().min(3, "Link name must be at least 3 characters").max(100, "Link name must be under 100 characters"),
+  destination: external_exports.string().trim().min(1, "Destination is required").regex(/^\/(?!\/)/, "Destination must be an internal path starting with /").refine((destination) => !/[?#]/.test(destination), "Destination cannot contain a query string or fragment"),
+  destinationType: external_exports.enum(["collection", "product", "homepage"]).default("collection")
+});
+var UpdateAffiliateProfileSchema = external_exports.object({
+  instagram: external_exports.string().trim().max(100).optional(),
+  tiktok: external_exports.string().trim().max(100).optional(),
+  otherSocials: external_exports.string().max(500).optional(),
+  promotionChannels: external_exports.string().max(500).optional(),
+  audienceSize: external_exports.string().max(50).optional(),
+  bankName: external_exports.string().trim().min(2).max(100).optional(),
+  accountNumber: external_exports.string().trim().regex(/^\d{10}$/, "Account number must be 10 digits").optional(),
+  accountName: external_exports.string().trim().min(2).max(100).optional()
+});
+var RequestAffiliatePayoutSchema = external_exports.object({
+  amountNGN: external_exports.number().finite("Withdrawal amount must be a valid number").positive("Withdrawal amount must be greater than zero").refine((amount) => Number.isInteger(amount * 100), "Withdrawal amount cannot exceed two decimal places"),
+  bankName: external_exports.string().trim().min(2, "Bank name is required").max(100),
+  accountNumber: external_exports.string().trim().regex(/^\d{10}$/, "Account number must be exactly 10 digits"),
+  accountName: external_exports.string().trim().min(2, "Account name is required").max(100)
+});
+var TrackAffiliateClickSchema = external_exports.object({
+  code: external_exports.string().trim().min(3).max(20).optional(),
+  referralCode: external_exports.string().trim().min(3).max(20).optional(),
+  sessionId: external_exports.string().trim().min(1).max(200),
+  customerId: external_exports.string().optional(),
+  customerEmail: external_exports.string().email().optional(),
+  landingPage: external_exports.string().max(500).optional(),
+  referrer: external_exports.string().max(500).optional(),
+  referrerUrl: external_exports.string().max(500).optional()
+}).refine((data) => Boolean(data.code || data.referralCode), {
+  message: "Either code or referralCode is required"
+});
+var ReviewAffiliateApplicationSchema = external_exports.object({
+  action: external_exports.enum(["APPROVE", "REJECT", "Approve", "Reject"]).transform((v) => v.toUpperCase()),
+  rejectionReason: external_exports.string().max(500).optional(),
+  adminNotes: external_exports.string().max(500).optional()
+});
+var ProcessAffiliatePayoutSchema = external_exports.object({
+  action: external_exports.enum(["PAID", "REJECTED", "APPROVED", "Paid", "Rejected", "Approved"]).transform((v) => v.toUpperCase()),
+  payoutReference: external_exports.string().trim().max(100).optional(),
+  paymentReference: external_exports.string().trim().max(100).optional(),
+  notes: external_exports.string().max(500).optional(),
+  adminNote: external_exports.string().max(500).optional(),
+  reason: external_exports.string().max(500).optional()
+});
+
+// apps/api/src/modules/affiliate/affiliateAdminRouter.ts
+var affiliateAdminRouter = (0, import_express.Router)();
+affiliateAdminRouter.use(requireAdmin);
+affiliateAdminRouter.get("/overview", async (_req, res) => {
+  try {
+    const [
+      totalAffiliates,
+      pendingAffiliates,
+      activeAffiliates,
+      rejectedAffiliates,
+      suspendedAffiliates,
+      totalLinks,
+      totalClicks,
+      commissionStats,
+      payoutStats
+    ] = await Promise.all([
+      prisma.affiliate.count(),
+      prisma.affiliate.count({ where: { status: "PENDING" } }),
+      prisma.affiliate.count({ where: { status: "ACTIVE" } }),
+      prisma.affiliate.count({ where: { status: "REJECTED" } }),
+      prisma.affiliate.count({ where: { status: "SUSPENDED" } }),
+      prisma.affiliateLink.count(),
+      prisma.affiliateClick.count(),
+      prisma.affiliateCommission.groupBy({
+        by: ["status"],
+        _sum: { amountKobo: true },
+        _count: { id: true }
+      }),
+      prisma.affiliatePayout.groupBy({
+        by: ["status"],
+        _sum: { amountKobo: true },
+        _count: { id: true }
+      })
+    ]);
+    const commissionsByStatus = {};
+    for (const group of commissionStats) {
+      commissionsByStatus[group.status] = {
+        totalKobo: group._sum.amountKobo || 0,
+        count: group._count.id
+      };
+    }
+    const payoutsByStatus = {};
+    for (const group of payoutStats) {
+      payoutsByStatus[group.status] = {
+        totalKobo: group._sum.amountKobo || 0,
+        count: group._count.id
+      };
+    }
+    res.json({
+      success: true,
+      data: {
+        affiliates: {
+          total: totalAffiliates,
+          pending: pendingAffiliates,
+          active: activeAffiliates,
+          rejected: rejectedAffiliates,
+          suspended: suspendedAffiliates
+        },
+        links: {
+          total: totalLinks,
+          totalClicks
+        },
+        commissions: {
+          pendingKobo: commissionsByStatus["PENDING"]?.totalKobo || 0,
+          pendingCount: commissionsByStatus["PENDING"]?.count || 0,
+          availableKobo: commissionsByStatus["AVAILABLE"]?.totalKobo || 0,
+          availableCount: commissionsByStatus["AVAILABLE"]?.count || 0,
+          paidKobo: commissionsByStatus["PAID"]?.totalKobo || 0,
+          paidCount: commissionsByStatus["PAID"]?.count || 0,
+          reversedKobo: commissionsByStatus["REVERSED"]?.totalKobo || 0,
+          reversedCount: commissionsByStatus["REVERSED"]?.count || 0
+        },
+        payouts: payoutsByStatus
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateAdminRouter.get("/", async (req, res) => {
+  try {
+    const { status, search, limit, offset } = req.query;
+    const affiliates = await AffiliateService.getAllAffiliatesForAdmin({
+      status,
+      search,
+      limit: limit ? parseInt(limit, 10) : void 0,
+      offset: offset ? parseInt(offset, 10) : void 0
+    });
+    res.json({ success: true, count: affiliates.length, data: affiliates });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateAdminRouter.get("/:id", async (req, res) => {
+  try {
+    const affiliate = await AffiliateService.getAffiliateDetailForAdmin(req.params.id);
+    if (!affiliate) {
+      return res.status(404).json({ success: false, error: "Affiliate not found" });
+    }
+    res.json({ success: true, data: affiliate });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateAdminRouter.post("/:id/review", async (req, res) => {
+  try {
+    const validated = ReviewAffiliateApplicationSchema.parse(req.body);
+    const updated = await AffiliateService.reviewApplication(
+      req.params.id,
+      validated.action,
+      req.admin.email,
+      validated.rejectionReason || validated.adminNotes
+    );
+    res.json({
+      success: true,
+      message: `Affiliate application ${validated.action.toLowerCase()}ed successfully.`,
+      data: updated
+    });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+affiliateAdminRouter.post("/:id/status", async (req, res) => {
+  try {
+    const { status, reason } = req.body;
+    if (!["ACTIVE", "SUSPENDED"].includes(status)) {
+      return res.status(400).json({ success: false, error: "Status must be ACTIVE or SUSPENDED" });
+    }
+    const updated = await AffiliateService.updateAffiliateStatus(
+      req.params.id,
+      status,
+      req.admin.email,
+      reason
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+affiliateAdminRouter.get("/payouts/all", async (req, res) => {
+  try {
+    const { status, limit, offset } = req.query;
+    const payouts = await AffiliateService.getAllPayoutsForAdmin({
+      status,
+      limit: limit ? parseInt(limit, 10) : void 0,
+      offset: offset ? parseInt(offset, 10) : void 0
+    });
+    res.json({ success: true, count: payouts.length, data: payouts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateAdminRouter.post(["/payouts/:id/process", "/payouts/process"], async (req, res) => {
+  try {
+    const validated = ProcessAffiliatePayoutSchema.parse(req.body);
+    const targetPayoutId = req.params.id || req.body.payoutId;
+    if (!targetPayoutId) {
+      return res.status(400).json({ success: false, error: "payoutId is required" });
+    }
+    const updated = await AffiliateService.processPayout(
+      targetPayoutId,
+      validated.action,
+      req.admin.email,
+      validated.notes || validated.adminNote,
+      validated.payoutReference || validated.paymentReference
+    );
+    res.json({
+      success: true,
+      message: `Payout successfully updated to ${validated.action}.`,
+      data: updated
+    });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
 // apps/api/src/modules/admin/adminRouter.ts
-var supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
-var adminRouter = (0, import_express.Router)();
+init_constants();
+init_prisma();
+var supabaseAdmin = null;
+function getSupabaseAdmin() {
+  if (supabaseAdmin) return supabaseAdmin;
+  const url2 = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url2 || !serviceRoleKey) {
+    throw new Error("Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to upload images.");
+  }
+  supabaseAdmin = createClient(url2, serviceRoleKey);
+  return supabaseAdmin;
+}
+var adminRouter = (0, import_express2.Router)();
+adminRouter.use("/affiliates", affiliateAdminRouter);
 var storeSettingsState = {
   storeName: "PIERCYN",
   tagline: "Look Good. Spend Less.",
@@ -70681,7 +72202,8 @@ adminRouter.post("/upload-image", requireAdmin, async (req, res) => {
     const ext = fileName.split(".").pop();
     const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const filePath = folder ? `${folder}/${uniqueName}` : uniqueName;
-    const { error: error62 } = await supabaseAdmin.storage.from(bucket).upload(filePath, buffer, {
+    const storage = getSupabaseAdmin();
+    const { error: error62 } = await storage.storage.from(bucket).upload(filePath, buffer, {
       cacheControl: "3600",
       upsert: false,
       contentType: mimeType
@@ -70690,7 +72212,7 @@ adminRouter.post("/upload-image", requireAdmin, async (req, res) => {
       console.error("[UPLOAD_IMAGE]", error62);
       return res.status(500).json({ success: false, error: `Image upload failed: ${error62.message}` });
     }
-    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
+    const { data } = storage.storage.from(bucket).getPublicUrl(filePath);
     if (!data?.publicUrl) {
       return res.status(500).json({ success: false, error: "Could not retrieve public URL after upload." });
     }
@@ -71113,6 +72635,246 @@ adminRouter.patch("/settings", requireAdmin, async (req, res) => {
   }
 });
 
+// apps/api/src/modules/affiliate/affiliateRouter.ts
+var import_express3 = __toESM(require_express2(), 1);
+
+// apps/api/src/modules/affiliate/affiliateMiddleware.ts
+init_prisma();
+async function requireAffiliate(req, res, next) {
+  let token = "";
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers["x-affiliate-token"]) {
+    token = req.headers["x-affiliate-token"].trim();
+  }
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthenticated: Affiliate access token is required."
+    });
+  }
+  const affiliate = await AffiliateAuthService.verifyToken(token);
+  if (!affiliate) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthenticated: Invalid or expired affiliate session token."
+    });
+  }
+  const currentAffiliate = await prisma.affiliate.findUnique({
+    where: { id: affiliate.id },
+    select: { id: true, email: true, firstName: true, lastName: true, status: true, isActive: true, createdAt: true }
+  });
+  if (!currentAffiliate || currentAffiliate.status !== "ACTIVE" || !currentAffiliate.isActive) {
+    const status = currentAffiliate?.status || affiliate.status;
+    return res.status(403).json({
+      success: false,
+      error: status === "PENDING" ? "Your application is under review. Access is granted after approval." : status === "SUSPENDED" ? "Your affiliate account has been suspended." : "Your affiliate access has been revoked."
+    });
+  }
+  req.affiliate = { ...currentAffiliate, createdAt: currentAffiliate.createdAt.toISOString() };
+  next();
+}
+async function requireAffiliateLoose(req, res, next) {
+  let token = "";
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers["x-affiliate-token"]) {
+    token = req.headers["x-affiliate-token"].trim();
+  }
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthenticated: Affiliate access token is required."
+    });
+  }
+  const affiliate = await AffiliateAuthService.verifyToken(token);
+  if (!affiliate) {
+    return res.status(401).json({
+      success: false,
+      error: "Unauthenticated: Invalid or expired affiliate session token."
+    });
+  }
+  const currentAffiliate = await prisma.affiliate.findUnique({
+    where: { id: affiliate.id },
+    select: { id: true, email: true, firstName: true, lastName: true, status: true, isActive: true, createdAt: true }
+  });
+  if (!currentAffiliate || currentAffiliate.status === "REJECTED") {
+    return res.status(403).json({
+      success: false,
+      error: "Your affiliate application was not approved."
+    });
+  }
+  req.affiliate = { ...currentAffiliate, createdAt: currentAffiliate.createdAt.toISOString() };
+  next();
+}
+
+// apps/api/src/modules/affiliate/affiliateRouter.ts
+var affiliateRouter = (0, import_express3.Router)();
+affiliateRouter.post("/track-click", async (req, res) => {
+  try {
+    const validated = TrackAffiliateClickSchema.parse(req.body);
+    const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || void 0;
+    const userAgent = req.headers["user-agent"] || void 0;
+    const result = await AffiliateService.trackClick({
+      code: validated.code,
+      sessionId: validated.sessionId,
+      ipAddress,
+      userAgent,
+      referrer: validated.referrer,
+      landingPage: validated.landingPage
+    });
+    res.json({ success: true, data: result });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+affiliateRouter.get("/resolve/:code", async (req, res) => {
+  try {
+    const { code } = req.params;
+    const link = await AffiliateService.getLinkByCode(code);
+    if (!link) {
+      return res.status(404).json({ success: false, error: "Affiliate link not found" });
+    }
+    res.json({
+      success: true,
+      data: {
+        code: link.code,
+        destination: link.destination,
+        destinationType: link.destinationType,
+        affiliateName: `${link.affiliate.firstName} ${link.affiliate.lastName}`.trim(),
+        affiliateStatus: link.affiliate.status
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.post("/apply", async (req, res) => {
+  try {
+    const validated = AffiliateApplySchema.parse(req.body);
+    const result = await AffiliateService.applyForAffiliate(validated);
+    res.status(201).json({
+      success: true,
+      data: {
+        affiliate: result.affiliate,
+        token: result.token,
+        message: "Your affiliate application has been submitted and is pending review."
+      }
+    });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+affiliateRouter.post("/login", async (req, res) => {
+  try {
+    const validated = AffiliateLoginSchema.parse(req.body);
+    const result = await AffiliateAuthService.login(validated.email, validated.password);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(401).json({ success: false, error: msg });
+  }
+});
+affiliateRouter.get("/me", requireAffiliateLoose, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const affiliate = await AffiliateService.getAffiliateById(affiliateId);
+    if (!affiliate) {
+      return res.status(404).json({ success: false, error: "Affiliate not found" });
+    }
+    res.json({ success: true, data: affiliate });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.get("/dashboard", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const stats = await AffiliateService.getDashboardStats(affiliateId);
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.get("/links", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const links = await AffiliateService.getAffiliateLinks(affiliateId);
+    res.json({ success: true, data: links });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.post("/links", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const validated = CreateAffiliateLinkSchema.parse(req.body);
+    const link = await AffiliateService.createAffiliateLink(affiliateId, validated);
+    res.status(201).json({ success: true, data: link });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+affiliateRouter.get("/orders", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : void 0;
+    const offset = req.query.offset ? parseInt(req.query.offset, 10) : void 0;
+    const orders = await AffiliateService.getAttributedOrders(affiliateId, { limit, offset });
+    res.json({ success: true, data: orders });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.get("/commissions", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const status = req.query.status;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : void 0;
+    const offset = req.query.offset ? parseInt(req.query.offset, 10) : void 0;
+    const commissions = await AffiliateService.getCommissions(affiliateId, { status, limit, offset });
+    res.json({ success: true, data: commissions });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.get("/payouts", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const payouts = await AffiliateService.getPayouts(affiliateId);
+    res.json({ success: true, data: payouts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+affiliateRouter.post("/payouts/request", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const validated = RequestAffiliatePayoutSchema.parse(req.body);
+    const payout = await AffiliateService.requestPayout(affiliateId, validated);
+    res.status(201).json({ success: true, data: payout });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+affiliateRouter.put("/profile", requireAffiliate, async (req, res) => {
+  try {
+    const affiliateId = req.affiliate.id;
+    const validated = UpdateAffiliateProfileSchema.parse(req.body);
+    const updated = await AffiliateService.updateProfile(affiliateId, validated);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
 // apps/api/src/schemas/commerce.ts
 var NigerianStateEnum = external_exports.enum([
   "Lagos State",
@@ -71158,7 +72920,8 @@ var CreateOrderSchema = external_exports.object({
   shippingRegion: ShippingRegionEnum,
   paymentMethod: PaymentMethodEnum,
   items: external_exports.array(AddToCartSchema).min(1, "Cart cannot be empty"),
-  discountCode: external_exports.string().optional()
+  discountCode: external_exports.string().optional(),
+  affiliateCode: external_exports.string().optional()
 });
 var VerifyPaymentSchema = external_exports.object({
   reference: external_exports.string().min(1, "Transaction reference is required")
@@ -71194,8 +72957,9 @@ var InventoryAdjustmentSchema2 = external_exports.object({
 });
 
 // apps/api/src/routes/apiRouter.ts
-var apiRouter = (0, import_express2.Router)();
+var apiRouter = (0, import_express4.Router)();
 apiRouter.use("/admin", adminRouter);
+apiRouter.use("/affiliate", affiliateRouter);
 var getSessionId = (req) => {
   return req.headers["x-session-id"] || req.query.sessionId || "guest-session";
 };
@@ -71206,6 +72970,31 @@ var getAuthToken = (req) => {
   }
   return req.headers["x-auth-token"] || "";
 };
+var orderAccessSecret = process.env.ORDER_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? "" : crypto7.randomBytes(32).toString("hex"));
+function createOrderAccessToken(orderId) {
+  if (!orderAccessSecret) {
+    throw new Error("Order access token signing is not configured. Set ORDER_ACCESS_TOKEN_SECRET.");
+  }
+  const payload = Buffer.from(JSON.stringify({ orderId, nonce: crypto7.randomBytes(24).toString("hex") })).toString("base64url");
+  const signature = crypto7.createHmac("sha256", orderAccessSecret).update(payload).digest("base64url");
+  return `ord_${payload}.${signature}`;
+}
+function getAuthorizedOrderId(req) {
+  const token = req.headers["x-order-access-token"];
+  if (typeof token !== "string" || !token.startsWith("ord_") || !orderAccessSecret) return null;
+  const [payload, signature] = token.slice(4).split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto7.createHmac("sha256", orderAccessSecret).update(payload).digest("base64url");
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (signatureBuffer.length !== expectedBuffer.length || !crypto7.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
+  try {
+    const orderId = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")).orderId;
+    return typeof orderId === "string" ? orderId : null;
+  } catch {
+    return null;
+  }
+}
 apiRouter.get("/products", async (req, res) => {
   try {
     const { category, collection, status, search } = req.query;
@@ -71307,33 +73096,31 @@ apiRouter.post("/checkout/quote", async (req, res) => {
 });
 apiRouter.post("/orders", async (req, res) => {
   try {
+    if (!orderAccessSecret) {
+      return res.status(503).json({ success: false, error: "Guest order tracking is not configured." });
+    }
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
     const order = await CheckoutService.createOrder({
       ...validated,
       sessionId
     });
-    res.status(201).json({ success: true, data: order });
+    res.status(201).json({ success: true, data: { ...order, orderAccessToken: createOrderAccessToken(order.id) } });
   } catch (err) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
   }
 });
-apiRouter.get("/orders", async (req, res) => {
-  try {
-    const { email: email3, status } = req.query;
-    const orders = await OrderService.getAllOrders({
-      email: email3,
-      status
-    });
-    res.json({ success: true, count: orders.length, data: orders });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+apiRouter.get("/orders", (_req, res) => {
+  res.status(404).json({ success: false, error: "Order listing is available only to authorized administrators." });
 });
 apiRouter.get("/orders/:id", async (req, res) => {
+  const authorizedOrderId = getAuthorizedOrderId(req);
+  if (!authorizedOrderId) {
+    return res.status(404).json({ success: false, error: "Order not found" });
+  }
   const order = await OrderService.getOrderDetail(req.params.id);
-  if (!order) {
+  if (!order || order.id !== authorizedOrderId) {
     return res.status(404).json({ success: false, error: "Order not found" });
   }
   res.json({ success: true, data: order });
@@ -71460,7 +73247,8 @@ apiRouter.post("/auth/logout", (req, res) => {
 });
 
 // apps/api/src/app.ts
-var app = (0, import_express3.default)();
+init_prisma();
+var app = (0, import_express5.default)();
 var allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()) : [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -71489,14 +73277,14 @@ app.use(
   })
 );
 app.use(
-  import_express3.default.json({
+  import_express5.default.json({
     limit: "5mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf.toString();
     }
   })
 );
-app.use(import_express3.default.urlencoded({ extended: true, limit: "5mb" }));
+app.use(import_express5.default.urlencoded({ extended: true, limit: "5mb" }));
 app.get(["/health", "/api/health"], async (_req, res) => {
   const dbHealth = await checkDatabaseHealth();
   const status = dbHealth.ok ? "ok" : "degraded";

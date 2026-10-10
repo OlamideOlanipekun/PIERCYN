@@ -12,6 +12,24 @@ const globalForPrisma = globalThis as unknown as {
 
 let prismaInstance: PrismaClient | null = null;
 
+function getDatabaseConnectionString(): string {
+  if (process.env.NODE_ENV === 'test') {
+    const testUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL_NON_POOLING_TEST;
+    if (!testUrl) {
+      throw new Error('Database-backed tests require DATABASE_URL_TEST or DATABASE_URL_NON_POOLING_TEST. Refusing to fall back to DATABASE_URL.');
+    }
+
+    const productionUrl = process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL;
+    if (productionUrl && testUrl === productionUrl) {
+      throw new Error('DATABASE_URL_TEST must not match the production database connection.');
+    }
+
+    return testUrl;
+  }
+
+  return process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || 'postgresql://postgres:postgres@localhost:5432/piercyn';
+}
+
 export function getPrismaClient(): PrismaClient {
   if (globalForPrisma.prisma) {
     return globalForPrisma.prisma;
@@ -20,10 +38,7 @@ export function getPrismaClient(): PrismaClient {
     return prismaInstance;
   }
 
-  const connectionString =
-    process.env.DATABASE_URL ||
-    process.env.DATABASE_URL_NON_POOLING ||
-    'postgresql://postgres:postgres@localhost:5432/piercyn';
+  const connectionString = getDatabaseConnectionString();
 
   let cleanUrl = connectionString;
   try {

@@ -269,6 +269,10 @@ export class InventoryService {
     reason?: string,
     adminId?: string
   ): Promise<boolean> {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error('Inventory quantity must be a positive whole number.');
+    }
+
     return prisma.$transaction(async (tx) => {
       const inv = await tx.inventory.findUnique({
         where: { variantId },
