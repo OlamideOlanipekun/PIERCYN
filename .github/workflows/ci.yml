@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, fix/payment-verification-hardening]
+    branches: [main]
 
 concurrency:
   group: piercyn-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
