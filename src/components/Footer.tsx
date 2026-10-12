@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useShop } from '../context/ShopContext';
 import { ArrowUp, ChevronDown, Instagram, MessageCircle } from 'lucide-react';
 import { PiercynMonogram } from './PiercynLogo';
 import { ActivePageView } from '../types';
@@ -12,7 +11,6 @@ interface FooterProps {
 type FooterGroup = 'shop' | 'help' | 'follow' | 'legal';
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSection, onSelectPage }) => {
-  const { setIsSizeGuideOpen } = useShop();
   const [openGroups, setOpenGroups] = useState<Record<FooterGroup, boolean>>({
     shop: false, help: false, follow: false, legal: false,
   });
@@ -68,7 +66,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             <h2 className="mb-5 text-[10px] font-bold tracking-[0.22em] text-[#77736C]">HELP & INFORMATION</h2>
             <nav className="flex flex-col items-start gap-1">
               <button id="footer-about" onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
-              <button id="footer-size-guide" onClick={() => setIsSizeGuideOpen(true)} className={footerLinkClass}>SIZE GUIDE</button>
+              <a id="footer-size-guide" href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
               <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
               <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
               <a id="footer-contact" href="/contact" className={footerLinkClass}>CONTACT US</a>
@@ -108,7 +106,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             {groupHeader('help', 'HELP')}
             <div id="footer-mobile-help" hidden={!openGroups.help} className="py-2"><nav className="flex flex-col">
               <button onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
-              <button onClick={() => setIsSizeGuideOpen(true)} className={footerLinkClass}>SIZE GUIDE</button>
+              <a href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
               <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
               <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
               <a href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT US</a>
