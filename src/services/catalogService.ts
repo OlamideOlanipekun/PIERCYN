@@ -51,9 +51,9 @@ export function mapServerProduct(p: any): Product {
     ? (Array.from(sizesSet) as any[]) 
     : (p.sizes || ['XS', 'S', 'M', 'L', 'XL', 'XXL']);
 
-  const totalStock = typeof p.totalAvailableStock === 'number' 
-    ? p.totalAvailableStock 
-    : (typeof p.stock === 'number' ? p.stock : 25);
+  const totalStock = typeof p.totalAvailableStock === 'number'
+    ? p.totalAvailableStock
+    : (typeof p.stock === 'number' ? p.stock : undefined);
 
   return {
     id: p.id || '',
