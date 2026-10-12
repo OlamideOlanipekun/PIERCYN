@@ -306,7 +306,24 @@ export const ProductsView: React.FC = () => {
         costPriceNGN: Number(editingProduct.costPriceNGN || 0),
         status: editingProduct.status,
         description: editingProduct.description,
-        images: validImages.length > 0 ? validImages : editingProduct.images,
+        images: validImages,
+        categoryId: editingProduct.categoryId,
+        shortDescription: editingProduct.shortDescription || '',
+        collection: editingProduct.collection || 'essentials',
+        priceUSD: Number(editingProduct.priceUSD || 0),
+        priceGBP: Number(editingProduct.priceGBP || 0),
+        priceEUR: Number(editingProduct.priceEUR || 0),
+        videoUrl: editingProduct.videoUrl || '',
+        gsm: editingProduct.gsm || '',
+        fit: editingProduct.fit || '',
+        fabric: editingProduct.fabric || '',
+        origin: editingProduct.origin || '',
+        careInstructions: editingProduct.careInstructions || '',
+        productStory: editingProduct.productStory || '',
+        tag: editingProduct.tag || '',
+        isNewDrop: Boolean(editingProduct.isNewDrop),
+        isBestSeller: Boolean(editingProduct.isBestSeller),
+        isLimited: Boolean(editingProduct.isLimited),
       });
 
       setEditingProduct(null);
@@ -912,6 +929,50 @@ export const ProductsView: React.FC = () => {
                   <option value="DRAFT">DRAFT (Hidden from Storefront)</option>
                   <option value="ARCHIVED">ARCHIVED</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Category ID</label>
+                  <select value={editingProduct.categoryId} onChange={(e) => setEditingProduct({ ...editingProduct, categoryId: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]">
+                    <option value="cat-tees">Tees</option><option value="cat-hoodies">Hoodies</option><option value="cat-sweatshirts">Sweatshirts</option><option value="cat-jackets">Jackets</option><option value="cat-trousers">Trousers</option><option value="cat-accessories">Accessories</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Collection</label>
+                  <input value={editingProduct.collection || ''} onChange={(e) => setEditingProduct({ ...editingProduct, collection: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Short Description</label>
+                <textarea rows={2} value={editingProduct.shortDescription || ''} onChange={(e) => setEditingProduct({ ...editingProduct, shortDescription: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">GSM / Weight</label><input value={editingProduct.gsm || ''} onChange={(e) => setEditingProduct({ ...editingProduct, gsm: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Fit</label><input value={editingProduct.fit || ''} onChange={(e) => setEditingProduct({ ...editingProduct, fit: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Fabric</label><input value={editingProduct.fabric || ''} onChange={(e) => setEditingProduct({ ...editingProduct, fabric: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Country / Origin</label><input value={editingProduct.origin || ''} onChange={(e) => setEditingProduct({ ...editingProduct, origin: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Product Tag</label><input value={editingProduct.tag || ''} onChange={(e) => setEditingProduct({ ...editingProduct, tag: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Video URL</label><input type="url" value={editingProduct.videoUrl || ''} onChange={(e) => setEditingProduct({ ...editingProduct, videoUrl: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Care Instructions</label><input value={editingProduct.careInstructions || ''} onChange={(e) => setEditingProduct({ ...editingProduct, careInstructions: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Product Story</label>
+                <textarea rows={3} value={editingProduct.productStory || ''} onChange={(e) => setEditingProduct({ ...editingProduct, productStory: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price USD</label><input type="number" min={0} value={editingProduct.priceUSD || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceUSD: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price GBP</label><input type="number" min={0} value={editingProduct.priceGBP || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceGBP: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price EUR</label><input type="number" min={0} value={editingProduct.priceEUR || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceEUR: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="flex flex-wrap gap-4 rounded-lg border border-[#292929] p-3">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isNewDrop)} onChange={(e) => setEditingProduct({ ...editingProduct, isNewDrop: e.target.checked })} />New drop</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isBestSeller)} onChange={(e) => setEditingProduct({ ...editingProduct, isBestSeller: e.target.checked })} />Best seller</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isLimited)} onChange={(e) => setEditingProduct({ ...editingProduct, isLimited: e.target.checked })} />Limited</label>
               </div>
 
               {/* ── Supabase Image Upload (Edit) ── */}
