@@ -322,6 +322,9 @@ export class PaymentService {
   ): Promise<PaymentInitializationResult> {
     const order = await OrderService.getOrder(orderNumber);
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
+    if (order.paymentStatus === 'PAID' || order.orderStatus !== 'PENDING_PAYMENT') {
+      throw new Error('Payment can only be initialized for an unpaid order awaiting payment.');
+    }
 
     const provider = this.providerForOrder(order);
     let validatedCallbackUrl: string | undefined;
