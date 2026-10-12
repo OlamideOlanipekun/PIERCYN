@@ -1,6 +1,7 @@
 import { prisma } from '../../db/prisma';
 import { InventoryService } from '../inventory/inventoryService';
 import { CommissionService } from '../affiliate/commissionService';
+import { WhatsAppNotificationService } from '../notifications/whatsappNotificationService';
 
 export const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
   PENDING_PAYMENT: ['PAID', 'CANCELLED', 'FAILED'],
@@ -293,6 +294,15 @@ export class OrderService {
       });
 
       return updatedOrder;
+    });
+
+    // Best-effort operator alert after the payment transaction commits.
+    void WhatsAppNotificationService.notifyOrderEvent({
+      orderNumber: orderRes.orderNumber,
+      customerName: `${orderRes.customerFirstName} ${orderRes.customerLastName}`.trim(),
+      customerPhone: orderRes.customerPhone,
+      totalNGN: orderRes.totalNGN,
+      status: 'PAYMENT_CONFIRMED',
     });
 
     try {
