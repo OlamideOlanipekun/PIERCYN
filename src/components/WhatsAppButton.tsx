@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { MessageCircle, X } from 'lucide-react';
 
@@ -19,6 +19,18 @@ export const WhatsAppButton: React.FC = () => {
   } = useShop();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(() =>
+    typeof window !== 'undefined' && window.scrollY > 120
+  );
+
+  // Keep the support button out of the initial viewport, then reveal it once
+  // the visitor has scrolled far enough to start browsing.
+  useEffect(() => {
+    const updateVisibility = () => setHasScrolled(window.scrollY > 120);
+    updateVisibility();
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+    return () => window.removeEventListener('scroll', updateVisibility);
+  }, []);
 
   // Automatically hide when any full-screen modal or drawer is active
   const isAnyModalOpen =
@@ -42,7 +54,7 @@ export const WhatsAppButton: React.FC = () => {
   );
 
   return (
-    <div className="fixed bottom-[74px] right-4 md:bottom-6 md:right-6 z-40 font-sans">
+    <div className={`fixed bottom-[74px] right-4 md:bottom-6 md:right-6 z-40 font-sans transition-all duration-300 ease-out ${hasScrolled ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-4 opacity-0 pointer-events-none'}`} aria-hidden={!hasScrolled}>
       {/* EXPANDED ASSISTANCE POPUP */}
       {isOpen && (
         <div className="mb-3 w-72 bg-[#141414] text-[#F2F0EB] p-4 rounded-2xl shadow-2xl border border-white/10 text-left animate-in slide-in-from-bottom-2 duration-300">
