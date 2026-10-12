@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Search, MessageCircle, PackageCheck } from 'luci
 import { Product } from '../types';
 import { formatNGN } from '../utils/currency';
 
-type StorefrontPageKey =
+export type StorefrontPageKey =
   | 'shipping' | 'returns' | 'contact' | 'privacy' | 'terms' | 'search'
   | 'size-guide' | 'faq' | 'track-order' | 'available-to-order' | 'cart'
   | 'checkout' | 'order-confirmation';
@@ -14,6 +14,8 @@ interface StorefrontInfoPageProps {
   onViewProduct: (product: Product) => void;
   onShop: () => void;
   onOpenSearch?: () => void;
+  onOpenCart: () => void;
+  onOpenCheckout: () => void;
 }
 
 const SUPPORT_URL = 'https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help.';
@@ -109,7 +111,7 @@ const copy: Record<Exclude<StorefrontPageKey, 'search' | 'cart' | 'checkout' | '
   },
 };
 
-export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, products, onViewProduct, onShop, onOpenSearch }) => {
+export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, products, onViewProduct, onShop, onOpenSearch, onOpenCart, onOpenCheckout }) => {
   const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const normalizedQuery = query.trim().toLowerCase();
   const results = useMemo(() => {
@@ -142,9 +144,9 @@ export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, pr
             )}
           </section>
         ) : page === 'cart' ? (
-          <section className="mt-6 max-w-2xl rounded-2xl border border-[#DAD8D1] bg-white p-6 sm:p-8"><p className="text-sm leading-7 text-[#5F5C56]">Your bag opens in the existing shopping-bag panel, where you can review variants, change quantities and continue to checkout.</p><button onClick={() => window.dispatchEvent(new CustomEvent('piercyn:open-cart'))} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-wider text-white">Open shopping bag <ArrowRight className="h-4 w-4" /></button></section>
+          <section className="mt-6 max-w-2xl rounded-2xl border border-[#DAD8D1] bg-white p-6 sm:p-8"><p className="text-sm leading-7 text-[#5F5C56]">Your bag opens in the existing shopping-bag panel, where you can review variants, change quantities and continue to checkout.</p><button onClick={onOpenCart} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-wider text-white">Open shopping bag <ArrowRight className="h-4 w-4" /></button></section>
         ) : page === 'checkout' ? (
-          <section className="mt-6 max-w-2xl rounded-2xl border border-[#DAD8D1] bg-white p-6 sm:p-8"><p className="text-sm leading-7 text-[#5F5C56]">Checkout uses the existing server-validated order flow. Your order is not confirmed until the backend accepts the order submission.</p><button onClick={() => window.dispatchEvent(new CustomEvent('piercyn:open-checkout'))} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-wider text-white">Continue to checkout <ArrowRight className="h-4 w-4" /></button></section>
+          <section className="mt-6 max-w-2xl rounded-2xl border border-[#DAD8D1] bg-white p-6 sm:p-8"><p className="text-sm leading-7 text-[#5F5C56]">Checkout uses the existing server-validated order flow. Your order is not confirmed until the backend accepts the order submission.</p><button onClick={onOpenCheckout} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-wider text-white">Continue to checkout <ArrowRight className="h-4 w-4" /></button></section>
         ) : page === 'order-confirmation' ? (
           <section className="mt-6 max-w-2xl rounded-2xl border border-[#DAD8D1] bg-white p-6 sm:p-8"><p className="text-sm leading-7 text-[#5F5C56]">A confirmation is shown only after an order is created by the backend. If you have just checked out, use the secure order link from the successful checkout flow. No order details are exposed on this generic URL.</p><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-wider text-white"><MessageCircle className="h-4 w-4" /> Contact support</a></section>
         ) : (
