@@ -31,7 +31,7 @@ import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
 import { AffiliateApp } from './affiliate/AffiliateApp';
 import { initAffiliateTracking } from './utils/affiliateTracking';
-import { StorefrontInfoPage, StorefrontPageKey } from './components/StorefrontInfoPage';
+import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -388,6 +388,13 @@ const MainLayout: React.FC = () => {
             products={justDropped}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
+          />
+
+          {/* Real inventory only; supplier-held designs are never represented as physical stock. */}
+          <HomepageAvailabilitySections
+            products={products}
+            onViewProduct={handleViewProduct}
+            onBrowseShop={() => handleSelectPage('shop')}
           />
 
           {/* Why PIERCYN brand statement */}
