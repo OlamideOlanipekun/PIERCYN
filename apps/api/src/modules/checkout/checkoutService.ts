@@ -89,6 +89,10 @@ export class CheckoutService {
   }
 
   public static async createOrder(input: CreateOrderInput) {
+    if (input.paymentMethod === 'mock' && process.env.NODE_ENV === 'production') {
+      throw new Error('Mock payments are disabled in production. Select Paystack or direct bank transfer.');
+    }
+
     const sessionId = input.sessionId || `sess-${Date.now()}`;
     const quote = await this.calculateQuote(
       sessionId,
