@@ -201,7 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <span className="tracking-tight flex items-center gap-2.5">
                   <span>{link.label}</span>
-                  {link.badge && (
+                  {'badge' in link && link.badge && (
                     <span className="not-italic text-[9px] font-sans font-bold px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#0A0A0A] tracking-widest">
                       {link.badge}
                     </span>
