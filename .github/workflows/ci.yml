@@ -1,8 +1,6 @@
 name: PIERCYN quality checks
 
 on:
-  push:
-    branches: [main, 'feat/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
