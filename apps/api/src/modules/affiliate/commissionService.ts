@@ -110,17 +110,28 @@ export class CommissionService {
    * (return window handled by a future scheduled job or can be done inline for V1).
    */
   public static async markCommissionsAvailable(orderId: string): Promise<void> {
-    const eligibleAt = new Date();
+    // Delivery starts the return window; commissions must not be withdrawable
+    // until that window has elapsed.
+    const eligibleAt = new Date(Date.now() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
     await prisma.affiliateCommission.updateMany({
       where: {
         orderId,
         status: 'PENDING',
+        eligibleAt: null,
       },
-      data: {
-        status: 'AVAILABLE',
-        eligibleAt,
+      data: { eligibleAt },
+    });
+  }
+
+  private static async releaseEligibleCommissions(affiliateId?: string): Promise<void> {
+    await prisma.affiliateCommission.updateMany({
+      where: {
+        status: 'PENDING',
+        eligibleAt: { lte: new Date() },
+        ...(affiliateId ? { affiliateId } : {}),
       },
+      data: { status: 'AVAILABLE' },
     });
   }
 
@@ -152,6 +163,7 @@ export class CommissionService {
    * Computes the total available balance for an affiliate (not yet in a payout).
    */
   public static async getAvailableBalance(affiliateId: string): Promise<number> {
+    await this.releaseEligibleCommissions(affiliateId);
     const result = await prisma.affiliateCommission.aggregate({
       where: {
         affiliateId,
@@ -173,6 +185,7 @@ export class CommissionService {
     reversedKobo: number;
     totalEarnedKobo: number;
   }> {
+    await this.releaseEligibleCommissions(affiliateId);
     const [pending, available, paid, reversed] = await Promise.all([
       prisma.affiliateCommission.aggregate({
         where: { affiliateId, status: 'PENDING' },
