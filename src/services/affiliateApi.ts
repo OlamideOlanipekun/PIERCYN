@@ -92,7 +92,7 @@ export interface DashboardStats {
     averageOrderValueNGN: number;
   };
   config: {
-    commissionPerProductNGN: number;
+    commissionPerOrderNGN: number;
     returnWindowDays: number;
     attributionWindowDays: number;
     minimumPayoutNGN: number;
