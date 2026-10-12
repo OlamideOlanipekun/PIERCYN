@@ -31,6 +31,7 @@ import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
 import { AffiliateApp } from './affiliate/AffiliateApp';
 import { initAffiliateTracking } from './utils/affiliateTracking';
+import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -48,7 +49,7 @@ const WhyPiercynSection: React.FC = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts } = useShop();
+  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts, setIsCartOpen, setIsCheckoutOpen } = useShop();
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
@@ -57,6 +58,7 @@ const MainLayout: React.FC = () => {
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
   const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);
+  const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
 
   // Initialize affiliate click tracking once on mount
   useEffect(() => {
@@ -104,6 +106,30 @@ const MainLayout: React.FC = () => {
 
     setIsAdminView(false);
     setIsAffiliateView(false);
+
+    const storefrontRoutes: Record<string, StorefrontPageKey> = {
+      '/shipping': 'shipping',
+      '/returns': 'returns',
+      '/contact': 'contact',
+      '/privacy': 'privacy',
+      '/terms': 'terms',
+      '/search': 'search',
+      '/size-guide': 'size-guide',
+      '/faq': 'faq',
+      '/track-order': 'track-order',
+      '/available-to-order': 'available-to-order',
+      '/cart': 'cart',
+      '/checkout': 'checkout',
+      '/order-confirmation': 'order-confirmation',
+    };
+    const storefrontRoute = storefrontRoutes[rawPath];
+    if (storefrontRoute) {
+      setStorefrontPage(storefrontRoute);
+      setCurrentPdpProduct(null);
+      document.title = `${storefrontRoute.replaceAll('-', ' ')} — PIERCYN`;
+      return;
+    }
+    setStorefrontPage(null);
 
     if (rawPath === '/shop' || rawPath === '/collections') {
       setActivePage('shop');
@@ -316,7 +342,19 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main View Router */}
-      {activePage === 'product' ? (
+      {storefrontPage ? (
+        <StorefrontInfoPage
+          page={storefrontPage}
+          products={products}
+          onViewProduct={handleViewProduct}
+          onShop={() => handleSelectPage('shop')}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenCheckout={() => setIsCheckoutOpen(true)}
+          isLoadingProducts={isLoadingProducts}
+          catalogError={catalogError}
+          onRetryProducts={refreshProducts}
+        />
+      ) : activePage === 'product' ? (
         isLoadingProduct ? <main className="min-h-screen bg-[#F2F0EB] pt-32 text-center text-sm text-[#6E6B65]">Loading piece…</main> : <ProductDetailsPage
           product={currentPdpProduct}
           onSelectPage={handleSelectPage}
@@ -354,6 +392,15 @@ const MainLayout: React.FC = () => {
             products={justDropped}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
+          />
+
+          {/* Real inventory only; supplier-held designs are never represented as physical stock. */}
+          <HomepageAvailabilitySections
+            products={products}
+            onViewProduct={handleViewProduct}
+            onBrowseShop={() => handleSelectPage('shop')}
+            isLoadingProducts={isLoadingProducts}
+            catalogError={catalogError}
           />
 
           {/* Why PIERCYN brand statement */}

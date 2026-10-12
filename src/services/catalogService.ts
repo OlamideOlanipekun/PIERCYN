@@ -26,6 +26,7 @@ export function mapServerProduct(p: any): Product {
       if (v.size) {
         sizesSet.add(v.size);
       }
+      const availableStock = typeof v.availableStock === 'number' ? v.availableStock : v.stock?.availableStock;
       variants.push({
         id: v.id,
         productId: v.productId || p.id,
@@ -35,8 +36,8 @@ export function mapServerProduct(p: any): Product {
         colourHex: v.colourHex,
         image: v.image,
         altImage: v.altImage,
-        active: v.active !== false && (v.stock?.availableStock === undefined || v.stock.availableStock > 0),
-        availableStock: v.stock?.availableStock,
+        active: v.active !== false && (availableStock === undefined || availableStock > 0),
+        availableStock,
       });
     });
   }
@@ -51,9 +52,9 @@ export function mapServerProduct(p: any): Product {
     ? (Array.from(sizesSet) as any[]) 
     : (p.sizes || ['XS', 'S', 'M', 'L', 'XL', 'XXL']);
 
-  const totalStock = typeof p.totalAvailableStock === 'number' 
-    ? p.totalAvailableStock 
-    : (typeof p.stock === 'number' ? p.stock : 25);
+  const totalStock = typeof p.totalAvailableStock === 'number'
+    ? p.totalAvailableStock
+    : (typeof p.stock === 'number' ? p.stock : undefined);
 
   return {
     id: p.id || '',

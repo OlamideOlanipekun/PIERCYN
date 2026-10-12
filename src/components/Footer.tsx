@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useShop } from '../context/ShopContext';
 import { ArrowUp, ChevronDown, Instagram, MessageCircle } from 'lucide-react';
 import { PiercynMonogram } from './PiercynLogo';
 import { ActivePageView } from '../types';
@@ -12,7 +11,6 @@ interface FooterProps {
 type FooterGroup = 'shop' | 'help' | 'follow' | 'legal';
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSection, onSelectPage }) => {
-  const { setIsSizeGuideOpen } = useShop();
   const [openGroups, setOpenGroups] = useState<Record<FooterGroup, boolean>>({
     shop: false, help: false, follow: false, legal: false,
   });
@@ -52,7 +50,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <p className="mt-3 max-w-md text-[13px] leading-6 text-[#4A4844]">Modern pieces. Considered prices. Made for standing out.</p>
             </div>
           </div>
-          <a href="mailto:hello@piercyn.com" className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-[#141414]/30 pb-1 text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors hover:border-[#141414]">GET IN TOUCH <span aria-hidden="true">↗</span></a>
+          <a href="/contact" className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-[#141414]/30 pb-1 text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors hover:border-[#141414]">GET IN TOUCH <span aria-hidden="true">↗</span></a>
         </div>
 
         <div className="hidden grid-cols-4 gap-8 py-12 md:grid lg:gap-12 lg:py-16">
@@ -62,16 +60,20 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <button id="footer-shop-all" onClick={() => selectPage('shop')} className={footerLinkClass}>ALL PIECES</button>
               <button id="footer-shop-men" onClick={() => selectPage('men')} className={footerLinkClass}>MEN</button>
               <button id="footer-new-arrivals" onClick={() => selectPage('new')} className={footerLinkClass}>NEW ARRIVALS</button>
+              <a href="/available-to-order" className={footerLinkClass}>AVAILABLE TO ORDER</a>
             </nav>
           </div>
           <div className="min-w-0">
             <h2 className="mb-5 text-[10px] font-bold tracking-[0.22em] text-[#77736C]">HELP & INFORMATION</h2>
             <nav className="flex flex-col items-start gap-1">
               <button id="footer-about" onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
-              <button id="footer-size-guide" onClick={() => setIsSizeGuideOpen(true)} className={footerLinkClass}>SIZE GUIDE</button>
-              <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a id="footer-contact" href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT US</a>
+              <a id="footer-size-guide" href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
+              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
+              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
+              <a id="footer-contact" href="/contact" className={footerLinkClass}>CONTACT US</a>
+              <a href="/faq" className={footerLinkClass}>FAQ</a>
+              <a href="/privacy" className={footerLinkClass}>PRIVACY POLICY</a>
+              <a href="/terms" className={footerLinkClass}>TERMS & CONDITIONS</a>
               <button id="footer-affiliate-program" onClick={goToAffiliate} className={footerLinkClass}>AFFILIATE PROGRAM</button>
             </nav>
           </div>
@@ -87,7 +89,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             <h2 className="mb-5 text-[10px] font-bold tracking-[0.22em] text-[#77736C]">THE DETAILS</h2>
             <p className="text-[13px] font-semibold">PIERCYN</p>
             <p className="mt-2 text-[12px] text-[#4A4844]">Lagos, Nigeria</p>
-            <a href="mailto:hello@piercyn.com" className="mt-2 break-words text-[12px] text-[#4A4844] transition-colors hover:text-[#141414]">hello@piercyn.com</a>
+            <a href="/contact" className="mt-2 break-words text-[12px] text-[#4A4844] transition-colors hover:text-[#141414]">Contact PIERCYN support</a>
             <button onClick={scrollToTop} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-[#D0CEC7] px-4 py-2 text-[10px] font-bold tracking-[0.15em] transition-colors hover:border-[#141414] hover:bg-[#141414] hover:text-[#F2F0EB]">BACK TO TOP <ArrowUp className="h-3.5 w-3.5" /></button>
           </div>
         </div>
@@ -105,10 +107,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             {groupHeader('help', 'HELP')}
             <div id="footer-mobile-help" hidden={!openGroups.help} className="py-2"><nav className="flex flex-col">
               <button onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
-              <button onClick={() => setIsSizeGuideOpen(true)} className={footerLinkClass}>SIZE GUIDE</button>
-              <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT US</a>
+              <a href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
+              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
+              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
+              <a href="/contact" className={footerLinkClass}>CONTACT US</a>
               <button onClick={goToAffiliate} className={footerLinkClass}>AFFILIATE PROGRAM</button>
             </nav></div>
           </section>
@@ -123,9 +125,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <section>
             {groupHeader('legal', 'LEGAL & SUPPORT')}
             <div id="footer-mobile-legal" hidden={!openGroups.legal} className="py-2"><nav className="flex flex-col">
-              <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT SUPPORT</a>
+              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
+              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
+              <a href="/contact" className={footerLinkClass}>CONTACT SUPPORT</a>
             </nav></div>
           </section>
         </div>

@@ -9,6 +9,7 @@ import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
 import {
   Plus,
+  Minus,
   Heart,
   Ruler,
   Truck,
@@ -45,6 +46,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
+  const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
 
   // Initialize variant selection & analytics
@@ -57,6 +59,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
         setSelectedSize('');
       }
       setSizeError(false);
+      setQuantity(1);
 
       // Dynamic Title & SEO
       document.title = `${product.name} — PIERCYN Lagos`;
@@ -103,7 +106,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
-  const isSoldOut = product.isSoldOut || product.stock === 0;
+  const hasVariants = Boolean(product.variants?.length);
+  const selectedVariant = product.variants?.find((variant) => variant.size === selectedSize && variant.colour === currentColor?.name);
+  const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
+  const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
+  const isSoldOut = product.isSoldOut || (hasVariants
+    ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
+    : typeof selectedStock !== 'number' || selectedStock <= 0);
   const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
   const handleAddToCart = () => {
@@ -113,7 +122,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    if (quantity < 1 || quantity > maxPurchaseQuantity) {
+      showToast('Please choose a quantity that is currently available');
+      return;
+    }
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     eventTracker.track('add_to_cart', {
       productId: product.id,
       productName: product.name,
@@ -130,7 +143,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    if (quantity < 1 || quantity > maxPurchaseQuantity) {
+      showToast('Please choose a quantity that is currently available');
+      return;
+    }
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     setIsCheckoutOpen(true);
     eventTracker.track('buy_now_clicked', {
       productId: product.id,
@@ -314,7 +331,17 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
             {/* PURCHASE ACTION BUTTONS */}
             <div className="space-y-2.5 pt-2">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between gap-4">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-[#7A7771]">QUANTITY</span>
+              <div className="inline-flex h-11 items-center rounded-full border border-[#DAD8D1] bg-white">
+                <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-l-full disabled:opacity-30"><Minus className="h-4 w-4" /></button>
+                <span aria-live="polite" className="min-w-8 text-center text-sm font-semibold">{quantity}</span>
+                <button type="button" aria-label="Increase quantity" disabled={quantity >= maxPurchaseQuantity} onClick={() => setQuantity((value) => Math.min(maxPurchaseQuantity, value + 1))} className="flex h-11 w-11 items-center justify-center rounded-r-full disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+              </div>
+              <span className="text-[10px] text-[#7A7771]">Max 10 per order</span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
                 <button
                   onClick={handleAddToCart}
                   disabled={isSoldOut}
