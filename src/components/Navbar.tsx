@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ].map((link, idx) => (
               <button
                 key={link.label}
-                onClick={() => { if (link.pageKey) handleNavClick(link.pageKey); else if ('path' in link && link.path) { setIsMobileMenuOpen(false); window.history.pushState({}, '', link.path); window.dispatchEvent(new PopStateEvent('popstate')); } }}
+                onClick={() => { if ('pageKey' in link && link.pageKey) handleNavClick(link.pageKey); else if ('path' in link && link.path) { setIsMobileMenuOpen(false); window.history.pushState({}, '', link.path); window.dispatchEvent(new PopStateEvent('popstate')); } }}
                 className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#F2F0EB] flex items-center justify-between group py-2 min-h-[52px]"
               >
                 <span className="tracking-tight flex items-center gap-2.5">
