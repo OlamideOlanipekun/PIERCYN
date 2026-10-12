@@ -9,6 +9,7 @@ import {
   Layers,
   Users,
   BarChart3,
+  TrendingUp,
   History,
   Settings,
   LogOut,

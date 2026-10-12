@@ -17,13 +17,31 @@ export interface StockCheckResult {
 }
 
 export class InventoryService {
+  private static async releaseExpiredReservations(variantId?: string, txPrisma?: any): Promise<void> {
+    const client = txPrisma || prisma;
+    const expired = await client.inventoryReservation.findMany({
+      where: {
+        status: 'ACTIVE',
+        expiresAt: { lte: new Date() },
+        ...(variantId ? { variantId } : {}),
+      },
+      select: { id: true },
+    });
+
+    for (const reservation of expired) {
+      await this.releaseReservation(reservation.id, txPrisma);
+    }
+  }
+
   public static async getVariantStock(variantId: string) {
+    await this.releaseExpiredReservations(variantId);
     return prisma.inventory.findUnique({
       where: { variantId },
     });
   }
 
   public static async getStockStatus(variantId: string): Promise<StockCheckResult | null> {
+    await this.releaseExpiredReservations(variantId);
     const inv = await prisma.inventory.findUnique({
       where: { variantId },
       include: { variant: true },
@@ -83,6 +101,7 @@ export class InventoryService {
     const client = txPrisma || prisma;
 
     const execute = async (tx: any) => {
+      await this.releaseExpiredReservations(variantId, tx);
       const inv = await tx.inventory.findUnique({
         where: { variantId },
       });

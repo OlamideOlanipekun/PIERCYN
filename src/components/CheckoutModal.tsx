@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
+import { processCheckoutPayment, isLivePaymentConfigured, getPaymentProvider } from '../services/paymentService';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
 import { CustomerInfo, OrderItem } from '../types';
+import { api } from '../services/apiClient';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -34,6 +35,9 @@ export const CheckoutModal: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isLiveGateway = isLivePaymentConfigured();
+  const [serverQuote, setServerQuote] = useState<any>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,6 +56,43 @@ export const CheckoutModal: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isCheckoutOpen, setIsCheckoutOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isCheckoutOpen || cart.length === 0) {
+      setServerQuote(null);
+      setQuoteError(null);
+      setQuoteLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    setQuoteLoading(true);
+    setQuoteError(null);
+    api.getCheckoutQuote(
+      shippingMethod,
+      cart.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
+      appliedPromoCode || undefined
+    ).then((response) => {
+      if (cancelled) return;
+      if (!response?.success || !response?.data?.isEligibleForCheckout) {
+        setServerQuote(response?.data || null);
+        setQuoteError(response?.data?.errors?.join(' ') || response?.error || 'We could not validate your order. Please review your cart.');
+        return;
+      }
+      setServerQuote(response.data);
+      setQuoteError(null);
+    }).catch(() => {
+      if (!cancelled) {
+        setServerQuote(null);
+        setQuoteError('We could not verify current prices and stock. Please try again.');
+      }
+    }).finally(() => {
+      if (!cancelled) setQuoteLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [isCheckoutOpen, cart, shippingMethod, appliedPromoCode]);
 
   if (!isCheckoutOpen) return null;
 
@@ -72,8 +113,10 @@ export const CheckoutModal: React.FC = () => {
     'Other Nigerian State',
   ];
 
-  const deliveryFee = getDeliveryFee(cartSubtotal, shippingMethod);
-  const totalNGN = Math.max(0, cartSubtotal + deliveryFee - (promoDiscountNGN || 0));
+  const deliveryFee = serverQuote?.deliveryFeeNGN ?? getDeliveryFee(cartSubtotal, shippingMethod);
+  const displaySubtotal = serverQuote?.subtotalNGN ?? cartSubtotal;
+  const displayDiscount = serverQuote?.discountNGN ?? (promoDiscountNGN || 0);
+  const totalNGN = serverQuote?.totalNGN ?? Math.max(0, cartSubtotal + deliveryFee - displayDiscount);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -123,11 +166,24 @@ export const CheckoutModal: React.FC = () => {
         });
 
         if (!paymentRes.success) {
-          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your reservation is held; you can complete bank transfer or WhatsApp confirmation.');
+          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your order remains unpaid.');
           setIsSubmitting(false);
           setIsCheckoutOpen(false);
           window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
           window.dispatchEvent(new PopStateEvent('popstate'));
+          showToast('Order reserved. Payment has not been confirmed.');
+          return;
+        }
+
+        // A successful browser callback is not proof of payment. Ask our API to
+        // verify the reference against Paystack's server-side transaction record.
+        const paymentVerified = await getPaymentProvider().verifyPayment(paymentRes.transactionReference);
+        if (!paymentVerified) {
+          setIsSubmitting(false);
+          setIsCheckoutOpen(false);
+          window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          showToast('Payment verification is pending. Your order is not yet marked paid.');
           return;
         }
       }
@@ -179,6 +235,12 @@ export const CheckoutModal: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {(quoteError || quoteLoading) && (
+          <div className="border-b border-[#DAD8D1] bg-white/60 px-4 py-3 text-xs text-[#5F5C56]" role="status">
+            {quoteLoading ? 'Checking live prices, discounts and stock…' : quoteError}
+          </div>
+        )}
 
         {errorMessage && (
           <div className="bg-red-500/10 border-b border-red-500/20 text-red-700 px-4 py-3 text-xs flex items-center gap-2">
@@ -338,7 +400,7 @@ export const CheckoutModal: React.FC = () => {
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
+                      {displaySubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
                         ? 'FREE'
                         : `₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()}`}
                     </span>
@@ -360,7 +422,7 @@ export const CheckoutModal: React.FC = () => {
                       </div>
                     </div>
                     <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
+                      {displaySubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
                         ? 'FREE'
                         : `₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()}`}
                     </span>
@@ -420,12 +482,12 @@ export const CheckoutModal: React.FC = () => {
                 </h4>
                 <div className="flex justify-between text-[#141414]/80">
                   <span>Subtotal</span>
-                  <span className="font-mono">₦{cartSubtotal.toLocaleString()}</span>
+                  <span className="font-mono">₦{displaySubtotal.toLocaleString()}</span>
                 </div>
-                {promoDiscountNGN > 0 && (
+                {displayDiscount > 0 && (
                   <div className="flex justify-between text-emerald-800 font-semibold">
                     <span>Discount ({appliedPromoCode})</span>
-                    <span className="font-mono">-₦{promoDiscountNGN.toLocaleString()}</span>
+                    <span className="font-mono">-₦{displayDiscount.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-[#141414]/80">
@@ -443,7 +505,7 @@ export const CheckoutModal: React.FC = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || quoteLoading || !serverQuote || !serverQuote.isEligibleForCheckout || Boolean(quoteError)}
                   className="w-full h-12 min-h-[48px] bg-[#141414] text-[#F2F0EB] rounded-full text-xs uppercase tracking-widest font-bold hover:bg-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
                 >
                   {isSubmitting ? (

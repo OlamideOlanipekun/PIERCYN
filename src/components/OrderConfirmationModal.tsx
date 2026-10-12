@@ -35,7 +35,14 @@ export const OrderConfirmationModal: React.FC = () => {
     showToast(`Copied ${lastCreatedOrder.orderNumber} to clipboard`);
   };
 
-  const isTransfer = lastCreatedOrder.paymentMethod.toLowerCase().includes('transfer') || lastCreatedOrder.paymentStatus === 'PENDING';
+  const paymentMethod = String(lastCreatedOrder.paymentMethod || '').toLowerCase();
+  const isTransfer = paymentMethod.includes('transfer') || paymentMethod.includes('direct');
+  const env = (import.meta as any).env || {};
+  const whatsappNumber = String(env.VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
+  const bankName = String(env.VITE_PIERCYN_BANK_NAME || '').trim();
+  const accountName = String(env.VITE_PIERCYN_ACCOUNT_NAME || '').trim();
+  const accountNumber = String(env.VITE_PIERCYN_ACCOUNT_NUMBER || '').replace(/\s/g, '');
+  const hasBankDetails = Boolean(bankName && accountName && /^\d{10}$/.test(accountNumber));
 
   const whatsappMessage = encodeURIComponent(
     `Hello PIERCYN! I just placed Order #${lastCreatedOrder.orderNumber} for ₦${lastCreatedOrder.totalNGN.toLocaleString()}. ${
@@ -85,29 +92,23 @@ export const OrderConfirmationModal: React.FC = () => {
           </button>
         </div>
 
-        {/* BANK TRANSFER DETAILS (If transfer) */}
+        {/* Never show placeholder bank details. Only render verified values from deployment configuration. */}
         {isTransfer && (
-          <div className="bg-[#141414] text-[#F2F0EB] p-4 rounded-xl text-left text-xs mb-4 space-y-1.5 font-mono">
+          <div className="bg-[#141414] text-[#F2F0EB] p-4 rounded-xl text-left text-xs mb-4 space-y-2 font-mono">
             <div className="flex items-center justify-between text-[#A48B71] text-[10px] uppercase tracking-wider font-bold mb-1">
-              <span>PIERCYN OFFICIAL ATELIER ACCOUNT</span>
+              <span>PAYMENT INSTRUCTIONS</span>
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Bank:</span>
-              <span className="font-semibold text-white">Providus Bank / GTBank</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Account Name:</span>
-              <span className="font-semibold text-white">PIERCYN CLOTHING ATELIER</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Account Number:</span>
-              <span className="font-bold text-[#F2F0EB]">1029384756</span>
-            </div>
-            <div className="flex justify-between pt-1 border-t border-white/20 text-white/80">
-              <span>Amount to Transfer:</span>
-              <span className="font-bold text-white">₦{lastCreatedOrder.totalNGN.toLocaleString()}</span>
-            </div>
+            {hasBankDetails ? (
+              <>
+                <div className="flex justify-between gap-4"><span className="text-white/60">Bank:</span><span className="font-semibold text-white text-right">{bankName}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-white/60">Account Name:</span><span className="font-semibold text-white text-right">{accountName}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-white/60">Account Number:</span><span className="font-bold text-white">{accountNumber}</span></div>
+                <div className="flex justify-between pt-2 border-t border-white/20 text-white/80"><span>Amount:</span><span className="font-bold text-white">₦{lastCreatedOrder.totalNGN.toLocaleString()}</span></div>
+              </>
+            ) : (
+              <p className="leading-relaxed text-white/80">Bank transfer details are not configured yet. Please contact PIERCYN to receive verified payment instructions. Do not transfer to an unverified account.</p>
+            )}
           </div>
         )}
 
@@ -129,15 +130,17 @@ export const OrderConfirmationModal: React.FC = () => {
 
         {/* ACTION BUTTONS */}
         <div className="space-y-2.5">
-          <a
-            href={`https://wa.me/2348000000000?text=${whatsappMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-3 px-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 shadow-xs"
-          >
-            <MessageCircle className="w-4 h-4 fill-white" />
-            <span>CONFIRM ON WHATSAPP</span>
-          </a>
+          {whatsappNumber && (
+            <a
+              href={`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 shadow-xs"
+            >
+              <MessageCircle className="w-4 h-4 fill-white" />
+              <span>CONFIRM ON WHATSAPP</span>
+            </a>
+          )}
 
           <button
             onClick={() => setIsOrderConfirmedOpen(false)}

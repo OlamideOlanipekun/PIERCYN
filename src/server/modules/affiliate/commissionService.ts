@@ -8,23 +8,21 @@ import { prisma } from '../../db/prisma';
 // Commission amounts are in KOBO (NGN minor units).
 // ============================================================
 
-const COMMISSION_PER_PRODUCT_KOBO =
-  COMMERCE_CONFIG.AFFILIATE.COMMISSION_PER_PRODUCT_KOBO; // ₦500 = 50,000 kobo
+const COMMISSION_PER_ORDER_KOBO =
+  COMMERCE_CONFIG.AFFILIATE.COMMISSION_PER_ORDER_KOBO; // ₦500 = 50,000 kobo per qualifying order
 
 const RETURN_WINDOW_DAYS = COMMERCE_CONFIG.AFFILIATE.RETURN_WINDOW_DAYS;
 
 export class CommissionService {
   /**
-   * Returns the commission amount per product unit in Kobo.
-   * Centralised so it can be extended to support category/campaign rates later.
+   * Returns the flat commission amount per qualifying delivered order in Kobo.
    */
-  public static getCommissionPerProduct(_productId?: string, _categoryId?: string): number {
-    // V1: flat rate per product. Future: category/campaign-specific rates.
-    return COMMISSION_PER_PRODUCT_KOBO;
+  public static getCommissionPerOrder(): number {
+    return COMMISSION_PER_ORDER_KOBO;
   }
 
   /**
-   * Creates commission records for all items in an order.
+   * Creates a single flat commission record per qualifying order.
    * Called after order payment is verified.
    * 
    * IDEMPOTENT: Uses unique(affiliateId, orderItemId) constraint.
@@ -62,37 +60,35 @@ export class CommissionService {
       return;
     }
 
-    // Create one commission per order item (idempotent via unique constraint)
-    for (const item of order.items) {
-      const commissionAmount = this.getCommissionPerProduct() * item.quantity;
+    // V1 business rule: one flat commission per qualifying order, not per item.
+    // Store it against the first item to satisfy the existing unique(affiliateId, orderItemId)
+    // ledger constraint while ensuring a multi-item order cannot multiply the payout.
+    const firstItem = order.items[0];
+    if (!firstItem) return;
 
-      try {
-        await prisma.affiliateCommission.upsert({
-          where: {
-            affiliateId_orderItemId: {
-              affiliateId: affiliate.id,
-              orderItemId: item.id,
-            },
-          },
-          update: {
-            // Already exists — update nothing (idempotency)
-          },
-          create: {
+    try {
+      await prisma.affiliateCommission.upsert({
+        where: {
+          affiliateId_orderItemId: {
             affiliateId: affiliate.id,
-            orderId: order.id,
-            orderItemId: item.id,
-            affiliateLinkId: order.affiliateLinkId || undefined,
-            amountKobo: commissionAmount,
-            status: 'PENDING',
+            orderItemId: firstItem.id,
           },
-        });
-      } catch (err: any) {
-        // If unique constraint violation (race condition), log but do not re-throw
-        console.error(
-          `[COMMISSION] Failed to create commission for item ${item.id}:`,
-          err.message
-        );
-      }
+        },
+        update: {},
+        create: {
+          affiliateId: affiliate.id,
+          orderId: order.id,
+          orderItemId: firstItem.id,
+          affiliateLinkId: order.affiliateLinkId || undefined,
+          amountKobo: this.getCommissionPerOrder(),
+          status: 'PENDING',
+        },
+      });
+    } catch (err: any) {
+      console.error(
+        `[COMMISSION] Failed to create order commission for ${order.orderNumber}:`,
+        err.message
+      );
     }
 
     console.log(
@@ -110,17 +106,28 @@ export class CommissionService {
    * (return window handled by a future scheduled job or can be done inline for V1).
    */
   public static async markCommissionsAvailable(orderId: string): Promise<void> {
-    const eligibleAt = new Date();
+    // Delivery starts the return window; commissions must not be withdrawable
+    // until that window has elapsed.
+    const eligibleAt = new Date(Date.now() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
     await prisma.affiliateCommission.updateMany({
       where: {
         orderId,
         status: 'PENDING',
+        eligibleAt: null,
       },
-      data: {
-        status: 'AVAILABLE',
-        eligibleAt,
+      data: { eligibleAt },
+    });
+  }
+
+  private static async releaseEligibleCommissions(affiliateId?: string): Promise<void> {
+    await prisma.affiliateCommission.updateMany({
+      where: {
+        status: 'PENDING',
+        eligibleAt: { lte: new Date() },
+        ...(affiliateId ? { affiliateId } : {}),
       },
+      data: { status: 'AVAILABLE' },
     });
   }
 
@@ -152,6 +159,7 @@ export class CommissionService {
    * Computes the total available balance for an affiliate (not yet in a payout).
    */
   public static async getAvailableBalance(affiliateId: string): Promise<number> {
+    await this.releaseEligibleCommissions(affiliateId);
     const result = await prisma.affiliateCommission.aggregate({
       where: {
         affiliateId,
@@ -173,6 +181,7 @@ export class CommissionService {
     reversedKobo: number;
     totalEarnedKobo: number;
   }> {
+    await this.releaseEligibleCommissions(affiliateId);
     const [pending, available, paid, reversed] = await Promise.all([
       prisma.affiliateCommission.aggregate({
         where: { affiliateId, status: 'PENDING' },
@@ -207,10 +216,10 @@ export class CommissionService {
   }
 
   /**
-   * Returns commission per product in Naira (for display).
+   * Returns the flat commission per qualifying order in Naira (for display).
    */
-  public static getCommissionPerProductNGN(): number {
-    return COMMISSION_PER_PRODUCT_KOBO / 100;
+  public static getCommissionPerOrderNGN(): number {
+    return COMMISSION_PER_ORDER_KOBO / 100;
   }
 
   public static getReturnWindowDays(): number {

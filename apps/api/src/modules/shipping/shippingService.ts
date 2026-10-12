@@ -1,6 +1,7 @@
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { KwikCourierAdapter, IShippingCourier } from './kwikCourier';
+import { OrderService } from '../orders/orderService';
 
 export interface ShippingOption {
   key: 'lagos' | 'nationwide';
@@ -106,6 +107,9 @@ export class ShippingService {
     let courierMetadata: string | undefined;
 
     if (!trackingNumber) {
+      if (data.courier && data.courier.toUpperCase() !== this.courierAdapter.name) {
+        throw new Error(`Automated booking for ${data.courier} is not configured. Book with that courier manually and supply its real tracking number.`);
+      }
       const courierResult = await this.courierAdapter.createShipment({
         orderNumber: order.orderNumber,
         recipientName: data.recipientName,
@@ -115,15 +119,22 @@ export class ShippingService {
         deliveryState: order.deliveryState,
         itemDescription: data.itemDescription || `PIERCYN Order ${order.orderNumber}`,
       });
+      if (!courierResult.success || !courierResult.trackingNumber) {
+        throw new Error(courierResult.message || 'Courier booking failed; no shipment was created.');
+      }
       trackingNumber = courierResult.trackingNumber;
       courierMetadata = JSON.stringify(courierResult);
+    }
+
+    if (!trackingNumber) {
+      throw new Error('Shipment requires a real courier tracking number or a manually supplied tracking number.');
     }
 
     const shipment = await prisma.shipment.upsert({
       where: { orderId: order.id },
       update: {
         provider: data.courier || this.courierAdapter.name,
-        trackingNumber: trackingNumber || `TRK-${Date.now()}`,
+        trackingNumber: trackingNumber!,
         deliveryFeeNGN: data.deliveryFeeNGN ?? order.deliveryFeeNGN,
         deliveryAddress: data.deliveryAddress,
         recipientName: data.recipientName,
@@ -134,7 +145,7 @@ export class ShippingService {
       create: {
         orderId: order.id,
         provider: data.courier || this.courierAdapter.name,
-        trackingNumber: trackingNumber || `TRK-${Date.now()}`,
+        trackingNumber,
         deliveryFeeNGN: data.deliveryFeeNGN ?? order.deliveryFeeNGN,
         deliveryAddress: data.deliveryAddress,
         recipientName: data.recipientName,
@@ -164,6 +175,18 @@ export class ShippingService {
       throw new Error(`Shipment ${shipmentId} not found`);
     }
 
+    const allowedStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'RETURNED'];
+    if (!allowedStatuses.includes(status)) {
+      throw new Error(`Invalid shipment status: ${status}`);
+    }
+
+    const orderForDelivery = status === 'DELIVERED'
+      ? await prisma.order.findUnique({ where: { id: shipment.orderId } })
+      : null;
+    if (status === 'DELIVERED' && orderForDelivery && !['SHIPPED', 'DELIVERED'].includes(orderForDelivery.status)) {
+      throw new Error(`Order must be SHIPPED before it can be marked delivered (current status: ${orderForDelivery.status}).`);
+    }
+
     const now = new Date();
     const updateData: any = { status };
 
@@ -179,11 +202,13 @@ export class ShippingService {
       data: updateData,
     });
 
-    if (status === 'DELIVERED') {
-      await prisma.order.update({
-        where: { id: shipment.orderId },
-        data: { status: 'DELIVERED' },
-      });
+    if (status === 'DELIVERED' && orderForDelivery?.status === 'SHIPPED') {
+      await OrderService.updateStatus(
+        orderForDelivery.orderNumber,
+        'DELIVERED',
+        'Shipment marked delivered',
+        'COURIER'
+      );
     }
 
     return updated;

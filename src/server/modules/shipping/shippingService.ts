@@ -91,14 +91,21 @@ export class ShippingService {
         deliveryState: order.shippingState,
         itemDescription: data.itemDescription || `PIERCYN Order ${order.orderNumber}`,
       });
+      if (!courierResult.success || !courierResult.trackingNumber) {
+        throw new Error(courierResult.message || 'Courier booking failed; no shipment was created.');
+      }
       trackingNumber = courierResult.trackingNumber;
       courierMetadata = JSON.stringify(courierResult);
+    }
+
+    if (!trackingNumber) {
+      throw new Error('Shipment requires a real courier tracking number or a manually supplied tracking number.');
     }
 
     return dbStore.createShipment({
       orderId: order.id,
       courier: data.courier || this.courierAdapter.name,
-      trackingNumber: trackingNumber || `TRK-${Date.now()}`,
+      trackingNumber,
       deliveryFeeNGN: data.deliveryFeeNGN ?? order.deliveryFeeNGN,
       deliveryAddress: data.deliveryAddress,
       recipientName: data.recipientName,

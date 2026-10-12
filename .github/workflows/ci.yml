@@ -1,0 +1,42 @@
+name: PIERCYN CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: piercyn-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Report dependency audit
+        run: |
+          npm audit --json > /tmp/npm-audit.json || true
+          node -e "const a=require('/tmp/npm-audit.json'); console.log('Audit summary:', JSON.stringify(a.metadata?.vulnerabilities || {})); for (const [name, v] of Object.entries(a.vulnerabilities || {})) console.log(name + ' | severity=' + v.severity + ' | direct=' + v.isDirect + ' | fixAvailable=' + JSON.stringify(v.fixAvailable));"
+
+      - name: Type-check
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build storefront and API
+        run: npm run build

@@ -1,6 +1,8 @@
+import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { InventoryService } from '../inventory/inventoryService';
 import { CommissionService } from '../affiliate/commissionService';
+import { WhatsAppNotificationService } from '../notifications/whatsappNotificationService';
 
 export const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
   PENDING_PAYMENT: ['PAID', 'CANCELLED', 'FAILED'],
@@ -137,6 +139,13 @@ export class OrderService {
       throw new Error(`Order ${orderIdentifier} not found`);
     }
 
+    // Payment confirmation must pass through markOrderPaid(), which records
+    // the payment ledger and finalizes reserved inventory in one transaction.
+    // Never allow a generic admin status update to bypass provider verification.
+    if (newStatus === 'PAID') {
+      throw new Error('Use the payment confirmation flow to mark an order paid.');
+    }
+
     const currentStatus = existing.status;
     const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
 
@@ -195,7 +204,8 @@ export class OrderService {
 
   public static async markOrderPaid(
     orderNumber: string,
-    providerReference: string = 'SYS-REF'
+    providerReference: string = 'SYS-REF',
+    confirmedBy: string = 'SYSTEM'
   ) {
     const orderRes = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -207,12 +217,54 @@ export class OrderService {
         throw new Error(`Order not found: ${orderNumber}`);
       }
 
-      // Idempotency: if already paid, return early
+      // Idempotency: if already paid, return early.
       if (order.paymentStatus === 'PAID') {
         return order;
       }
+      if (order.status !== 'PENDING_PAYMENT') {
+        throw new Error(`Cannot confirm payment for order ${order.orderNumber} while its status is ${order.status}.`);
+      }
 
       const now = new Date();
+
+      // A checkout reservation can expire while a customer is completing payment.
+      // Re-reserve any missing quantity if stock is still available; if it is not,
+      // record a paid inventory hold instead of decrementing stock below zero.
+      const requiredByVariant = new Map<string, number>();
+      for (const item of order.items) {
+        if (item.variantId) {
+          requiredByVariant.set(
+            item.variantId,
+            (requiredByVariant.get(item.variantId) || 0) + item.quantity,
+          );
+        }
+      }
+
+      const inventoryHoldVariantIds = new Set<string>();
+      for (const [variantId, requiredQuantity] of requiredByVariant) {
+        const activeReservations = await tx.inventoryReservation.findMany({
+          where: {
+            reference: order.orderNumber,
+            variantId,
+            status: 'ACTIVE',
+            expiresAt: { gt: now },
+          },
+          select: { quantity: true },
+        });
+        const reservedQuantity = activeReservations.reduce((sum, reservation) => sum + reservation.quantity, 0);
+        const missingQuantity = Math.max(0, requiredQuantity - reservedQuantity);
+
+        if (missingQuantity > 0) {
+          const reserved = await InventoryService.reserveStock(
+            variantId,
+            missingQuantity,
+            order.orderNumber,
+            COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
+            tx,
+          );
+          if (!reserved) inventoryHoldVariantIds.add(variantId);
+        }
+      }
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -224,37 +276,56 @@ export class OrderService {
         include: { items: true },
       });
 
+      const heldProductNames = order.items
+        .filter((item) => item.variantId && inventoryHoldVariantIds.has(item.variantId))
+        .map((item) => item.productName);
+      const historyNote = inventoryHoldVariantIds.size > 0
+        ? `Payment confirmed via reference ${providerReference} by ${confirmedBy}. INVENTORY HOLD — stock unavailable for: ${[...new Set(heldProductNames)].join(', ')}. Admin review required before fulfillment.`
+        : `Payment confirmed via reference ${providerReference} by ${confirmedBy}`;
+
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
           fromStatus: order.status,
           toStatus: 'PAID',
-          changedBy: 'SYSTEM',
-          note: `Payment confirmed via reference ${providerReference}`,
+          changedBy: confirmedBy,
+          note: historyNote,
         },
       });
 
-      // Upsert Payment record
+      // Persist the actual payment provider. Otherwise Paystack payments inherit
+      // the schema's DIRECT_TRANSFER default and the payment ledger lies.
+      const provider =
+        order.paymentMethod === 'PAYSTACK'
+          ? 'PAYSTACK'
+          : order.paymentMethod === 'MOCK'
+          ? 'MOCK'
+          : 'DIRECT_TRANSFER';
+
       await tx.payment.upsert({
         where: { providerReference },
         update: {
+          provider,
+          amountNGN: order.totalNGN,
+          currency: order.currency || 'NGN',
           status: 'SUCCESS',
           paidAt: now,
         },
         create: {
           orderId: order.id,
+          provider,
           providerReference,
           amountNGN: order.totalNGN,
-          currency: 'NGN',
+          currency: order.currency || 'NGN',
           status: 'SUCCESS',
           paidAt: now,
         },
       });
 
-      // Finalize inventory for all items
-      for (const item of order.items) {
-        if (item.variantId) {
-          await InventoryService.finalizeSale(item.variantId, item.quantity, order.orderNumber, tx);
+      // Finalize once per variant to avoid double-decrementing duplicate cart lines.
+      for (const [variantId, quantity] of requiredByVariant) {
+        if (!inventoryHoldVariantIds.has(variantId)) {
+          await InventoryService.finalizeSale(variantId, quantity, order.orderNumber, tx);
         }
       }
 
@@ -273,6 +344,15 @@ export class OrderService {
       });
 
       return updatedOrder;
+    });
+
+    // Best-effort operator alert after the payment transaction commits.
+    await WhatsAppNotificationService.notifyOrderEvent({
+      orderNumber: orderRes.orderNumber,
+      customerName: `${orderRes.customerFirstName} ${orderRes.customerLastName}`.trim(),
+      customerPhone: orderRes.customerPhone,
+      totalNGN: orderRes.totalNGN,
+      status: 'PAYMENT_CONFIRMED',
     });
 
     try {

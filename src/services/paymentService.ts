@@ -1,4 +1,5 @@
 import { PaymentDetails, PaymentResult } from '../types';
+import { api } from './apiClient';
 
 export interface PaymentProvider {
   name: string;
@@ -89,7 +90,13 @@ export class PaystackPaymentProvider implements PaymentProvider {
   }
 
   async verifyPayment(reference: string): Promise<boolean> {
-    return Boolean(reference);
+    if (!reference) return false;
+    try {
+      const result = await api.verifyPayment(reference);
+      return Boolean(result?.success && result?.data?.success);
+    } catch {
+      return false;
+    }
   }
 }
 

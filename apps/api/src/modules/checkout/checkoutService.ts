@@ -6,6 +6,7 @@ import { CustomerService } from '../customers/customerService';
 import { AffiliateService } from '../affiliate/affiliateService';
 import { prisma } from '../../db/prisma';
 import { generateOrderNumber } from '@piercyn/utils';
+import { WhatsAppNotificationService } from '../notifications/whatsappNotificationService';
 
 export interface CheckoutQuote {
   cart: CalculatedCart;
@@ -49,13 +50,16 @@ export class CheckoutService {
 
     let discountNGN = 0;
     let promoDescription: string | undefined;
+    let promoError: string | undefined;
 
-    if (discountCode) {
+    if (discountCode?.trim()) {
       const cleanCode = discountCode.trim().toUpperCase();
       const promo = COMMERCE_CONFIG.PROMOTIONS.find((p) => p.code === cleanCode);
       if (promo) {
         discountNGN = Math.round((cart.subtotalNGN * promo.discountPercent) / 100);
         promoDescription = promo.description;
+      } else {
+        promoError = 'This discount code is invalid or inactive.';
       }
     }
 
@@ -67,7 +71,8 @@ export class CheckoutService {
         ? 'Lagos Doorstep (24–48 Hours)'
         : 'Nationwide Nigeria (3–5 Business Days)';
 
-    const isEligible = cart.isValid && cart.items.length > 0;
+    const isEligible = cart.isValid && cart.items.length > 0 && !promoError;
+    const errors = promoError ? [...cart.validationErrors, promoError] : cart.validationErrors;
 
     return {
       cart,
@@ -79,11 +84,15 @@ export class CheckoutService {
       discountDescription: promoDescription,
       totalNGN: finalTotal,
       isEligibleForCheckout: isEligible,
-      errors: cart.validationErrors,
+      errors,
     };
   }
 
   public static async createOrder(input: CreateOrderInput) {
+    if (input.paymentMethod === 'mock' && process.env.NODE_ENV === 'production') {
+      throw new Error('Mock payments are disabled in production. Select Paystack or direct bank transfer.');
+    }
+
     const sessionId = input.sessionId || `sess-${Date.now()}`;
     const quote = await this.calculateQuote(
       sessionId,
@@ -244,6 +253,15 @@ export class CheckoutService {
 
       return order;
     }, { isolationLevel: 'Serializable' });
+
+    // Best-effort operator alert; notification outages must never fail checkout.
+    await WhatsAppNotificationService.notifyOrderEvent({
+      orderNumber: createdOrder.orderNumber,
+      customerName: `${createdOrder.customerFirstName} ${createdOrder.customerLastName}`.trim(),
+      customerPhone: createdOrder.customerPhone,
+      totalNGN: createdOrder.totalNGN,
+      status: 'ORDER_PLACED',
+    });
 
     // Clear session cart
     await CartService.clearCart(sessionId);

@@ -4,7 +4,7 @@ import { ProductService } from '../modules/products/productService';
 import { CartService } from '../modules/cart/cartService';
 import { CheckoutService } from '../modules/checkout/checkoutService';
 import { OrderService } from '../modules/orders/orderService';
-import { PaymentService, MockPaymentProvider } from '../modules/payments/paymentService';
+import { PaymentService } from '../modules/payments/paymentService';
 import { WebhookService } from '../modules/payments/webhookService';
 import { InventoryService } from '../modules/inventory/inventoryService';
 import { ShippingService } from '../modules/shipping/shippingService';
@@ -49,7 +49,11 @@ function createOrderAccessToken(orderId: string): string {
   if (!orderAccessSecret) {
     throw new Error('Order access token signing is not configured. Set ORDER_ACCESS_TOKEN_SECRET.');
   }
-  const payload = Buffer.from(JSON.stringify({ orderId, nonce: crypto.randomBytes(24).toString('hex') })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    orderId,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    nonce: crypto.randomBytes(24).toString('hex'),
+  })).toString('base64url');
   const signature = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
   return `ord_${payload}.${signature}`;
 }
@@ -67,8 +71,9 @@ function getAuthorizedOrderId(req: Request): string | null {
   if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
 
   try {
-    const orderId = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).orderId;
-    return typeof orderId === 'string' ? orderId : null;
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (typeof decoded.exp !== 'number' || decoded.exp <= Date.now()) return null;
+    return typeof decoded.orderId === 'string' ? decoded.orderId : null;
   } catch {
     return null;
   }
@@ -232,7 +237,14 @@ apiRouter.post('/payments/initialize', async (req: Request, res: Response) => {
     }
 
     const result = await PaymentService.initializePayment(orderNumber, callbackUrl);
-    res.json({ success: true, data: result });
+    if (!result.success) {
+      return res.status(503).json({
+        success: false,
+        error: result.message || 'Payment provider could not initialize this payment.',
+        data: result,
+      });
+    }
+    return res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -242,7 +254,14 @@ apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
   try {
     const validated = VerifyPaymentSchema.parse(req.body);
     const result = await PaymentService.verifyPayment(validated.reference);
-    res.json({ success: true, data: result });
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment could not be verified. The order remains unpaid.',
+        data: result,
+      });
+    }
+    return res.json({ success: true, data: result });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
@@ -252,9 +271,12 @@ apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
 apiRouter.post('/payments/webhook', async (req: Request, res: Response) => {
   try {
     const signature = (req.headers['x-paystack-signature'] as string) || '';
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    const rawBody = (req as any).rawBody;
+    if (typeof rawBody !== 'string' || !rawBody) {
+      return res.status(400).json({ received: false, error: 'Raw webhook body is required for signature verification.' });
+    }
     const result = await WebhookService.handlePaystackWebhook(signature, rawBody, req.body);
-    res.json(result);
+    return res.status(result.received ? 200 : 400).json(result);
   } catch (err: any) {
     res.status(500).json({ received: false, error: err.message });
   }
@@ -265,13 +287,19 @@ apiRouter.post('/payments/mock/complete', async (req: Request, res: Response) =>
     return res.status(404).json({ success: false, error: 'Not found' });
   }
   try {
-    PaymentService.setProvider(new MockPaymentProvider());
     const { reference } = req.body;
     if (!reference) {
       return res.status(400).json({ success: false, error: 'reference is required' });
     }
     const result = await PaymentService.verifyPayment(reference);
-    res.json({ success: true, data: result });
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mock payment could not be completed for this order.',
+        data: result,
+      });
+    }
+    return res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }

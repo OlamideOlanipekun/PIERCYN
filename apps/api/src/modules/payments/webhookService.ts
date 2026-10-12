@@ -1,6 +1,5 @@
 import { PaymentService } from './paymentService';
 import { OrderService } from '../orders/orderService';
-import { prisma } from '../../db/prisma';
 
 export interface WebhookProcessingResult {
   received: boolean;
@@ -17,14 +16,12 @@ export class WebhookService {
   ): Promise<WebhookProcessingResult> {
     const provider = PaymentService.getProvider();
 
-    // 1. Verify Signature
-    const isValidSignature = provider.verifyWebhookSignature(signature, rawBody);
-    if (!isValidSignature && process.env.NODE_ENV === 'production') {
+    if (!rawBody || provider.providerType !== 'PAYSTACK' || !provider.verifyWebhookSignature(signature, rawBody)) {
       return {
-        received: true,
+        received: false,
         processed: false,
         idempotentDuplicate: false,
-        message: 'Invalid webhook signature',
+        message: 'Invalid signature or Paystack webhook secret is not configured',
       };
     }
 
@@ -32,62 +29,77 @@ export class WebhookService {
     const data = payload?.data;
     const reference = data?.reference;
 
-    if (!reference) {
+    if (typeof event !== 'string' || typeof reference !== 'string' || reference.length === 0) {
+      return {
+        received: false,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'Malformed webhook: event and transaction reference are required',
+      };
+    }
+
+    // Acknowledge authentic, unrelated events without changing commerce state.
+    if (event !== 'charge.success') {
       return {
         received: true,
         processed: false,
         idempotentDuplicate: false,
-        message: 'Missing transaction reference',
+        message: `Ignored Paystack event: ${event}`,
       };
     }
 
-    // 2. Strict Idempotency Check in Database
-    const existingPayment = await prisma.payment.findUnique({
-      where: { providerReference: reference },
-    });
-
-    if (existingPayment && existingPayment.status === 'SUCCESS') {
+    if (
+      data?.status !== 'success' ||
+      data?.currency !== 'NGN' ||
+      !Number.isSafeInteger(data?.amount) ||
+      data.amount <= 0
+    ) {
       return {
-        received: true,
-        processed: true,
-        idempotentDuplicate: true,
-        message: 'Webhook event already processed (idempotent duplicate)',
+        received: false,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'Invalid transaction status, currency, or amount',
       };
     }
 
-    // 3. Process Charge Success Event
-    if (event === 'charge.success' && data.status === 'success') {
-      const orderNumber = data.metadata?.order_number || reference;
-      const order = await OrderService.getOrder(orderNumber);
+    const order = await OrderService.getOrder(reference);
+    if (!order || order.orderNumber !== reference || String(order.paymentMethod).toUpperCase() !== 'PAYSTACK') {
+      return {
+        received: false,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'No matching Paystack order for this payment reference',
+      };
+    }
 
-      if (order) {
-        await OrderService.markOrderPaid(order.orderNumber, reference);
+    const expectedAmountKobo = Math.round(order.totalNGN * 100);
+    if (data.amount !== expectedAmountKobo) {
+      return {
+        received: false,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'Payment amount does not match the order total',
+      };
+    }
 
-        await prisma.payment.upsert({
-          where: { providerReference: reference },
-          update: {
-            status: 'SUCCESS',
-            paidAt: data.paid_at ? new Date(data.paid_at) : new Date(),
-            rawMetadata: JSON.stringify(data),
-          },
-          create: {
-            orderId: order.id,
-            providerReference: reference,
-            amountNGN: order.totalNGN,
-            currency: 'NGN',
-            status: 'SUCCESS',
-            paidAt: data.paid_at ? new Date(data.paid_at) : new Date(),
-            rawMetadata: JSON.stringify(data),
-          },
-        });
-      }
+    // Do not trust the event payload alone to settle an order. Re-query Paystack
+    // and let PaymentService validate the provider reference, order, currency,
+    // status and exact amount. OrderService handles duplicate payment idempotently.
+    const verification = await PaymentService.verifyPayment(reference);
+    if (!verification.success) {
+      return {
+        received: false,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'Paystack transaction verification failed; order remains unpaid',
+      };
     }
 
     return {
       received: true,
       processed: true,
       idempotentDuplicate: false,
-      message: `Webhook ${event} processed successfully`,
+      message: 'Paystack charge.success independently verified and processed',
     };
   }
 }

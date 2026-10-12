@@ -11,6 +11,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage }) => {
   const { setIsSizeGuideOpen, setIsAdminOpen } = useShop();
+  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -135,16 +136,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               >
                 TIKTOK
               </a>
-              <a 
-                id="footer-whatsapp"
-                href="https://wa.me/2348000000000" 
-                target="_blank" 
-                rel="noreferrer"
-                className="min-h-[36px] flex items-center gap-2 text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link"
-              >
-                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
-                WHATSAPP
-              </a>
+              {whatsappNumber && (
+                <a
+                  id="footer-whatsapp"
+                  href={`https://wa.me/${whatsappNumber}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-h-[36px] flex items-center gap-2 text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                  WHATSAPP
+                </a>
+              )}
             </div>
           </div>
 

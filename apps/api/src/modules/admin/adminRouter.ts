@@ -274,12 +274,26 @@ adminRouter.patch('/orders/:id/status', requireAdmin, async (req: AuthenticatedA
     const existing = await OrderService.getOrder(req.params.id);
     const previousStatus = existing ? existing.orderStatus : 'UNKNOWN';
 
-    const updated = await OrderService.updateStatus(
-      req.params.id,
-      validated.status,
-      validated.note,
-      req.admin?.name || 'ADMIN'
-    );
+    let updated;
+    const actor = req.admin?.name || 'ADMIN';
+
+    if (validated.status === 'PAID' && existing && existing.paymentStatus !== 'PAID') {
+      if (String(existing.paymentMethod).toUpperCase() !== 'DIRECT_TRANSFER') {
+        throw new Error('Paystack orders must be verified by the payment provider. Only direct-transfer orders can be manually confirmed.');
+      }
+      updated = await OrderService.markOrderPaid(
+        existing.orderNumber,
+        `MANUAL-TRANSFER-${existing.orderNumber}`,
+        actor
+      );
+    } else {
+      updated = await OrderService.updateStatus(
+        req.params.id,
+        validated.status,
+        validated.note,
+        actor
+      );
+    }
 
     await AuditService.log({
       adminId: req.admin?.id || 'admin',

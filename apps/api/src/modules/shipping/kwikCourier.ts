@@ -43,16 +43,21 @@ export class KwikCourierAdapter implements IShippingCourier {
   }
 
   public async createShipment(payload: KwikShipmentPayload): Promise<KwikShipmentResult> {
-    const trackingNumber = `KWIK-${payload.orderNumber}-${Math.floor(1000 + Math.random() * 9000)}`;
-
     if (!this.apiKey || !this.apiSecret) {
-      // Graceful sandbox fallback
+      // Never fabricate a courier booking or tracking number in production.
       return {
-        success: true,
-        trackingNumber,
-        courierTaskId: `kwik_task_${Date.now()}`,
-        estimatedDeliveryDate: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
-        message: 'Kwik dispatch scheduled via server adapter',
+        success: false,
+        trackingNumber: '',
+        message: 'Kwik credentials are not configured. Configure KWIK_API_KEY and KWIK_API_SECRET, or enter a manually booked tracking number.',
+      };
+    }
+
+    const pickupAddress = process.env.KWIK_PICKUP_ADDRESS;
+    if (!pickupAddress) {
+      return {
+        success: false,
+        trackingNumber: '',
+        message: 'KWIK_PICKUP_ADDRESS is not configured. Set the real dispatch/pickup address before booking.',
       };
     }
 
@@ -65,7 +70,7 @@ export class KwikCourierAdapter implements IShippingCourier {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          pickup_address: 'PIERCYN Atelier, Victoria Island, Lagos',
+          pickup_address: pickupAddress,
           delivery_address: payload.deliveryAddress,
           recipient_name: payload.recipientName,
           recipient_phone: payload.recipientPhone,
@@ -75,34 +80,38 @@ export class KwikCourierAdapter implements IShippingCourier {
       });
 
       const data = await response.json();
+      const realTrackingNumber = data?.tracking_number || data?.task_id;
+      if (!response.ok || !realTrackingNumber) {
+        return {
+          success: false,
+          trackingNumber: '',
+          courierTaskId: data?.task_id,
+          rawResponse: data,
+          message: data?.message || 'Kwik did not confirm a booking with a tracking/task ID.',
+        };
+      }
       return {
-        success: response.ok,
-        trackingNumber: data.tracking_number || trackingNumber,
+        success: true,
+        trackingNumber: String(realTrackingNumber),
         courierTaskId: data.task_id,
         rawResponse: data,
-        message: response.ok ? 'Kwik delivery booked' : data.message || 'Kwik API error',
+        message: 'Kwik delivery booking confirmed',
       };
     } catch (err: any) {
       console.error('[KWIK_COURIER_ERROR]', err);
       return {
         success: false,
-        trackingNumber,
+        trackingNumber: '',
         message: err.message || 'Failed to dispatch via Kwik Courier',
       };
     }
   }
 
-  public async trackShipment(trackingNumber: string) {
-    return {
-      status: 'IN_TRANSIT',
-      history: [
-        { status: 'CREATED', timestamp: new Date().toISOString(), note: 'Shipment created at atelier' },
-        { status: 'PICKED_UP', timestamp: new Date().toISOString(), note: 'Dispatched to Kwik courier' },
-      ],
-    };
+  public async trackShipment(_trackingNumber: string): Promise<{ status: string; history: any[] }> {
+    throw new Error('Live Kwik tracking is not implemented in this adapter; do not display simulated tracking data.');
   }
 
   public async cancelShipment(_trackingNumber: string): Promise<boolean> {
-    return true;
+    throw new Error('Live Kwik cancellation is not implemented in this adapter.');
   }
 }

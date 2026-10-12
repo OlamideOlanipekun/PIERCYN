@@ -28,6 +28,8 @@ export interface PaymentVerificationResult {
   success: boolean;
   providerReference: string;
   amountNGN: number;
+  amountKobo?: number;
+  currency?: string;
   orderNumber: string;
   paidAt?: string;
   rawResponse?: unknown;
@@ -62,7 +64,7 @@ export class DirectTransferProvider implements IPaymentProvider {
   }
 
   verifyWebhookSignature(): boolean {
-    return true;
+    return false;
   }
 }
 
@@ -73,7 +75,10 @@ export class MockPaymentProvider implements IPaymentProvider {
   providerType = 'MOCK' as const;
 
   async initialize(params: PaymentInitializationParams): Promise<PaymentInitializationResult> {
-    const ref = `MOCK-${Date.now()}`;
+    if (process.env.NODE_ENV === 'production') {
+      return { success: false, provider: 'MOCK', providerReference: params.orderNumber, message: 'Mock payments are disabled in production.' };
+    }
+    const ref = params.orderNumber;
     return {
       success: true,
       provider: 'MOCK',
@@ -87,7 +92,9 @@ export class MockPaymentProvider implements IPaymentProvider {
     return {
       success: true,
       providerReference: reference,
-      amountNGN: 1000000, // ₦10,000 in Kobo
+      amountNGN: 0,
+      amountKobo: 0,
+      currency: 'NGN',
       orderNumber: reference,
       paidAt: new Date().toISOString(),
       rawResponse: { status: 'success', gateway_response: 'Mock success' },
@@ -95,7 +102,7 @@ export class MockPaymentProvider implements IPaymentProvider {
   }
 
   verifyWebhookSignature(): boolean {
-    return true;
+    return false;
   }
 }
 
@@ -115,7 +122,7 @@ export class PaystackPaymentProvider implements IPaymentProvider {
 
   async initialize(params: PaymentInitializationParams): Promise<PaymentInitializationResult> {
     if (!this.secretKey) {
-      return new DirectTransferProvider().initialize(params);
+      return { success: false, provider: 'PAYSTACK', providerReference: params.orderNumber, message: 'Paystack is selected but PAYSTACK_SECRET_KEY is not configured.' };
     }
 
     try {
@@ -129,7 +136,7 @@ export class PaystackPaymentProvider implements IPaymentProvider {
           },
           body: JSON.stringify({
             email: params.customerEmail,
-            amount: params.amountNGN,
+            amount: Math.round(params.amountNGN * 100),
             reference: params.orderNumber,
             callback_url: params.callbackUrl || `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${params.orderNumber}`,
             metadata: {
@@ -177,13 +184,17 @@ export class PaystackPaymentProvider implements IPaymentProvider {
       );
 
       const data = await response.json();
-      const isSuccess = data.status && data.data?.status === 'success';
+      const transaction = data?.data;
+      const amountKobo = Number(transaction?.amount);
+      const isSuccess = response.ok && data?.status === true && transaction?.status === 'success' && Number.isSafeInteger(amountKobo) && amountKobo > 0;
 
       return {
         success: isSuccess,
-        providerReference: reference,
-        amountNGN: isSuccess ? data.data.amount : 0,
-        orderNumber: data.data?.metadata?.order_number || reference,
+        providerReference: transaction?.reference || reference,
+        amountNGN: Number.isSafeInteger(amountKobo) ? amountKobo / 100 : 0,
+        amountKobo: Number.isSafeInteger(amountKobo) ? amountKobo : 0,
+        currency: transaction?.currency,
+        orderNumber: transaction?.metadata?.order_number || reference,
         paidAt: isSuccess ? data.data.paid_at || new Date().toISOString() : undefined,
         rawResponse: data,
       };
@@ -194,78 +205,91 @@ export class PaystackPaymentProvider implements IPaymentProvider {
   }
 
   verifyWebhookSignature(signature: string, rawBody: string): boolean {
-    if (process.env.NODE_ENV === 'test' || !this.webhookSecret) return true;
-    const hash = crypto
-      .createHmac('sha512', this.webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-    return hash === signature;
+    if (!this.webhookSecret || !signature || !/^[a-f0-9]{128}$/i.test(signature)) return false;
+    const expected = crypto.createHmac('sha512', this.webhookSecret).update(rawBody).digest();
+    const received = Buffer.from(signature, 'hex');
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected);
   }
 }
 
 // ── Payment Service ───────────────────────────────────────────────
 
 export class PaymentService {
-  private static provider: IPaymentProvider =
-    COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY
-      ? new PaystackPaymentProvider()
-      : new MockPaymentProvider();
+  private static providerOverride: IPaymentProvider | null = null;
 
-  public static setProvider(p: IPaymentProvider) {
-    this.provider = p;
+  public static setProvider(p: IPaymentProvider | null) {
+    this.providerOverride = p;
   }
 
   public static getProvider(): IPaymentProvider {
-    return this.provider;
+    return this.providerOverride || new PaystackPaymentProvider();
   }
 
-  /**
-   * Verify payment for an order and transition order status to PAID.
-   */
-  public static async verifyPayment(
-    orderNumberOrRef: string,
-    reference?: string
-  ): Promise<PaymentVerificationResult> {
+  private static providerForOrder(order: { paymentMethod?: string }): IPaymentProvider {
+    if (this.providerOverride) return this.providerOverride;
+    const method = String(order.paymentMethod || '').toUpperCase();
+    if (method.includes('PAYSTACK')) return new PaystackPaymentProvider();
+    if (method.includes('MOCK') || method.includes('TEST SIMULATION')) {
+      return process.env.NODE_ENV === 'production' ? new DirectTransferProvider() : new MockPaymentProvider();
+    }
+    return new DirectTransferProvider();
+  }
+
+  public static async verifyPayment(orderNumberOrRef: string, reference?: string): Promise<PaymentVerificationResult> {
     const ref = reference || orderNumberOrRef;
     const order = OrderService.getOrder(orderNumberOrRef) || OrderService.getOrder(ref);
+    if (!order) return { success: false, providerReference: ref, amountNGN: 0, orderNumber: orderNumberOrRef };
 
-    if (order) {
-      OrderService.markOrderPaid(order.orderNumber, ref);
-      return {
-        success: true,
-        providerReference: ref,
-        amountNGN: order.totalNGN,
-        orderNumber: order.orderNumber,
-        paidAt: new Date().toISOString(),
-      };
+    if (order.paymentStatus === 'PAID' || order.orderStatus !== 'PENDING_PAYMENT') {
+      return { success: false, providerReference: ref, amountNGN: 0, orderNumber: order.orderNumber };
     }
 
-    return {
-      success: true,
-      providerReference: ref,
-      amountNGN: 0,
-      orderNumber: ref,
-      paidAt: new Date().toISOString(),
-    };
+    const provider = this.providerForOrder(order);
+    if (provider.providerType === 'DIRECT_TRANSFER') {
+      return { success: false, providerReference: ref, amountNGN: 0, orderNumber: order.orderNumber };
+    }
+
+    if (provider.providerType === 'MOCK') {
+      if (process.env.NODE_ENV === 'production' || ref !== order.orderNumber) {
+        return { success: false, providerReference: ref, amountNGN: 0, orderNumber: order.orderNumber };
+      }
+      OrderService.markOrderPaid(order.orderNumber, ref);
+      return { success: true, providerReference: ref, amountNGN: order.totalNGN, amountKobo: Math.round(order.totalNGN * 100), currency: 'NGN', orderNumber: order.orderNumber, paidAt: new Date().toISOString() };
+    }
+
+    const verified = await provider.verify(ref);
+    const amountKobo = verified.amountKobo ?? Math.round(verified.amountNGN * 100);
+    const expectedKobo = Math.round(order.totalNGN * 100);
+    const valid = verified.success && verified.providerReference === ref && verified.orderNumber === order.orderNumber && verified.currency === 'NGN' && Number.isSafeInteger(amountKobo) && amountKobo === expectedKobo;
+    if (!valid) return { ...verified, success: false, orderNumber: order.orderNumber };
+
+    OrderService.markOrderPaid(order.orderNumber, ref);
+    return { ...verified, success: true, amountNGN: amountKobo / 100, amountKobo, currency: 'NGN', orderNumber: order.orderNumber };
   }
 
-  /**
-   * Initialize payment for an order.
-   */
-  public static async initializePayment(
-    orderNumber: string,
-    callbackUrl?: string
-  ): Promise<PaymentInitializationResult> {
+  public static async initializePayment(orderNumber: string, callbackUrl?: string): Promise<PaymentInitializationResult> {
     const order = OrderService.getOrder(orderNumber);
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
-
-    return this.provider.initialize({
+    if (order.paymentStatus === 'PAID' || order.orderStatus !== 'PENDING_PAYMENT') {
+      throw new Error('Payment can only be initialized for an unpaid order awaiting payment.');
+    }
+    const provider = this.providerForOrder(order);
+    let validatedCallbackUrl: string | undefined;
+    if (callbackUrl) {
+      const requested = new URL(callbackUrl);
+      const appOrigin = new URL(COMMERCE_CONFIG.APP_URL).origin;
+      if (requested.origin !== appOrigin || (process.env.NODE_ENV === 'production' && requested.protocol !== 'https:')) {
+        throw new Error('Callback URL must use the configured PIERCYN application origin.');
+      }
+      validatedCallbackUrl = requested.toString();
+    }
+    return provider.initialize({
       orderNumber: order.orderNumber,
       amountNGN: order.totalNGN,
       customerEmail: order.customerEmail,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      callbackUrl,
+      callbackUrl: validatedCallbackUrl,
     });
   }
 }
