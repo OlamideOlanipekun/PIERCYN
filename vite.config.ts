@@ -6,7 +6,7 @@ function expressApiPlugin(): Plugin {
   return {
     name: 'express-api-plugin',
     async configureServer(server) {
-      const { app } = await server.ssrLoadModule('./src/server/app.ts');
+      const { app } = await server.ssrLoadModule('./apps/api/src/app.ts');
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
         if (url.startsWith('/api') || url.startsWith('/health')) {
