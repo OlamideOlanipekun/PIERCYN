@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { CheckCircle2, MessageCircle, ArrowRight, Copy, Clock, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, MessageCircle, ArrowRight, Copy, Clock } from 'lucide-react';
 
 export const OrderConfirmationModal: React.FC = () => {
   const {
@@ -66,7 +66,7 @@ export const OrderConfirmationModal: React.FC = () => {
 
         <p className="text-xs text-[#141414]/80 mb-5 font-sans">
           {isTransfer
-            ? 'Your pieces are reserved. Please complete your bank transfer below or confirm via WhatsApp.'
+            ? 'Your order is reserved. Contact official support for verified transfer instructions; payment must be verified before fulfilment.'
             : 'Your order has been received and is being prepared for dispatch.'}
         </p>
 
