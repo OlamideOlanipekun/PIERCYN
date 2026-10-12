@@ -37,4 +37,4 @@ jobs:
         run: npm run build
 
       - name: Run in-memory commerce and access-control tests
-        run: npx vitest run tests/commerce.test.ts tests/admin.test.ts tests/affiliate.test.ts tests/auth.test.ts tests/integration_p1.test.ts
+        run: npx vitest run tests/commerce.test.ts tests/admin.test.ts tests/affiliate.test.ts tests/auth.test.ts tests/integration_p1.test.ts apps/api/tests/payment-security.test.ts
