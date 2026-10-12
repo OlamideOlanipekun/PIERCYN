@@ -216,9 +216,12 @@ export class OrderService {
         throw new Error(`Order not found: ${orderNumber}`);
       }
 
-      // Idempotency: if already paid, return early
+      // Idempotency: if already paid, return early.
       if (order.paymentStatus === 'PAID') {
         return order;
+      }
+      if (order.status !== 'PENDING_PAYMENT') {
+        throw new Error(`Cannot confirm payment for order ${order.orderNumber} while its status is ${order.status}.`);
       }
 
       const now = new Date();
