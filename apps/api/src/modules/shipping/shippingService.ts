@@ -126,6 +126,10 @@ export class ShippingService {
       courierMetadata = JSON.stringify(courierResult);
     }
 
+    if (!trackingNumber) {
+      throw new Error('Shipment requires a real courier tracking number or a manually supplied tracking number.');
+    }
+
     const shipment = await prisma.shipment.upsert({
       where: { orderId: order.id },
       update: {
@@ -141,7 +145,7 @@ export class ShippingService {
       create: {
         orderId: order.id,
         provider: data.courier || this.courierAdapter.name,
-        trackingNumber: trackingNumber || `TRK-${Date.now()}`,
+        trackingNumber,
         deliveryFeeNGN: data.deliveryFeeNGN ?? order.deliveryFeeNGN,
         deliveryAddress: data.deliveryAddress,
         recipientName: data.recipientName,
