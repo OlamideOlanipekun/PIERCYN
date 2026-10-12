@@ -112,6 +112,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              id="nav-available-to-order"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                window.history.pushState({}, '', '/available-to-order');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="relative py-2 transition-opacity duration-300 cursor-pointer uppercase font-sans text-[#F2F0EB]/65 hover:text-[#F2F0EB]"
+            >
+              <span>AVAILABLE TO ORDER</span>
+            </button>
+
+            <button
               id="nav-about"
               onClick={() => handleNavClick('about')}
               className={`relative py-2 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
@@ -179,11 +191,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               { label: 'SHOP', pageKey: 'shop' as const },
               { label: 'NEW ARRIVALS', pageKey: 'new' as const, badge: 'NEW' },
               { label: 'MEN', pageKey: 'men' as const },
+              { label: 'AVAILABLE TO ORDER', path: '/available-to-order' },
               { label: 'ABOUT', pageKey: 'about' as const },
             ].map((link, idx) => (
               <button
                 key={link.label}
-                onClick={() => handleNavClick(link.pageKey)}
+                onClick={() => { if (link.pageKey) handleNavClick(link.pageKey); else if ('path' in link && link.path) { setIsMobileMenuOpen(false); window.history.pushState({}, '', link.path); window.dispatchEvent(new PopStateEvent('popstate')); } }}
                 className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#F2F0EB] flex items-center justify-between group py-2 min-h-[52px]"
               >
                 <span className="tracking-tight flex items-center gap-2.5">
@@ -214,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <a
-              href="https://wa.me/2348000000000"
+              href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help."
               target="_blank"
               rel="noopener noreferrer"
               className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"
