@@ -35,7 +35,8 @@ export const OrderConfirmationModal: React.FC = () => {
     showToast(`Copied ${lastCreatedOrder.orderNumber} to clipboard`);
   };
 
-  const isTransfer = lastCreatedOrder.paymentMethod.toLowerCase().includes('transfer') || lastCreatedOrder.paymentStatus === 'PENDING';
+  const paymentMethod = String(lastCreatedOrder.paymentMethod || '').toLowerCase();
+  const isTransfer = paymentMethod.includes('transfer') || paymentMethod.includes('direct');
 
   const whatsappMessage = encodeURIComponent(
     `Hello PIERCYN! I just placed Order #${lastCreatedOrder.orderNumber} for ₦${lastCreatedOrder.totalNGN.toLocaleString()}. ${
