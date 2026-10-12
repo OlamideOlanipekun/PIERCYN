@@ -160,3 +160,30 @@ export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, pr
     </main>
   );
 };
+
+
+export const HomepageAvailabilitySections: React.FC<{
+  products: Product[];
+  onViewProduct: (product: Product) => void;
+  onBrowseShop: () => void;
+}> = ({ products, onViewProduct, onBrowseShop }) => {
+  const inStock = products.filter((product) => typeof product.stock === 'number' && product.stock > 0 && !product.isSoldOut).slice(0, 4);
+
+  return (
+    <section className="bg-[#F2F0EB] px-0 py-12 text-[#141414] sm:py-16">
+      <div className="piercyn-container space-y-12 sm:space-y-16">
+        <div>
+          <div className="flex items-end justify-between gap-4 border-b border-[#DAD8D1] pb-4">
+            <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#77736C]">READY TO DISPATCH</p><h2 className="mt-2 font-editorial text-3xl italic sm:text-4xl">In stock now</h2></div>
+            <button onClick={onBrowseShop} className="mb-1 inline-flex min-h-10 items-center gap-2 text-[10px] font-bold uppercase tracking-wider">Shop all <ArrowRight className="h-4 w-4" /></button>
+          </div>
+          {inStock.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">{inStock.map((product) => <button key={product.id} onClick={() => onViewProduct(product)} className="overflow-hidden rounded-xl border border-[#DAD8D1] bg-white text-left"><div className="aspect-[3/4] bg-[#E8E6E1]">{product.images?.[0] ? <img src={product.images[0]} alt={product.name} loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#77736C]">Image unavailable</div>}</div><div className="p-3"><p className="line-clamp-2 text-sm font-semibold">{product.name}</p><p className="mt-2 text-xs text-[#6E6B65]">{formatNGN(product.priceNGN)}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-emerald-800"><PackageCheck className="mr-1 inline h-3.5 w-3.5" /> In stock</p></div></button>)}</div> : <p className="mt-5 max-w-2xl text-sm leading-7 text-[#5F5C56]">Live inventory is being checked. Products appear in this section only when the catalogue returns a positive available quantity; no stock is assumed when inventory data is missing.</p>}
+        </div>
+        <div className="grid gap-5 rounded-2xl bg-[#141414] p-6 text-[#F2F0EB] sm:grid-cols-[1fr_auto] sm:items-center sm:p-9">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">SUPPLIER-SOURCED DESIGNS</p><h2 className="mt-2 font-editorial text-3xl italic sm:text-4xl">Available to order</h2><p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">Supplier availability and sourcing timelines must be confirmed before an item can be promised. We will not label unverified supplier designs as guaranteed stock.</p></div>
+          <a href="/available-to-order" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/30 px-5 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-white hover:text-[#141414]">How it works <ArrowRight className="h-4 w-4" /></a>
+        </div>
+      </div>
+    </section>
+  );
+};
