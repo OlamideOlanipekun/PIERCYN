@@ -158,6 +158,21 @@ const UpdateVariantSchema = z.object({
   sortOrder: z.number().int().nonnegative().optional(),
 }).refine((value) => Object.keys(value).length > 0, 'Provide at least one variant field to update');
 
+
+const CreateCategorySchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  slug: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(500).optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
+const UpdateCategorySchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  slug: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+  isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, 'Provide at least one category field to update');
+
 const InventoryAdjustmentSchema = z.object({
   variantId: z.string().min(1),
   quantity: z.number().int().positive(),
@@ -416,6 +431,61 @@ adminRouter.post('/orders/:id/shipment', requireAdmin, async (req: Authenticated
   }
 });
 
+
+
+/* Category CRUD; categories with active products cannot be deactivated. */
+adminRouter.get('/categories', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const includeInactive = req.query.includeInactive === 'true';
+    const data = await prisma.category.findMany({
+      where: includeInactive ? undefined : { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      include: { _count: { select: { products: true } } },
+    });
+    res.json({ success: true, count: data.length, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load categories.' });
+  }
+});
+
+adminRouter.post('/categories', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = CreateCategorySchema.parse(req.body);
+    const slug = (input.slug || input.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, sortOrder: input.sortOrder ?? 0, isActive: true } });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_CREATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category created' });
+    res.status(201).json({ success: true, data: category });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.code === 'P2002' ? 'A category with this name or slug already exists.' : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 409).json({ success: false, error: message });
+  }
+});
+
+adminRouter.patch('/categories/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = UpdateCategorySchema.parse(req.body);
+    const data: any = { ...input };
+    if (input.name && !input.slug) data.slug = input.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const category = await prisma.category.update({ where: { id: req.params.id }, data });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_UPDATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category updated' });
+    res.json({ success: true, data: category });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.code === 'P2002' ? 'A category with this name or slug already exists.' : err.message;
+    res.status(err instanceof z.ZodError ? 400 : err.code === 'P2025' ? 404 : 409).json({ success: false, error: message });
+  }
+});
+
+adminRouter.delete('/categories/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const activeProducts = await prisma.product.count({ where: { categoryId: req.params.id, status: 'ACTIVE' } });
+    if (activeProducts > 0) return res.status(409).json({ success: false, error: 'Move or archive active products in this category before deactivating it.' });
+    const category = await prisma.category.update({ where: { id: req.params.id }, data: { isActive: false } });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_ARCHIVED', resource: 'PRODUCT', resourceId: category.id, previousValue: category.name, newValue: 'INACTIVE', note: 'Category deactivated; historical product references preserved' });
+    res.json({ success: true, message: 'Category deactivated. Existing product records were preserved.' });
+  } catch (err: any) {
+    res.status(err.code === 'P2025' ? 404 : 400).json({ success: false, error: err.message });
+  }
+});
 
 /* Product variant CRUD. Deletes are soft-deletes to preserve historical orders. */
 adminRouter.get('/variants', requireAdmin, async (_req: Request, res: Response) => {

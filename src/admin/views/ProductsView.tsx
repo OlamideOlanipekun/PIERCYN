@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AdminProduct } from '../types';
+import { AdminProduct, AdminCategory } from '../types';
 import { AdminApi } from '../api';
 import { uploadImageToSupabase } from '../utils/uploadImage';
 import {
@@ -151,6 +151,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
 
 export const ProductsView: React.FC = () => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -167,7 +168,7 @@ export const ProductsView: React.FC = () => {
   // Add Product Form State
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState('cat-tees');
+  const [formCategory, setFormCategory] = useState('');
   const [formPriceNGN, setFormPriceNGN] = useState<number>(35000);
   const [formCostPriceNGN, setFormCostPriceNGN] = useState<number>(14000);
   const [formGsm, setFormGsm] = useState('280 GSM');
@@ -198,6 +199,13 @@ export const ProductsView: React.FC = () => {
   useEffect(() => {
     fetchProducts();
   }, [categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    AdminApi.getCategories().then((data) => {
+      setCategories(data);
+      setFormCategory((current) => data.some((category) => category.id === current) ? current : (data[0]?.id || ''));
+    }).catch((err: any) => setError(err?.message || 'Unable to load categories.'));
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,12 +408,7 @@ export const ProductsView: React.FC = () => {
             className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-2.5 sm:px-3 py-2 text-[#F2F0EB] outline-hidden min-h-[40px] text-xs min-w-0"
           >
             <option value="ALL">All Categories</option>
-            <option value="cat-tees">Tees</option>
-            <option value="cat-hoodies">Hoodies</option>
-            <option value="cat-sweatshirts">Sweatshirts</option>
-            <option value="cat-jackets">Jackets</option>
-            <option value="cat-trousers">Trousers</option>
-            <option value="cat-accessories">Accessories</option>
+            {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
           </select>
 
           <select
@@ -699,12 +702,7 @@ export const ProductsView: React.FC = () => {
                   onChange={(e) => setFormCategory(e.target.value)}
                   className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
                 >
-                  <option value="cat-tees">Tees</option>
-                  <option value="cat-hoodies">Hoodies</option>
-                  <option value="cat-sweatshirts">Sweatshirts</option>
-                  <option value="cat-jackets">Jackets</option>
-                  <option value="cat-trousers">Trousers</option>
-                  <option value="cat-accessories">Accessories</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
               </div>
 
@@ -935,7 +933,7 @@ export const ProductsView: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Category ID</label>
                   <select value={editingProduct.categoryId} onChange={(e) => setEditingProduct({ ...editingProduct, categoryId: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]">
-                    <option value="cat-tees">Tees</option><option value="cat-hoodies">Hoodies</option><option value="cat-sweatshirts">Sweatshirts</option><option value="cat-jackets">Jackets</option><option value="cat-trousers">Trousers</option><option value="cat-accessories">Accessories</option>
+                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </select>
                 </div>
                 <div>

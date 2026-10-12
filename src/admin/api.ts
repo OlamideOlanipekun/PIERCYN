@@ -11,6 +11,7 @@ import {
   AdminSettingsData,
   AdminMediaAsset,
   AdminVariantRecord,
+  AdminCategory,
 } from './types';
 
 const ADMIN_TOKEN_KEY = 'piercyn_admin_token';
@@ -203,6 +204,23 @@ class AdminApiClient {
 
   public async deleteMedia(path: string): Promise<{ success: boolean; message: string }> {
     return this.request('/media', { method: 'DELETE', body: JSON.stringify({ path }) });
+  }
+
+  // Product category CRUD
+  public async getCategories(includeInactive = false): Promise<AdminCategory[]> {
+    return this.request<AdminCategory[]>(`/categories${includeInactive ? '?includeInactive=true' : ''}`);
+  }
+
+  public async createCategory(input: { name: string; slug?: string; description?: string; sortOrder?: number }): Promise<AdminCategory> {
+    return this.request<AdminCategory>('/categories', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  public async updateCategory(id: string, updates: Partial<AdminCategory>): Promise<AdminCategory> {
+    return this.request<AdminCategory>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
+  }
+
+  public async archiveCategory(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/categories/${id}`, { method: 'DELETE' });
   }
 
   // Product variant CRUD (delete is a safe deactivation to preserve order history)

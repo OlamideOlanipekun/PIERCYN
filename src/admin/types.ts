@@ -4,6 +4,7 @@ export type AdminNavTab =
   | 'products'
   | 'media'
   | 'variants'
+  | 'categories'
   | 'inventory'
   | 'customers'
   | 'affiliates'
@@ -384,4 +385,14 @@ export interface AdminVariantRecord {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  _count?: { products: number };
 }

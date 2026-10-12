@@ -8,6 +8,7 @@ import { OrderDetailModal } from './views/OrderDetailModal';
 import { ProductsView } from './views/ProductsView';
 import { MediaLibraryView } from './views/MediaLibraryView';
 import { VariantsView } from './views/VariantsView';
+import { CategoriesView } from './views/CategoriesView';
 import { InventoryView } from './views/InventoryView';
 import { CustomersView } from './views/CustomersView';
 import { AffiliatesView } from './views/AffiliatesView';
@@ -36,6 +37,7 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     else if (path.includes('/admin/products')) setActiveTab('products');
     else if (path.includes('/admin/media')) setActiveTab('media');
     else if (path.includes('/admin/variants')) setActiveTab('variants');
+    else if (path.includes('/admin/categories')) setActiveTab('categories');
     else if (path.includes('/admin/inventory')) setActiveTab('inventory');
     else if (path.includes('/admin/customers')) setActiveTab('customers');
     else if (path.includes('/admin/affiliates')) setActiveTab('affiliates');
@@ -100,6 +102,8 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
         {activeTab === 'media' && <MediaLibraryView />}
 
         {activeTab === 'variants' && <VariantsView />}
+
+        {activeTab === 'categories' && <CategoriesView />}
 
         {activeTab === 'inventory' && <InventoryView />}
 
