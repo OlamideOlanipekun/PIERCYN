@@ -4,7 +4,7 @@ import { useShop } from '../context/ShopContext';
 
 export const WhatsAppCTASection: React.FC = () => {
   const { setIsConciergeOpen } = useShop();
-  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\\D/g, '');
+  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
 
   const defaultMsg = encodeURIComponent(
     "Hello PIERCYN! I'm browsing the store and have a question about sizing and delivery."
