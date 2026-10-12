@@ -724,7 +724,7 @@ export class AffiliateService {
             : 0,
       },
       config: {
-        commissionPerProductNGN: CommissionService.getCommissionPerProductNGN(),
+        commissionPerOrderNGN: CommissionService.getCommissionPerOrderNGN(),
         returnWindowDays: CommissionService.getReturnWindowDays(),
         attributionWindowDays: ATTRIBUTION_WINDOW_DAYS,
         minimumPayoutNGN: MIN_PAYOUT_KOBO / 100,
