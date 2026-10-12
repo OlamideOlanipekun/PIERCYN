@@ -108,9 +108,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             <div id="footer-mobile-help" hidden={!openGroups.help} className="py-2"><nav className="flex flex-col">
               <button onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
               <a href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
-              <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT US</a>
+              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
+              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
+              <a href="/contact" className={footerLinkClass}>CONTACT US</a>
               <button onClick={goToAffiliate} className={footerLinkClass}>AFFILIATE PROGRAM</button>
             </nav></div>
           </section>
@@ -125,9 +125,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <section>
             {groupHeader('legal', 'LEGAL & SUPPORT')}
             <div id="footer-mobile-legal" hidden={!openGroups.legal} className="py-2"><nav className="flex flex-col">
-              <a href="mailto:hello@piercyn.com?subject=Shipping%20and%20delivery" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="mailto:hello@piercyn.com?subject=Returns%20and%20exchanges" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="mailto:hello@piercyn.com" className={footerLinkClass}>CONTACT SUPPORT</a>
+              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
+              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
+              <a href="/contact" className={footerLinkClass}>CONTACT SUPPORT</a>
             </nav></div>
           </section>
         </div>
