@@ -257,6 +257,15 @@ export class PaymentService {
       };
     }
 
+    if (order.paymentStatus !== 'PAID' && order.orderStatus !== 'PENDING_PAYMENT') {
+      return {
+        success: false,
+        providerReference: ref,
+        amountNGN: 0,
+        orderNumber: order.orderNumber,
+      };
+    }
+
     const provider = this.providerForOrder(order);
     if (provider.providerType === 'DIRECT_TRANSFER') {
       // Bank transfers cannot be confirmed from a customer-supplied reference.
