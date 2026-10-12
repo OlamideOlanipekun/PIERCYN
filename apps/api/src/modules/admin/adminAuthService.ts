@@ -86,8 +86,10 @@ export class AdminAuthService {
           });
         }
       }
-    } catch {
-      // If DB is offline / during mock tests
+    } catch (error) {
+      // Do not misreport database/configuration outages as bad credentials.
+      console.error('[ADMIN_AUTH_DATABASE_ERROR]', error);
+      throw new Error('Admin authentication service is temporarily unavailable. Please try again later.');
     }
 
     // Seed credentials are for local development and automated tests only. They

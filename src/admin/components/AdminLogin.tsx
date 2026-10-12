@@ -35,7 +35,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToStore }) => {
 
   const handleFillDemoCredentials = () => {
     setEmail('admin@piercyn.com');
-    setPassword('piercynAdmin2026');
+    setPassword('piercyn2026');
     setError(null);
   };
 
@@ -147,17 +147,19 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToStore }) => {
             </button>
           </form>
 
-          {/* Quick Demo Credential Autofill Helper for Validation */}
-          <div className="mt-6 pt-5 border-t border-white/5 text-center">
-            <button
-              type="button"
-              onClick={handleFillDemoCredentials}
-              className="text-[11px] font-mono text-[#A3A199] hover:text-[#F2F0EB] transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Fill Seeded Admin Credentials</span>
-            </button>
-          </div>
+          {/* Development-only helper. Never expose seeded credentials in production. */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 pt-5 border-t border-white/5 text-center">
+              <button
+                type="button"
+                onClick={handleFillDemoCredentials}
+                className="text-[11px] font-mono text-[#A3A199] hover:text-[#F2F0EB] transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Fill Local Seed Credentials</span>
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
