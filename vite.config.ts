@@ -3,7 +3,8 @@ dotenv.config();
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, Plugin } from 'vite';
+import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
 function expressApiPlugin(): Plugin {
   return {
     name: 'express-api-plugin',
@@ -26,6 +27,15 @@ export default defineConfig(({ command }) => {
     // external when Vite SSR loads the API middleware so Node handles interop.
     ssr: {
       external: ['express', 'cors', 'dotenv', '@prisma/client', '@prisma/adapter-pg', 'pg', 'bcryptjs'],
+    },
+    // Vitest's module runner otherwise inlines some CommonJS dependencies in
+    // the API integration suite, where `module` is not defined.
+    test: {
+      server: {
+        deps: {
+          external: ['express', 'cors', 'dotenv', '@prisma/client', '@prisma/adapter-pg', 'pg', 'bcryptjs', 'supertest'],
+        },
+      },
     },
     // The Express bridge is development-only. Loading it during a production
     // build makes Node resolve the workspace TypeScript config package before
