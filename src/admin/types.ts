@@ -3,6 +3,7 @@ export type AdminNavTab =
   | 'orders'
   | 'products'
   | 'media'
+  | 'variants'
   | 'inventory'
   | 'customers'
   | 'affiliates'
@@ -362,4 +363,25 @@ export interface AdminMediaAsset {
   updatedAt: string | null;
   sizeBytes: number | null;
   contentType: string | null;
+}
+
+export interface AdminVariantRecord {
+  id: string;
+  productId: string;
+  productName: string;
+  productStatus: string;
+  sku: string;
+  size: string;
+  colour: string;
+  colourHex: string;
+  priceNGN: number | null;
+  costPriceNGN: number | null;
+  image: string | null;
+  active: boolean;
+  stockQuantity: number;
+  reservedQuantity: number;
+  availableStock: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }

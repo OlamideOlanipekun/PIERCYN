@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   Package,
   Images,
+  SlidersHorizontal,
   Layers,
   Users,
   BarChart3,
@@ -125,6 +126,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'media', label: 'Media Library', icon: Images },
+    { id: 'variants', label: 'Variants', icon: SlidersHorizontal },
     {
       id: 'inventory',
       label: 'Inventory',
@@ -158,6 +160,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         };
       case 'media':
         return { title: 'Media Library', subtitle: 'Manage product image assets, copy URLs, and safely remove unused files' };
+      case 'variants':
+        return { title: 'Variant Management', subtitle: 'Create and maintain sizes, colours, SKUs, variant prices, and active status' };
       case 'inventory':
         return {
           title: 'Variant Inventory',
@@ -616,18 +620,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             id="mobile-nav-more"
             onClick={() => setMobileMenuOpen(true)}
             className={`flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-h-[46px] rounded-lg transition-colors cursor-pointer ${
-              ['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab)
+              ['customers', 'media', 'variants', 'analytics', 'audit', 'settings'].includes(activeTab)
                 ? 'text-[#F2F0EB]'
                 : 'text-[#888] hover:text-[#F2F0EB]'
             }`}
           >
             <div className="relative">
-              <MoreHorizontal className={`w-5 h-5 ${['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB]' : 'text-[#888]'}`} />
-              {['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) && (
+              <MoreHorizontal className={`w-5 h-5 ${['customers', 'media', 'variants', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB]' : 'text-[#888]'}`} />
+              {['customers', 'media', 'variants', 'analytics', 'audit', 'settings'].includes(activeTab) && (
                 <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-[#F2F0EB]" />
               )}
             </div>
-            <span className={`text-[10px] tracking-tight mt-1 ${['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB] font-bold' : 'text-[#888]'}`}>
+            <span className={`text-[10px] tracking-tight mt-1 ${['customers', 'media', 'variants', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB] font-bold' : 'text-[#888]'}`}>
               More
             </span>
           </button>

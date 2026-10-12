@@ -10,6 +10,7 @@ import {
   AdminAuditEntry,
   AdminSettingsData,
   AdminMediaAsset,
+  AdminVariantRecord,
 } from './types';
 
 const ADMIN_TOKEN_KEY = 'piercyn_admin_token';
@@ -202,6 +203,23 @@ class AdminApiClient {
 
   public async deleteMedia(path: string): Promise<{ success: boolean; message: string }> {
     return this.request('/media', { method: 'DELETE', body: JSON.stringify({ path }) });
+  }
+
+  // Product variant CRUD (delete is a safe deactivation to preserve order history)
+  public async getVariants(): Promise<AdminVariantRecord[]> {
+    return this.request<AdminVariantRecord[]>('/variants');
+  }
+
+  public async createVariant(input: { productId: string; sku?: string; size: string; colour: string; colourHex?: string; priceNGN?: number; costPriceNGN?: number; image?: string; initialStock: number }): Promise<AdminVariantRecord> {
+    return this.request<AdminVariantRecord>('/variants', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  public async updateVariant(id: string, updates: Partial<AdminVariantRecord>): Promise<AdminVariantRecord> {
+    return this.request<AdminVariantRecord>(`/variants/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
+  }
+
+  public async archiveVariant(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/variants/${id}`, { method: 'DELETE' });
   }
 
   // 4. Inventory
