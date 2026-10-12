@@ -324,13 +324,27 @@ export class PaymentService {
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
 
     const provider = this.providerForOrder(order);
+    let validatedCallbackUrl: string | undefined;
+    if (callbackUrl) {
+      try {
+        const requested = new URL(callbackUrl);
+        const appOrigin = new URL(COMMERCE_CONFIG.APP_URL).origin;
+        if (requested.origin !== appOrigin || (process.env.NODE_ENV === 'production' && requested.protocol !== 'https:')) {
+          throw new Error('Callback URL must use the configured PIERCYN application origin.');
+        }
+        validatedCallbackUrl = requested.toString();
+      } catch (error: any) {
+        throw new Error(error.message || 'Invalid payment callback URL.');
+      }
+    }
+
     return provider.initialize({
       orderNumber: order.orderNumber,
       amountNGN: order.totalNGN,
       customerEmail: order.customerEmail,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      callbackUrl,
+      callbackUrl: validatedCallbackUrl,
     });
   }
 }
