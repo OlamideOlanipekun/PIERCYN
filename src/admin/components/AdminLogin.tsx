@@ -35,7 +35,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToStore }) => {
 
   const handleFillDemoCredentials = () => {
     setEmail('admin@piercyn.com');
-    setPassword('piercynAdmin2026');
+    setPassword('piercyn2026');
     setError(null);
   };
 
