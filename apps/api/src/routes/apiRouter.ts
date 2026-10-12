@@ -194,6 +194,9 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
     }
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
+    if (process.env.NODE_ENV === 'production' && validated.paymentMethod === 'mock') {
+      return res.status(400).json({ success: false, error: 'Mock payments are not available in production.' });
+    }
 
     const order = await CheckoutService.createOrder({
       ...validated,
