@@ -14,6 +14,9 @@ interface StorefrontInfoPageProps {
   onViewProduct: (product: Product) => void;
   onShop: () => void;
   onOpenSearch?: () => void;
+  isLoadingProducts?: boolean;
+  catalogError?: string | null;
+  onRetryProducts?: () => void;
   onOpenCart: () => void;
   onOpenCheckout: () => void;
 }
@@ -111,7 +114,7 @@ const copy: Record<Exclude<StorefrontPageKey, 'search' | 'cart' | 'checkout' | '
   },
 };
 
-export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, products, onViewProduct, onShop, onOpenSearch, onOpenCart, onOpenCheckout }) => {
+export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, products, onViewProduct, onShop, onOpenSearch, onOpenCart, onOpenCheckout, isLoadingProducts = false, catalogError = null, onRetryProducts }) => {
   const [query, setQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const normalizedQuery = query.trim().toLowerCase();
   const results = useMemo(() => {
@@ -139,7 +142,7 @@ export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, pr
               </div>
               <button onClick={() => setQuery(query.trim())} className="min-h-12 rounded-xl bg-[#141414] px-5 text-xs font-bold uppercase tracking-wider text-white">Search</button>
             </div>
-            {!normalizedQuery ? <p className="mt-6 text-sm text-[#6E6B65]">Enter a term to search the live catalogue.</p> : results.length === 0 ? <div className="mt-6 rounded-2xl border border-[#DAD8D1] p-8 text-center"><p className="font-editorial text-2xl italic">No pieces found</p><p className="mt-2 text-sm text-[#6E6B65]">Try another name or category.</p><button onClick={onShop} className="mt-5 text-xs font-bold uppercase underline underline-offset-4">Browse all pieces</button></div> : (
+            {catalogError ? <div className="mt-6 rounded-2xl border border-[#DAD8D1] p-8 text-center"><p className="font-editorial text-2xl italic">Catalogue unavailable</p><p className="mt-2 text-sm text-[#6E6B65]">{catalogError}</p>{onRetryProducts && <button onClick={onRetryProducts} className="mt-5 text-xs font-bold uppercase underline underline-offset-4">Try again</button>}</div> : isLoadingProducts ? <p className="mt-6 text-sm text-[#6E6B65]">Loading the latest catalogue…</p> : !normalizedQuery ? <p className="mt-6 text-sm text-[#6E6B65]">Enter a term to search the live catalogue.</p> : results.length === 0 ? <div className="mt-6 rounded-2xl border border-[#DAD8D1] p-8 text-center"><p className="font-editorial text-2xl italic">No pieces found</p><p className="mt-2 text-sm text-[#6E6B65]">Try another name or category.</p><button onClick={onShop} className="mt-5 text-xs font-bold uppercase underline underline-offset-4">Browse all pieces</button></div> : (
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{results.map((product) => <button key={product.id} onClick={() => onViewProduct(product)} className="overflow-hidden rounded-xl border border-[#DAD8D1] bg-white text-left transition-transform hover:-translate-y-0.5"><div className="aspect-[3/4] bg-[#E8E6E1]">{product.images?.[0] ? <img src={product.images[0]} alt={product.name} loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-[#77736C]">Image unavailable</div>}</div><div className="p-3"><p className="line-clamp-2 text-sm font-semibold">{product.name}</p><p className="mt-2 text-xs text-[#6E6B65]">{formatNGN(product.priceNGN)}</p><p className="mt-2 text-[10px] uppercase tracking-wider text-[#6E6B65]">{product.stock === undefined ? 'Availability not confirmed' : product.stock > 0 ? 'In stock' : 'Out of stock'}</p></div></button>)}</div>
             )}
           </section>
