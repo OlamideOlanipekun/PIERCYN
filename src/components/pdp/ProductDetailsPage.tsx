@@ -106,9 +106,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
+  const hasVariants = Boolean(product.variants?.length);
   const selectedVariant = product.variants?.find((variant) => variant.size === selectedSize && variant.colour === currentColor?.name);
-  const maxPurchaseQuantity = selectedVariant?.active === false ? 0 : Math.max(0, Math.min(10, selectedVariant?.availableStock ?? product.stock ?? 10));
-  const isSoldOut = product.isSoldOut || product.stock === 0 || selectedVariant?.active === false || selectedVariant?.availableStock === 0;
+  const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
+  const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
+  const isSoldOut = product.isSoldOut || (hasVariants
+    ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
+    : typeof selectedStock !== 'number' || selectedStock <= 0);
   const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
   const handleAddToCart = () => {
