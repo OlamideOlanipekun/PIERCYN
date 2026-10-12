@@ -11,7 +11,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage }) => {
   const { setIsSizeGuideOpen, setIsAdminOpen } = useShop();
-  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\\D/g, '');
+  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
