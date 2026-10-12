@@ -49,7 +49,11 @@ function createOrderAccessToken(orderId: string): string {
   if (!orderAccessSecret) {
     throw new Error('Order access token signing is not configured. Set ORDER_ACCESS_TOKEN_SECRET.');
   }
-  const payload = Buffer.from(JSON.stringify({ orderId, nonce: crypto.randomBytes(24).toString('hex') })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    orderId,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    nonce: crypto.randomBytes(24).toString('hex'),
+  })).toString('base64url');
   const signature = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
   return `ord_${payload}.${signature}`;
 }
@@ -67,8 +71,9 @@ function getAuthorizedOrderId(req: Request): string | null {
   if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
 
   try {
-    const orderId = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).orderId;
-    return typeof orderId === 'string' ? orderId : null;
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (typeof decoded.exp !== 'number' || decoded.exp <= Date.now()) return null;
+    return typeof decoded.orderId === 'string' ? decoded.orderId : null;
   } catch {
     return null;
   }
