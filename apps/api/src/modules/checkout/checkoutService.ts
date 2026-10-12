@@ -251,7 +251,7 @@ export class CheckoutService {
     }, { isolationLevel: 'Serializable' });
 
     // Best-effort operator alert; notification outages must never fail checkout.
-    void WhatsAppNotificationService.notifyOrderEvent({
+    await WhatsAppNotificationService.notifyOrderEvent({
       orderNumber: createdOrder.orderNumber,
       customerName: `${createdOrder.customerFirstName} ${createdOrder.customerLastName}`.trim(),
       customerPhone: createdOrder.customerPhone,
