@@ -194,6 +194,19 @@ export const ProductsView: React.FC = () => {
   const [formGsm, setFormGsm] = useState('280 GSM');
   const [formFit, setFormFit] = useState('Relaxed Boxy Cut');
   const [formFabric, setFormFabric] = useState('100% Heavyweight Cotton');
+  const [formShortDescription, setFormShortDescription] = useState('');
+  const [formCollection, setFormCollection] = useState('essentials');
+  const [formOrigin, setFormOrigin] = useState('');
+  const [formCareInstructions, setFormCareInstructions] = useState('');
+  const [formProductStory, setFormProductStory] = useState('');
+  const [formTag, setFormTag] = useState('');
+  const [formVideoUrl, setFormVideoUrl] = useState('');
+  const [formPriceUSD, setFormPriceUSD] = useState<number | ''>('');
+  const [formPriceGBP, setFormPriceGBP] = useState<number | ''>('');
+  const [formPriceEUR, setFormPriceEUR] = useState<number | ''>('');
+  const [formIsNewDrop, setFormIsNewDrop] = useState(false);
+  const [formIsBestSeller, setFormIsBestSeller] = useState(false);
+  const [formIsLimited, setFormIsLimited] = useState(false);
 
   // Image slot state (for both add & edit)
   const [addImageSlots, setAddImageSlots] = useState<ImageSlot[]>([]);
@@ -295,6 +308,19 @@ export const ProductsView: React.FC = () => {
         gsm: formGsm,
         fit: formFit,
         fabric: formFabric,
+        shortDescription: formShortDescription,
+        collection: formCollection || 'essentials',
+        origin: formOrigin,
+        careInstructions: formCareInstructions,
+        productStory: formProductStory,
+        tag: formTag,
+        videoUrl: formVideoUrl || undefined,
+        priceUSD: formPriceUSD === '' ? undefined : Number(formPriceUSD),
+        priceGBP: formPriceGBP === '' ? undefined : Number(formPriceGBP),
+        priceEUR: formPriceEUR === '' ? undefined : Number(formPriceEUR),
+        isNewDrop: formIsNewDrop,
+        isBestSeller: formIsBestSeller,
+        isLimited: formIsLimited,
         status: 'ACTIVE',
         variants: defaultVariants as any,
       });
@@ -302,6 +328,9 @@ export const ProductsView: React.FC = () => {
       setIsAddModalOpen(false);
       setFormName('');
       setFormDescription('');
+      setFormShortDescription(''); setFormCollection('essentials'); setFormOrigin(''); setFormCareInstructions('');
+      setFormProductStory(''); setFormTag(''); setFormVideoUrl(''); setFormPriceUSD(''); setFormPriceGBP(''); setFormPriceEUR('');
+      setFormIsNewDrop(false); setFormIsBestSeller(false); setFormIsLimited(false);
       setAddImageSlots([]);
       await fetchProducts();
     } catch (err: any) {
@@ -826,6 +855,32 @@ export const ProductsView: React.FC = () => {
                 </div>
               </div>
 
+              <details className="rounded-lg border border-[#2D2D2D] bg-[#101010] p-3">
+                <summary className="cursor-pointer text-[11px] font-mono uppercase tracking-wider text-[#F2F0EB]">Additional catalog fields · optional</summary>
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Short description</span><textarea rows={2} value={formShortDescription} onChange={(e) => setFormShortDescription(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Collection</span><input value={formCollection} onChange={(e) => setFormCollection(e.target.value)} placeholder="essentials" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price USD</span><input type="number" min={1} value={formPriceUSD} onChange={(e) => setFormPriceUSD(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price GBP</span><input type="number" min={1} value={formPriceGBP} onChange={(e) => setFormPriceGBP(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price EUR</span><input type="number" min={1} value={formPriceEUR} onChange={(e) => setFormPriceEUR(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Country / origin</span><input value={formOrigin} onChange={(e) => setFormOrigin(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Product tag</span><input value={formTag} onChange={(e) => setFormTag(e.target.value)} placeholder="graphic, limited…" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Video URL</span><input type="url" value={formVideoUrl} onChange={(e) => setFormVideoUrl(e.target.value)} placeholder="https://…" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Care instructions</span><textarea rows={2} value={formCareInstructions} onChange={(e) => setFormCareInstructions(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Product story</span><textarea rows={3} value={formProductStory} onChange={(e) => setFormProductStory(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <div className="flex flex-wrap gap-4 text-xs">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsNewDrop} onChange={(e) => setFormIsNewDrop(e.target.checked)} />New drop</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsBestSeller} onChange={(e) => setFormIsBestSeller(e.target.checked)} />Best seller</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsLimited} onChange={(e) => setFormIsLimited(e.target.checked)} />Limited</label>
+                  </div>
+                </div>
+              </details>
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-neutral-400 text-[11px]">
                 ℹ️ Initial variants (Onyx Black M/L, Bone White M) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[COLOR]-[SIZE].
               </div>
