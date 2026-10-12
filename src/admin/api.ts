@@ -232,7 +232,7 @@ class AdminApiClient {
     return this.request<AdminVariantRecord>('/variants', { method: 'POST', body: JSON.stringify(input) });
   }
 
-  public async updateVariant(id: string, updates: Partial<AdminVariantRecord>): Promise<AdminVariantRecord> {
+  public async updateVariant(id: string, updates: Partial<AdminVariantRecord> & { isActive?: boolean }): Promise<AdminVariantRecord> {
     return this.request<AdminVariantRecord>(`/variants/${id}`, { method: 'PATCH', body: JSON.stringify(updates) });
   }
 
