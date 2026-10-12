@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+loadEnv();
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { apiRouter } from './routes/apiRouter';
