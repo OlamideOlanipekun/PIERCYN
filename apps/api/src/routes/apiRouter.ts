@@ -271,7 +271,10 @@ apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
 apiRouter.post('/payments/webhook', async (req: Request, res: Response) => {
   try {
     const signature = (req.headers['x-paystack-signature'] as string) || '';
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    const rawBody = (req as any).rawBody;
+    if (typeof rawBody !== 'string' || !rawBody) {
+      return res.status(400).json({ received: false, error: 'Raw webhook body is required for signature verification.' });
+    }
     const result = await WebhookService.handlePaystackWebhook(signature, rawBody, req.body);
     return res.status(result.received ? 200 : 400).json(result);
   } catch (err: any) {
