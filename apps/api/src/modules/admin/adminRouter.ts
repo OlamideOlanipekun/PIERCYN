@@ -160,8 +160,23 @@ adminRouter.post('/auth/login', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: result });
   } catch (err: any) {
-    const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(401).json({ success: false, error: msg });
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: err.issues[0]?.message || 'Invalid login request.' });
+    }
+
+    const msg = err instanceof Error ? err.message : 'Admin login failed.';
+    if (msg === 'Invalid administrative credentials or insufficient permissions') {
+      return res.status(401).json({ success: false, error: msg });
+    }
+    if (msg.startsWith('Account temporarily locked.')) {
+      return res.status(429).json({ success: false, error: msg });
+    }
+
+    console.error('[ADMIN_LOGIN_ERROR]', err);
+    return res.status(503).json({
+      success: false,
+      error: 'Admin authentication service is temporarily unavailable. Please try again later.',
+    });
   }
 });
 
