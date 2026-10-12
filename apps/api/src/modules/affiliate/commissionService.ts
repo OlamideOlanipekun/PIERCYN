@@ -8,23 +8,21 @@ import { prisma } from '../../db/prisma';
 // Commission amounts are in KOBO (NGN minor units).
 // ============================================================
 
-const COMMISSION_PER_PRODUCT_KOBO =
-  COMMERCE_CONFIG.AFFILIATE.COMMISSION_PER_PRODUCT_KOBO; // ₦500 = 50,000 kobo
+const COMMISSION_PER_ORDER_KOBO =
+  COMMERCE_CONFIG.AFFILIATE.COMMISSION_PER_ORDER_KOBO; // ₦500 = 50,000 kobo per qualifying order
 
 const RETURN_WINDOW_DAYS = COMMERCE_CONFIG.AFFILIATE.RETURN_WINDOW_DAYS;
 
 export class CommissionService {
   /**
-   * Returns the commission amount per product unit in Kobo.
-   * Centralised so it can be extended to support category/campaign rates later.
+   * Returns the flat commission amount per qualifying delivered order in Kobo.
    */
-  public static getCommissionPerProduct(_productId?: string, _categoryId?: string): number {
-    // V1: flat rate per product. Future: category/campaign-specific rates.
-    return COMMISSION_PER_PRODUCT_KOBO;
+  public static getCommissionPerOrder(): number {
+    return COMMISSION_PER_ORDER_KOBO;
   }
 
   /**
-   * Creates commission records for all items in an order.
+   * Creates a single flat commission record per qualifying order.
    * Called after order payment is verified.
    * 
    * IDEMPOTENT: Uses unique(affiliateId, orderItemId) constraint.
@@ -62,37 +60,35 @@ export class CommissionService {
       return;
     }
 
-    // Create one commission per order item (idempotent via unique constraint)
-    for (const item of order.items) {
-      const commissionAmount = this.getCommissionPerProduct() * item.quantity;
+    // V1 business rule: one flat commission per qualifying order, not per item.
+    // Store it against the first item to satisfy the existing unique(affiliateId, orderItemId)
+    // ledger constraint while ensuring a multi-item order cannot multiply the payout.
+    const firstItem = order.items[0];
+    if (!firstItem) return;
 
-      try {
-        await prisma.affiliateCommission.upsert({
-          where: {
-            affiliateId_orderItemId: {
-              affiliateId: affiliate.id,
-              orderItemId: item.id,
-            },
-          },
-          update: {
-            // Already exists — update nothing (idempotency)
-          },
-          create: {
+    try {
+      await prisma.affiliateCommission.upsert({
+        where: {
+          affiliateId_orderItemId: {
             affiliateId: affiliate.id,
-            orderId: order.id,
-            orderItemId: item.id,
-            affiliateLinkId: order.affiliateLinkId || undefined,
-            amountKobo: commissionAmount,
-            status: 'PENDING',
+            orderItemId: firstItem.id,
           },
-        });
-      } catch (err: any) {
-        // If unique constraint violation (race condition), log but do not re-throw
-        console.error(
-          `[COMMISSION] Failed to create commission for item ${item.id}:`,
-          err.message
-        );
-      }
+        },
+        update: {},
+        create: {
+          affiliateId: affiliate.id,
+          orderId: order.id,
+          orderItemId: firstItem.id,
+          affiliateLinkId: order.affiliateLinkId || undefined,
+          amountKobo: this.getCommissionPerOrder(),
+          status: 'PENDING',
+        },
+      });
+    } catch (err: any) {
+      console.error(
+        `[COMMISSION] Failed to create order commission for ${order.orderNumber}:`,
+        err.message
+      );
     }
 
     console.log(
