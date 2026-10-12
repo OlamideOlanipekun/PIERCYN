@@ -13,6 +13,8 @@ import {
   Upload,
   ImagePlus,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // ─── Image Upload Zone ─────────────────────────────────────────────────────
@@ -49,9 +51,11 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
       const idx = slots.length + i;
       try {
         const publicUrl = await uploadImageToSupabase(slot.file!, bucket);
+        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
         updated[idx] = { url: publicUrl, uploading: false };
         onChange([...updated]);
       } catch (err: any) {
+        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
         updated[idx] = { url: '', uploading: false, error: err.message };
         onChange([...updated]);
       }
@@ -64,7 +68,17 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
   };
 
   const removeSlot = (idx: number) => {
+    const slot = slots[idx];
+    if (slot?.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
     onChange(slots.filter((_, i) => i !== idx));
+  };
+
+  const moveSlot = (idx: number, delta: number) => {
+    const target = idx + delta;
+    if (target < 0 || target >= slots.length) return;
+    const next = [...slots];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
   };
 
   return (
@@ -93,6 +107,12 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
                   alt={`Image ${idx + 1}`}
                   className="w-full h-full object-cover"
                 />
+              )}
+              {!slot.uploading && !slot.error && slots.length > 1 && (
+                <div className="absolute bottom-1 right-1 flex gap-1">
+                  <button type="button" disabled={idx === 0} onClick={() => moveSlot(idx, -1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image earlier"><ChevronLeft className="h-3 w-3" /></button>
+                  <button type="button" disabled={idx === slots.length - 1} onClick={() => moveSlot(idx, 1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image later"><ChevronRight className="h-3 w-3" /></button>
+                </div>
               )}
               {/* Remove button */}
               {!slot.uploading && (
@@ -131,7 +151,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
             Drop images here or <span className="text-[#F2F0EB] underline underline-offset-2">browse</span>
           </p>
           <p className="text-[10px] font-mono text-neutral-600 mt-0.5">
-            JPG, PNG, WEBP — max 10 MB each
+            JPG, PNG, WEBP, GIF — max 3 MB each
           </p>
         </div>
         <input
