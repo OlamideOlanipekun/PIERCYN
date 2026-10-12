@@ -107,7 +107,7 @@ export class KwikCourierAdapter implements IShippingCourier {
     }
   }
 
-  public async trackShipment(_trackingNumber: string) {
+  public async trackShipment(_trackingNumber: string): Promise<{ status: string; history: any[] }> {
     throw new Error('Live Kwik tracking is not implemented in this adapter; do not display simulated tracking data.');
   }
 
