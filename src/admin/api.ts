@@ -9,6 +9,7 @@ import {
   AdminAlerts,
   AdminAuditEntry,
   AdminSettingsData,
+  AdminMediaAsset,
 } from './types';
 
 const ADMIN_TOKEN_KEY = 'piercyn_admin_token';
@@ -188,6 +189,19 @@ class AdminApiClient {
     return this.request(`/products/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // Product media library
+  public async getMedia(params?: { limit?: number; offset?: number }): Promise<AdminMediaAsset[]> {
+    const query = new URLSearchParams();
+    if (params?.limit !== undefined) query.set('limit', String(params.limit));
+    if (params?.offset !== undefined) query.set('offset', String(params.offset));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<AdminMediaAsset[]>(`/media${qs}`);
+  }
+
+  public async deleteMedia(path: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/media', { method: 'DELETE', body: JSON.stringify({ path }) });
   }
 
   // 4. Inventory

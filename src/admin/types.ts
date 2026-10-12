@@ -2,6 +2,7 @@ export type AdminNavTab =
   | 'dashboard'
   | 'orders'
   | 'products'
+  | 'media'
   | 'inventory'
   | 'customers'
   | 'affiliates'
@@ -351,4 +352,14 @@ export interface AdminSettingsData {
   paymentGatewayConfigured: boolean;
   paymentEnvironment: string;
   shippingProviders: string[];
+}
+
+export interface AdminMediaAsset {
+  name: string;
+  path: string;
+  publicUrl: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  sizeBytes: number | null;
+  contentType: string | null;
 }

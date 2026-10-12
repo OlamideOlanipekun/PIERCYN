@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Package,
+  Images,
   Layers,
   Users,
   BarChart3,
@@ -123,6 +124,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       badgeColor: 'bg-amber-600 text-white',
     },
     { id: 'products', label: 'Products', icon: Package },
+    { id: 'media', label: 'Media Library', icon: Images },
     {
       id: 'inventory',
       label: 'Inventory',
@@ -154,6 +156,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           title: 'Product Catalog',
           subtitle: 'Garments, unit economics, status & active drops',
         };
+      case 'media':
+        return { title: 'Media Library', subtitle: 'Manage product image assets, copy URLs, and safely remove unused files' };
       case 'inventory':
         return {
           title: 'Variant Inventory',
@@ -612,18 +616,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             id="mobile-nav-more"
             onClick={() => setMobileMenuOpen(true)}
             className={`flex-1 flex flex-col items-center justify-center py-1 px-0.5 min-h-[46px] rounded-lg transition-colors cursor-pointer ${
-              ['customers', 'analytics', 'audit', 'settings'].includes(activeTab)
+              ['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab)
                 ? 'text-[#F2F0EB]'
                 : 'text-[#888] hover:text-[#F2F0EB]'
             }`}
           >
             <div className="relative">
-              <MoreHorizontal className={`w-5 h-5 ${['customers', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB]' : 'text-[#888]'}`} />
-              {['customers', 'analytics', 'audit', 'settings'].includes(activeTab) && (
+              <MoreHorizontal className={`w-5 h-5 ${['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB]' : 'text-[#888]'}`} />
+              {['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) && (
                 <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-[#F2F0EB]" />
               )}
             </div>
-            <span className={`text-[10px] tracking-tight mt-1 ${['customers', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB] font-bold' : 'text-[#888]'}`}>
+            <span className={`text-[10px] tracking-tight mt-1 ${['customers', 'media', 'analytics', 'audit', 'settings'].includes(activeTab) ? 'text-[#F2F0EB] font-bold' : 'text-[#888]'}`}>
               More
             </span>
           </button>
