@@ -45,7 +45,7 @@ export const COMMERCE_CONFIG = {
 
   // Affiliate System Configuration (Single Source of Truth)
   AFFILIATE: {
-    COMMISSION_PER_PRODUCT_KOBO: 50000, // ₦500 = 50,000 kobo per qualifying delivered product
+    COMMISSION_PER_ORDER_KOBO: 50000, // ₦500 = 50,000 kobo per qualifying delivered order
     ATTRIBUTION_WINDOW_DAYS: 30,         // Days an affiliate click is valid for attribution
     MIN_PAYOUT_KOBO: 50000,              // ₦500 minimum payout threshold (50,000 kobo)
     RETURN_WINDOW_DAYS: 7,               // Days after delivery before commission becomes AVAILABLE
