@@ -57,7 +57,8 @@ const MainLayout: React.FC = () => {
   const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
-  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);\n  const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
+  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);
+  const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
 
   // Initialize affiliate click tracking once on mount
   useEffect(() => {
