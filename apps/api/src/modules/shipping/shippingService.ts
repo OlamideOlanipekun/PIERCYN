@@ -1,6 +1,7 @@
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { KwikCourierAdapter, IShippingCourier } from './kwikCourier';
+import { OrderService } from '../orders/orderService';
 
 export interface ShippingOption {
   key: 'lagos' | 'nationwide';
@@ -170,6 +171,18 @@ export class ShippingService {
       throw new Error(`Shipment ${shipmentId} not found`);
     }
 
+    const allowedStatuses = ['PENDING', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED', 'FAILED'];
+    if (!allowedStatuses.includes(status)) {
+      throw new Error(`Invalid shipment status: ${status}`);
+    }
+
+    const orderForDelivery = status === 'DELIVERED'
+      ? await prisma.order.findUnique({ where: { id: shipment.orderId } })
+      : null;
+    if (status === 'DELIVERED' && orderForDelivery && !['SHIPPED', 'DELIVERED'].includes(orderForDelivery.status)) {
+      throw new Error(`Order must be SHIPPED before it can be marked delivered (current status: ${orderForDelivery.status}).`);
+    }
+
     const now = new Date();
     const updateData: any = { status };
 
@@ -185,11 +198,13 @@ export class ShippingService {
       data: updateData,
     });
 
-    if (status === 'DELIVERED') {
-      await prisma.order.update({
-        where: { id: shipment.orderId },
-        data: { status: 'DELIVERED' },
-      });
+    if (status === 'DELIVERED' && orderForDelivery?.status === 'SHIPPED') {
+      await OrderService.updateStatus(
+        orderForDelivery.orderNumber,
+        'DELIVERED',
+        'Shipment marked delivered',
+        'COURIER'
+      );
     }
 
     return updated;
