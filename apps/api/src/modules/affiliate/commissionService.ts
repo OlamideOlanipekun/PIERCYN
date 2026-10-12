@@ -216,10 +216,10 @@ export class CommissionService {
   }
 
   /**
-   * Returns commission per product in Naira (for display).
+   * Returns the flat commission per qualifying order in Naira (for display).
    */
-  public static getCommissionPerProductNGN(): number {
-    return COMMISSION_PER_PRODUCT_KOBO / 100;
+  public static getCommissionPerOrderNGN(): number {
+    return COMMISSION_PER_ORDER_KOBO / 100;
   }
 
   public static getReturnWindowDays(): number {
