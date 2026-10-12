@@ -107,8 +107,8 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   // Stock status determination
   const selectedVariant = product.variants?.find((variant) => variant.size === selectedSize && variant.colour === currentColor?.name);
-  const maxPurchaseQuantity = Math.max(0, Math.min(10, selectedVariant?.availableStock ?? product.stock ?? 10));
-  const isSoldOut = product.isSoldOut || product.stock === 0 || selectedVariant?.availableStock === 0;
+  const maxPurchaseQuantity = selectedVariant?.active === false ? 0 : Math.max(0, Math.min(10, selectedVariant?.availableStock ?? product.stock ?? 10));
+  const isSoldOut = product.isSoldOut || product.stock === 0 || selectedVariant?.active === false || selectedVariant?.availableStock === 0;
   const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
   const handleAddToCart = () => {
