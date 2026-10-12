@@ -142,8 +142,12 @@ const CreateVariantSchema = z.object({
   colour: z.string().trim().min(1).max(60),
   colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   priceNGN: z.number().int().positive().optional(),
+  priceUSD: z.number().int().positive().optional(),
+  priceGBP: z.number().int().positive().optional(),
+  priceEUR: z.number().int().positive().optional(),
   costPriceNGN: z.number().int().nonnegative().optional(),
   image: z.string().url().optional().or(z.literal('')),
+  altImage: z.string().url().optional().or(z.literal('')),
   initialStock: z.number().int().nonnegative().default(0),
 });
 const UpdateVariantSchema = z.object({
@@ -152,8 +156,12 @@ const UpdateVariantSchema = z.object({
   colour: z.string().trim().min(1).max(60).optional(),
   colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   priceNGN: z.number().int().positive().nullable().optional(),
+  priceUSD: z.number().int().positive().nullable().optional(),
+  priceGBP: z.number().int().positive().nullable().optional(),
+  priceEUR: z.number().int().positive().nullable().optional(),
   costPriceNGN: z.number().int().nonnegative().nullable().optional(),
   image: z.string().url().nullable().optional().or(z.literal('')),
+  altImage: z.string().url().nullable().optional().or(z.literal('')),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().nonnegative().optional(),
 }).refine((value) => Object.keys(value).length > 0, 'Provide at least one variant field to update');
@@ -497,8 +505,8 @@ adminRouter.get('/variants', requireAdmin, async (_req: Request, res: Response) 
     const data = rows.map((variant) => ({
       id: variant.id, productId: variant.productId, productName: variant.product.name,
       productStatus: variant.product.status, sku: variant.sku, size: variant.size,
-      colour: variant.colour, colourHex: variant.colourHex, priceNGN: variant.priceNGN,
-      costPriceNGN: variant.costPriceNGN, image: variant.image, active: variant.isActive,
+      colour: variant.colour, colourHex: variant.colourHex, priceNGN: variant.priceNGN, priceUSD: variant.priceUSD, priceGBP: variant.priceGBP, priceEUR: variant.priceEUR,
+      costPriceNGN: variant.costPriceNGN, image: variant.image, altImage: variant.altImage, active: variant.isActive,
       stockQuantity: variant.inventory?.stockQuantity ?? 0,
       reservedQuantity: variant.inventory?.reservedQuantity ?? 0,
       availableStock: (variant.inventory?.stockQuantity ?? 0) - (variant.inventory?.reservedQuantity ?? 0),
@@ -522,8 +530,9 @@ adminRouter.post('/variants', requireAdmin, async (req: AuthenticatedAdminReques
       const variant = await tx.productVariant.create({ data: {
         productId: product.id, sku, size: input.size, colour: input.colour,
         colourHex: input.colourHex || '#111111', priceNGN: input.priceNGN ?? null,
+        priceUSD: input.priceUSD ?? null, priceGBP: input.priceGBP ?? null, priceEUR: input.priceEUR ?? null,
         costPriceNGN: input.costPriceNGN ?? product.costPriceNGN,
-        image: input.image || product.images[0] || null, isActive: true,
+        image: input.image || product.images[0] || null, altImage: input.altImage || null, isActive: true,
       }});
       const inventory = await tx.inventory.create({ data: { variantId: variant.id, stockQuantity: input.initialStock, reservedQuantity: 0, soldQuantity: 0, damagedQuantity: 0, returnedQuantity: 0, reorderLevel: 5 }});
       await tx.inventoryTransaction.create({ data: {

@@ -376,8 +376,12 @@ export interface AdminVariantRecord {
   colour: string;
   colourHex: string;
   priceNGN: number | null;
+  priceUSD: number | null;
+  priceGBP: number | null;
+  priceEUR: number | null;
   costPriceNGN: number | null;
   image: string | null;
+  altImage: string | null;
   active: boolean;
   stockQuantity: number;
   reservedQuantity: number;

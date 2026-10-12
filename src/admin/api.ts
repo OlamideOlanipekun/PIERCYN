@@ -228,7 +228,7 @@ class AdminApiClient {
     return this.request<AdminVariantRecord[]>('/variants');
   }
 
-  public async createVariant(input: { productId: string; sku?: string; size: string; colour: string; colourHex?: string; priceNGN?: number; costPriceNGN?: number; image?: string; initialStock: number }): Promise<AdminVariantRecord> {
+  public async createVariant(input: { productId: string; sku?: string; size: string; colour: string; colourHex?: string; priceNGN?: number; priceUSD?: number; priceGBP?: number; priceEUR?: number; costPriceNGN?: number; image?: string; altImage?: string; initialStock: number }): Promise<AdminVariantRecord> {
     return this.request<AdminVariantRecord>('/variants', { method: 'POST', body: JSON.stringify(input) });
   }
 

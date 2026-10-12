@@ -5,12 +5,12 @@ import { AdminProduct, AdminVariantRecord } from '../types';
 
 type VariantDraft = {
   productId: string; sku: string; size: string; colour: string; colourHex: string;
-  priceNGN: string; costPriceNGN: string; image: string; initialStock: string;
+  priceNGN: string; priceUSD: string; priceGBP: string; priceEUR: string; costPriceNGN: string; image: string; altImage: string; initialStock: string;
 };
 
 const emptyDraft: VariantDraft = {
   productId: '', sku: '', size: 'M', colour: 'Onyx Black', colourHex: '#121212',
-  priceNGN: '', costPriceNGN: '', image: '', initialStock: '0',
+  priceNGN: '', priceUSD: '', priceGBP: '', priceEUR: '', costPriceNGN: '', image: '', altImage: '', initialStock: '0',
 };
 
 export const VariantsView: React.FC = () => {
@@ -48,8 +48,11 @@ export const VariantsView: React.FC = () => {
     setDraft({
       productId: variant.productId, sku: variant.sku, size: variant.size, colour: variant.colour,
       colourHex: variant.colourHex || '#111111', priceNGN: variant.priceNGN == null ? '' : String(variant.priceNGN),
+      priceUSD: variant.priceUSD == null ? '' : String(variant.priceUSD),
+      priceGBP: variant.priceGBP == null ? '' : String(variant.priceGBP),
+      priceEUR: variant.priceEUR == null ? '' : String(variant.priceEUR),
       costPriceNGN: variant.costPriceNGN == null ? '' : String(variant.costPriceNGN),
-      image: variant.image || '', initialStock: '0',
+      image: variant.image || '', altImage: variant.altImage || '', initialStock: '0',
     });
     setModalOpen(true); setError(null); setNotice(null);
   };
@@ -62,14 +65,21 @@ export const VariantsView: React.FC = () => {
     setSaving(true); setError(null); setNotice(null);
     try {
       const numericPrice = draft.priceNGN.trim() ? Number(draft.priceNGN) : undefined;
+      const numericUSD = draft.priceUSD.trim() ? Number(draft.priceUSD) : undefined;
+      const numericGBP = draft.priceGBP.trim() ? Number(draft.priceGBP) : undefined;
+      const numericEUR = draft.priceEUR.trim() ? Number(draft.priceEUR) : undefined;
       const numericCost = draft.costPriceNGN.trim() ? Number(draft.costPriceNGN) : undefined;
       if (numericPrice !== undefined && (!Number.isInteger(numericPrice) || numericPrice <= 0)) throw new Error('Variant price must be a positive whole number.');
+      for (const [currency, value] of [['USD', numericUSD], ['GBP', numericGBP], ['EUR', numericEUR]] as const) {
+        if (value !== undefined && (!Number.isInteger(value) || value <= 0)) throw new Error(`${currency} variant price must be a positive whole number.`);
+      }
       if (numericCost !== undefined && (!Number.isInteger(numericCost) || numericCost < 0)) throw new Error('Variant cost must be zero or a positive whole number.');
       if (editing) {
         await AdminApi.updateVariant(editing.id, {
           sku: draft.sku.trim(), size: draft.size.trim(), colour: draft.colour.trim(),
           colourHex: draft.colourHex, priceNGN: numericPrice ?? null,
-          costPriceNGN: numericCost ?? null, image: draft.image.trim() || null,
+          priceUSD: numericUSD ?? null, priceGBP: numericGBP ?? null, priceEUR: numericEUR ?? null,
+          costPriceNGN: numericCost ?? null, image: draft.image.trim() || null, altImage: draft.altImage.trim() || null,
         });
       } else {
         const stock = Number(draft.initialStock || 0);
@@ -77,7 +87,8 @@ export const VariantsView: React.FC = () => {
         await AdminApi.createVariant({
           productId: draft.productId, sku: draft.sku.trim() || undefined, size: draft.size.trim(),
           colour: draft.colour.trim(), colourHex: draft.colourHex, priceNGN: numericPrice,
-          costPriceNGN: numericCost, image: draft.image.trim() || undefined, initialStock: stock,
+          priceUSD: numericUSD, priceGBP: numericGBP, priceEUR: numericEUR,
+          costPriceNGN: numericCost, image: draft.image.trim() || undefined, altImage: draft.altImage.trim() || undefined, initialStock: stock,
         });
       }
       setModalOpen(false); setNotice(editing ? 'Variant updated.' : 'Variant created.');
@@ -129,7 +140,7 @@ export const VariantsView: React.FC = () => {
       <form onSubmit={save} className="max-h-[92vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-t-2xl border border-[#303030] bg-[#151515] p-5 sm:rounded-2xl">
         <div className="flex items-center justify-between"><div><h3 className="text-lg font-bold">{editing ? 'Edit variant' : 'Create variant'}</h3><p className="mt-1 text-xs text-neutral-400">{editing ? 'Changes apply to future sales; order history remains intact.' : 'Creates a new variant and its inventory record.'}</p></div><button type="button" onClick={() => setModalOpen(false)} className="rounded p-2 hover:bg-white/10"><X className="h-4 w-4" /></button></div>
         {!editing && <label className="block space-y-1.5"><span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">Product</span><select required value={draft.productId} onChange={(e) => setDraft({ ...draft, productId: e.target.value })} className={fieldClass}><option value="">Choose product…</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.status}</option>)}</select></label>}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{field('Size', 'size', { required: true, placeholder: 'XS, S, M, L, XL' })}{field('Colour', 'colour', { required: true, placeholder: 'Onyx Black' })}{field('SKU (auto if blank)', 'sku', { placeholder: 'PCY-TEE-BLK-M' })}{field('Colour hex', 'colourHex', { required: true, placeholder: '#121212' })}{field('Variant price (NGN)', 'priceNGN', { type: 'number', min: 1 })}{field('Unit cost (NGN)', 'costPriceNGN', { type: 'number', min: 0 })}{field('Image URL', 'image', { type: 'url', placeholder: 'https://…' })}{!editing && field('Initial stock', 'initialStock', { type: 'number', min: 0, required: true })}</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{field('Size', 'size', { required: true, placeholder: 'XS, S, M, L, XL' })}{field('Colour', 'colour', { required: true, placeholder: 'Onyx Black' })}{field('SKU (auto if blank)', 'sku', { placeholder: 'PCY-TEE-BLK-M' })}{field('Colour hex', 'colourHex', { required: true, placeholder: '#121212' })}{field('Variant price (NGN)', 'priceNGN', { type: 'number', min: 1 })}{field('Variant price (USD)', 'priceUSD', { type: 'number', min: 1 })}{field('Variant price (GBP)', 'priceGBP', { type: 'number', min: 1 })}{field('Variant price (EUR)', 'priceEUR', { type: 'number', min: 1 })}{field('Unit cost (NGN)', 'costPriceNGN', { type: 'number', min: 0 })}{field('Primary image URL', 'image', { type: 'url', placeholder: 'https://…' })}{field('Alternate image URL', 'altImage', { type: 'url', placeholder: 'https://…' })}{!editing && field('Initial stock', 'initialStock', { type: 'number', min: 0, required: true })}</div>
         <div className="flex flex-col-reverse gap-2 border-t border-[#292929] pt-4 sm:flex-row sm:justify-end"><button type="button" onClick={() => setModalOpen(false)} className="rounded-lg px-4 py-2.5 text-sm text-neutral-300 hover:bg-white/5">Cancel</button><button type="submit" disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F2F0EB] px-5 py-2.5 text-sm font-bold text-[#0A0A0A] disabled:opacity-50">{saving && <Loader2 className="h-4 w-4 animate-spin" />}{editing ? 'Save changes' : 'Create variant'}</button></div>
       </form>
     </div>}
