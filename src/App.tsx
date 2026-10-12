@@ -399,6 +399,8 @@ const MainLayout: React.FC = () => {
             products={products}
             onViewProduct={handleViewProduct}
             onBrowseShop={() => handleSelectPage('shop')}
+            isLoadingProducts={isLoadingProducts}
+            catalogError={catalogError}
           />
 
           {/* Why PIERCYN brand statement */}
