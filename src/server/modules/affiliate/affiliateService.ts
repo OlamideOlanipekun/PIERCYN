@@ -586,6 +586,16 @@ export class AffiliateService {
         throw new Error('Only active affiliates can request payouts.');
       }
 
+      await tx.affiliateCommission.updateMany({
+        where: {
+          affiliateId,
+          status: 'PENDING',
+          payoutId: null,
+          eligibleAt: { lte: new Date() },
+        },
+        data: { status: 'AVAILABLE' },
+      });
+
       const commissions = await tx.affiliateCommission.findMany({
         where: { affiliateId, status: 'AVAILABLE', payoutId: null },
         orderBy: { eligibleAt: 'asc' },
