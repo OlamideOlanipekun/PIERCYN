@@ -19,6 +19,7 @@ export const WhatsAppButton: React.FC = () => {
   } = useShop();
 
   const [isOpen, setIsOpen] = useState(false);
+  const whatsappNumber = String(((import.meta as any).env || {}).VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\\D/g, '');
 
   // Automatically hide when any full-screen modal or drawer is active
   const isAnyModalOpen =
@@ -35,7 +36,7 @@ export const WhatsAppButton: React.FC = () => {
     isOrderConfirmedOpen ||
     isAdminOpen;
 
-  if (isAnyModalOpen) return null;
+  if (isAnyModalOpen || !whatsappNumber) return null;
 
   const defaultMsg = encodeURIComponent(
     "Hello PIERCYN! I'm browsing the store and have a question about sizing and delivery."
@@ -67,7 +68,7 @@ export const WhatsAppButton: React.FC = () => {
           </p>
 
           <a
-            href={`https://wa.me/2348000000000?text=${defaultMsg}`}
+            href={`https://wa.me/${whatsappNumber}?text=${defaultMsg}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setIsOpen(false)}
