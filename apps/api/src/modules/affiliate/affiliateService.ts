@@ -586,6 +586,18 @@ export class AffiliateService {
         throw new Error('Only active affiliates can request payouts.');
       }
 
+      // Release commissions whose return window elapsed even if the affiliate
+      // has not opened the dashboard since becoming eligible.
+      await tx.affiliateCommission.updateMany({
+        where: {
+          affiliateId,
+          status: 'PENDING',
+          payoutId: null,
+          eligibleAt: { lte: new Date() },
+        },
+        data: { status: 'AVAILABLE' },
+      });
+
       const commissions = await tx.affiliateCommission.findMany({
         where: { affiliateId, status: 'AVAILABLE', payoutId: null },
         orderBy: { eligibleAt: 'asc' },
