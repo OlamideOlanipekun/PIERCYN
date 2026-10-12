@@ -60,6 +60,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <button id="footer-shop-all" onClick={() => selectPage('shop')} className={footerLinkClass}>ALL PIECES</button>
               <button id="footer-shop-men" onClick={() => selectPage('men')} className={footerLinkClass}>MEN</button>
               <button id="footer-new-arrivals" onClick={() => selectPage('new')} className={footerLinkClass}>NEW ARRIVALS</button>
+              <a href="/available-to-order" className={footerLinkClass}>AVAILABLE TO ORDER</a>
             </nav>
           </div>
           <div className="min-w-0">
