@@ -232,7 +232,14 @@ apiRouter.post('/payments/initialize', async (req: Request, res: Response) => {
     }
 
     const result = await PaymentService.initializePayment(orderNumber, callbackUrl);
-    res.json({ success: true, data: result });
+    if (!result.success) {
+      return res.status(503).json({
+        success: false,
+        error: result.message || 'Payment provider could not initialize this payment.',
+        data: result,
+      });
+    }
+    return res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -272,13 +279,19 @@ apiRouter.post('/payments/mock/complete', async (req: Request, res: Response) =>
     return res.status(404).json({ success: false, error: 'Not found' });
   }
   try {
-    PaymentService.setProvider(new MockPaymentProvider());
     const { reference } = req.body;
     if (!reference) {
       return res.status(400).json({ success: false, error: 'reference is required' });
     }
     const result = await PaymentService.verifyPayment(reference);
-    res.json({ success: true, data: result });
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mock payment could not be completed for this order.',
+        data: result,
+      });
+    }
+    return res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }
