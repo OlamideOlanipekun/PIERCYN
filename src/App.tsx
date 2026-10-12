@@ -31,6 +31,7 @@ import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
 import { AffiliateApp } from './affiliate/AffiliateApp';
 import { initAffiliateTracking } from './utils/affiliateTracking';
+import { StorefrontInfoPage, StorefrontPageKey } from './components/StorefrontInfoPage';
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -48,7 +49,7 @@ const WhyPiercynSection: React.FC = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts } = useShop();
+  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts, setIsCartOpen, setIsCheckoutOpen } = useShop();
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
@@ -56,7 +57,7 @@ const MainLayout: React.FC = () => {
   const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
-  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);
+  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);\n  const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
 
   // Initialize affiliate click tracking once on mount
   useEffect(() => {
@@ -316,7 +317,16 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main View Router */}
-      {activePage === 'product' ? (
+      {storefrontPage ? (
+        <StorefrontInfoPage
+          page={storefrontPage}
+          products={products}
+          onViewProduct={handleViewProduct}
+          onShop={() => handleSelectPage('shop')}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenCheckout={() => setIsCheckoutOpen(true)}
+        />
+      ) : activePage === 'product' ? (
         isLoadingProduct ? <main className="min-h-screen bg-[#F2F0EB] pt-32 text-center text-sm text-[#6E6B65]">Loading piece…</main> : <ProductDetailsPage
           product={currentPdpProduct}
           onSelectPage={handleSelectPage}
