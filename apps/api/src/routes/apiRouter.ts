@@ -4,7 +4,7 @@ import { ProductService } from '../modules/products/productService';
 import { CartService } from '../modules/cart/cartService';
 import { CheckoutService } from '../modules/checkout/checkoutService';
 import { OrderService } from '../modules/orders/orderService';
-import { PaymentService, MockPaymentProvider } from '../modules/payments/paymentService';
+import { PaymentService } from '../modules/payments/paymentService';
 import { WebhookService } from '../modules/payments/webhookService';
 import { InventoryService } from '../modules/inventory/inventoryService';
 import { ShippingService } from '../modules/shipping/shippingService';
@@ -268,7 +268,7 @@ apiRouter.post('/payments/webhook', async (req: Request, res: Response) => {
     const signature = (req.headers['x-paystack-signature'] as string) || '';
     const rawBody = (req as any).rawBody || JSON.stringify(req.body);
     const result = await WebhookService.handlePaystackWebhook(signature, rawBody, req.body);
-    res.json(result);
+    return res.status(result.received ? 200 : 400).json(result);
   } catch (err: any) {
     res.status(500).json({ received: false, error: err.message });
   }
