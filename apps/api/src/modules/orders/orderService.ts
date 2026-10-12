@@ -297,7 +297,7 @@ export class OrderService {
     });
 
     // Best-effort operator alert after the payment transaction commits.
-    void WhatsAppNotificationService.notifyOrderEvent({
+    await WhatsAppNotificationService.notifyOrderEvent({
       orderNumber: orderRes.orderNumber,
       customerName: `${orderRes.customerFirstName} ${orderRes.customerLastName}`.trim(),
       customerPhone: orderRes.customerPhone,
