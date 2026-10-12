@@ -49,13 +49,16 @@ export class CheckoutService {
 
     let discountNGN = 0;
     let promoDescription: string | undefined;
+    let promoError: string | undefined;
 
-    if (discountCode) {
+    if (discountCode?.trim()) {
       const cleanCode = discountCode.trim().toUpperCase();
       const promo = COMMERCE_CONFIG.PROMOTIONS.find((p) => p.code === cleanCode);
       if (promo) {
         discountNGN = Math.round((cart.subtotalNGN * promo.discountPercent) / 100);
         promoDescription = promo.description;
+      } else {
+        promoError = 'This discount code is invalid or inactive.';
       }
     }
 
@@ -67,7 +70,8 @@ export class CheckoutService {
         ? 'Lagos Doorstep (24–48 Hours)'
         : 'Nationwide Nigeria (3–5 Business Days)';
 
-    const isEligible = cart.isValid && cart.items.length > 0;
+    const isEligible = cart.isValid && cart.items.length > 0 && !promoError;
+    const errors = promoError ? [...cart.validationErrors, promoError] : cart.validationErrors;
 
     return {
       cart,
@@ -79,7 +83,7 @@ export class CheckoutService {
       discountDescription: promoDescription,
       totalNGN: finalTotal,
       isEligibleForCheckout: isEligible,
-      errors: cart.validationErrors,
+      errors,
     };
   }
 
