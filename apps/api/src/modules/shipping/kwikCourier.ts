@@ -46,13 +46,11 @@ export class KwikCourierAdapter implements IShippingCourier {
     const trackingNumber = `KWIK-${payload.orderNumber}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (!this.apiKey || !this.apiSecret) {
-      // Graceful sandbox fallback
+      // Never fabricate a courier booking or tracking number in production.
       return {
-        success: true,
-        trackingNumber,
-        courierTaskId: `kwik_task_${Date.now()}`,
-        estimatedDeliveryDate: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
-        message: 'Kwik dispatch scheduled via server adapter',
+        success: false,
+        trackingNumber: '',
+        message: 'Kwik credentials are not configured. Configure KWIK_API_KEY and KWIK_API_SECRET, or enter a manually booked tracking number.',
       };
     }
 
@@ -92,17 +90,11 @@ export class KwikCourierAdapter implements IShippingCourier {
     }
   }
 
-  public async trackShipment(trackingNumber: string) {
-    return {
-      status: 'IN_TRANSIT',
-      history: [
-        { status: 'CREATED', timestamp: new Date().toISOString(), note: 'Shipment created at atelier' },
-        { status: 'PICKED_UP', timestamp: new Date().toISOString(), note: 'Dispatched to Kwik courier' },
-      ],
-    };
+  public async trackShipment(_trackingNumber: string) {
+    throw new Error('Live Kwik tracking is not implemented in this adapter; do not display simulated tracking data.');
   }
 
   public async cancelShipment(_trackingNumber: string): Promise<boolean> {
-    return true;
+    throw new Error('Live Kwik cancellation is not implemented in this adapter.');
   }
 }
