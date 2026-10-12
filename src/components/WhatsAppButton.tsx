@@ -67,7 +67,7 @@ export const WhatsAppButton: React.FC = () => {
           </p>
 
           <a
-            href={`https://wa.me/2348000000000?text=${defaultMsg}`}
+            href={`https://wa.me/2349129997137?text=${defaultMsg}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setIsOpen(false)}
