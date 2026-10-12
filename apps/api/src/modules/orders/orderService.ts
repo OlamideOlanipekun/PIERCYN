@@ -195,7 +195,8 @@ export class OrderService {
 
   public static async markOrderPaid(
     orderNumber: string,
-    providerReference: string = 'SYS-REF'
+    providerReference: string = 'SYS-REF',
+    confirmedBy: string = 'SYSTEM'
   ) {
     const orderRes = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -229,8 +230,8 @@ export class OrderService {
           orderId: order.id,
           fromStatus: order.status,
           toStatus: 'PAID',
-          changedBy: 'SYSTEM',
-          note: `Payment confirmed via reference ${providerReference}`,
+          changedBy: confirmedBy,
+          note: `Payment confirmed via reference ${providerReference} by ${confirmedBy}`,
         },
       });
 
