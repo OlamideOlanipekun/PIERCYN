@@ -1,0 +1,40 @@
+name: PIERCYN quality checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storefront-and-commerce:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/piercyn
+      JWT_SECRET: ci-only-not-a-production-secret
+      ORDER_ACCESS_TOKEN_SECRET: ci-only-order-secret
+      ADMIN_JWT_SECRET: ci-only-admin-secret
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies and generate Prisma client
+        run: npm ci
+
+      - name: Type-check repository
+        run: npm run lint
+
+      - name: Build client and server
+        run: npm run build
+
+      - name: Run in-memory commerce and access-control tests
+        run: npx vitest run tests/commerce.test.ts tests/admin.test.ts tests/affiliate.test.ts tests/auth.test.ts tests/integration_p1.test.ts
