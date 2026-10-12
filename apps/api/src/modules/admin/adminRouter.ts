@@ -256,6 +256,59 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
   }
 });
 
+
+adminRouter.get('/media', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 100));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+    const storage = getSupabaseAdmin();
+    const { data: files, error } = await storage.storage.from('products').list('products', {
+      limit, offset, sortBy: { column: 'created_at', order: 'desc' },
+    });
+    if (error) throw error;
+    const assets = (files || []).filter((file) => file.name && !file.name.startsWith('.')).map((file) => {
+      const path = `products/${file.name}`;
+      const { data } = storage.storage.from('products').getPublicUrl(path);
+      return {
+        name: file.name, path, publicUrl: data.publicUrl,
+        createdAt: file.created_at || null, updatedAt: file.updated_at || null,
+        sizeBytes: typeof file.metadata?.size === 'number' ? file.metadata.size : null,
+        contentType: file.metadata?.mimetype || null,
+      };
+    });
+    res.json({ success: true, data: assets, count: assets.length, limit, offset });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load media library.' });
+  }
+});
+
+adminRouter.delete('/media', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const path = z.string().regex(/^products\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i, 'Invalid media path.').parse(req.body?.path);
+    const storage = getSupabaseAdmin();
+    const { data: urlData } = storage.storage.from('products').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+    const [productReference, variantReference] = await Promise.all([
+      prisma.product.findFirst({ where: { images: { has: publicUrl } }, select: { id: true, name: true } }),
+      prisma.productVariant.findFirst({ where: { OR: [{ image: publicUrl }, { altImage: publicUrl }] }, select: { id: true, sku: true } }),
+    ]);
+    if (productReference || variantReference) {
+      return res.status(409).json({ success: false, error: 'This image is still used by a product or variant. Remove it from the product first, then delete the unused asset.' });
+    }
+    const { error } = await storage.storage.from('products').remove([path]);
+    if (error) throw error;
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'MEDIA_DELETED', resource: 'PRODUCT', resourceId: path,
+      previousValue: publicUrl, note: 'Unused product image removed from storage',
+    });
+    res.json({ success: true, message: 'Image permanently deleted from storage.' });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 500).json({ success: false, error: message });
+  }
+});
+
 // 2. ORDERS
 adminRouter.get('/orders', requireAdmin, async (req: Request, res: Response) => {
   try {
