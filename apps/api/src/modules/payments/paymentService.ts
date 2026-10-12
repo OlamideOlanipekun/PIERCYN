@@ -49,7 +49,7 @@ export class DirectTransferProvider implements IPaymentProvider {
       success: true,
       provider: 'DIRECT_TRANSFER',
       providerReference: ref,
-      message: 'Bank transfer instructions sent. Awaiting confirmation.',
+      message: 'Bank transfer selected. Contact official support for verified instructions; payment remains pending.',
     };
   }
 
