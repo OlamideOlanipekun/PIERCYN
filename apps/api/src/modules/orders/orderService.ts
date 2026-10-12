@@ -137,6 +137,13 @@ export class OrderService {
       throw new Error(`Order ${orderIdentifier} not found`);
     }
 
+    // Payment confirmation must pass through markOrderPaid(), which records
+    // the payment ledger and finalizes reserved inventory in one transaction.
+    // Never allow a generic admin status update to bypass provider verification.
+    if (newStatus === 'PAID') {
+      throw new Error('Use the payment confirmation flow to mark an order paid.');
+    }
+
     const currentStatus = existing.status;
     const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
 
