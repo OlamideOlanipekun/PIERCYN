@@ -262,56 +262,83 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initServerCart();
   }, [products]);
 
-  // Sync orders from server backend on mount
+  // Restore only orders whose unguessable access tokens are held by this browser.
+  // Public order listing is intentionally disabled; each order is fetched individually.
   useEffect(() => {
-    const fetchServerOrders = async () => {
+    let cancelled = false;
+
+    const restoreAuthorizedOrders = async () => {
       try {
-        const res = await api.getOrders(user?.email);
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: Order[] = res.data.map((o: any) => ({
-            id: o.id,
-            orderNumber: o.orderNumber,
-            customer: {
-              fullName: o.customerName,
-              email: o.customerEmail,
-              phone: o.customerPhone,
-              state: o.shippingState,
-              city: o.shippingCity,
-              address: o.shippingAddressLine,
-              orderNote: o.orderNote,
-            },
-            items: o.items.map((it: any) => ({
-              productId: it.productId,
-              variantId: it.variantId,
-              sku: it.sku,
-              productName: it.productName,
-              category: it.category,
-              color: it.colour,
-              size: it.size,
-              quantity: it.quantity,
-              unitPriceNGN: it.unitPriceNGN,
-              totalPriceNGN: it.totalPriceNGN,
-              image: it.image,
-            })),
-            subtotalNGN: o.subtotalNGN,
-            deliveryFeeNGN: o.deliveryFeeNGN,
-            discountNGN: o.discountNGN || 0,
-            totalNGN: o.totalNGN,
-            shippingMethod: o.shippingMethodName,
-            paymentMethod: o.paymentMethod,
-            paymentStatus: o.paymentStatus,
-            orderStatus: o.orderStatus === 'PENDING_PAYMENT' ? 'CONFIRMED' : o.orderStatus,
-            createdAt: o.createdAt,
-          }));
-          setOrders(mapped);
+        const storedIds = JSON.parse(localStorage.getItem('piercyn_order_ids') || '[]');
+        if (!Array.isArray(storedIds)) return;
+
+        const restored = await Promise.all(
+          storedIds
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+            .slice(0, 20)
+            .map(async (id) => {
+              const token = localStorage.getItem(`piercyn_order_access_${id}`);
+              if (!token) return null;
+
+              try {
+                const res = await api.getOrder(id, token);
+                if (!res.success || !res.data) return null;
+                const o = res.data;
+                return {
+                  id: o.id,
+                  orderNumber: o.orderNumber,
+                  customer: {
+                    fullName: o.customerName,
+                    email: o.customerEmail,
+                    phone: o.customerPhone,
+                    state: o.shippingState,
+                    city: o.shippingCity,
+                    address: o.shippingAddressLine,
+                    orderNote: o.orderNote,
+                  },
+                  items: (o.items || []).map((it: any) => ({
+                    productId: it.productId,
+                    variantId: it.variantId,
+                    sku: it.sku,
+                    productName: it.productName,
+                    category: it.category,
+                    color: it.colour,
+                    size: it.size,
+                    quantity: it.quantity,
+                    unitPriceNGN: it.unitPriceNGN,
+                    totalPriceNGN: it.totalPriceNGN,
+                    image: it.image,
+                  })),
+                  subtotalNGN: o.subtotalNGN,
+                  deliveryFeeNGN: o.deliveryFeeNGN,
+                  discountNGN: o.discountNGN || 0,
+                  totalNGN: o.totalNGN,
+                  shippingMethod: o.shippingMethodName,
+                  paymentMethod: o.paymentMethod,
+                  paymentStatus: o.paymentStatus,
+                  orderStatus: o.orderStatus === 'PENDING_PAYMENT' ? 'CONFIRMED' : o.orderStatus,
+                  createdAt: o.createdAt,
+                  orderAccessToken: token,
+                } as Order;
+              } catch {
+                return null;
+              }
+            })
+        );
+
+        if (!cancelled) {
+          setOrders(restored.filter((order): order is Order => order !== null));
         }
       } catch {
-        // Fallback
+        // Ignore unavailable or malformed local order indexes.
       }
     };
 
-    fetchServerOrders();
-  }, [user?.email]);
+    restoreAuthorizedOrders();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -674,6 +701,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (mappedOrder.orderAccessToken) {
       localStorage.setItem(`piercyn_order_access_${mappedOrder.id}`, mappedOrder.orderAccessToken);
+      try {
+        const storedIds = JSON.parse(localStorage.getItem('piercyn_order_ids') || '[]');
+        const orderIds = Array.isArray(storedIds) ? storedIds.filter((id: unknown): id is string => typeof id === 'string') : [];
+        localStorage.setItem('piercyn_order_ids', JSON.stringify([mappedOrder.id, ...orderIds.filter((id: string) => id !== mappedOrder.id)].slice(0, 20)));
+      } catch {
+        // Order creation should succeed even if browser storage is unavailable.
+      }
     }
 
     setOrders((prev) => [mappedOrder, ...prev]);

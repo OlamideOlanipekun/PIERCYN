@@ -20,7 +20,7 @@ let supabaseAdmin: SupabaseClient | null = null;
 function getSupabaseAdmin(): SupabaseClient {
   if (supabaseAdmin) return supabaseAdmin;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceRoleKey) {
     throw new Error('Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to upload images.');
@@ -133,6 +133,53 @@ const CreateProductSchema = z.object({
     )
     .optional(),
 });
+
+
+const CreateVariantSchema = z.object({
+  productId: z.string().min(1),
+  sku: z.string().trim().min(1).max(100).optional(),
+  size: z.string().trim().min(1).max(30),
+  colour: z.string().trim().min(1).max(60),
+  colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  priceNGN: z.number().int().positive().optional(),
+  priceUSD: z.number().int().positive().optional(),
+  priceGBP: z.number().int().positive().optional(),
+  priceEUR: z.number().int().positive().optional(),
+  costPriceNGN: z.number().int().nonnegative().optional(),
+  image: z.string().url().optional().or(z.literal('')),
+  altImage: z.string().url().optional().or(z.literal('')),
+  initialStock: z.number().int().nonnegative().default(0),
+});
+const UpdateVariantSchema = z.object({
+  sku: z.string().trim().min(1).max(100).optional(),
+  size: z.string().trim().min(1).max(30).optional(),
+  colour: z.string().trim().min(1).max(60).optional(),
+  colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  priceNGN: z.number().int().positive().nullable().optional(),
+  priceUSD: z.number().int().positive().nullable().optional(),
+  priceGBP: z.number().int().positive().nullable().optional(),
+  priceEUR: z.number().int().positive().nullable().optional(),
+  costPriceNGN: z.number().int().nonnegative().nullable().optional(),
+  image: z.string().url().nullable().optional().or(z.literal('')),
+  altImage: z.string().url().nullable().optional().or(z.literal('')),
+  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+}).refine((value) => Object.keys(value).length > 0, 'Provide at least one variant field to update');
+
+
+const CreateCategorySchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  slug: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(500).optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
+const UpdateCategorySchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
+  slug: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+  isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, 'Provide at least one category field to update');
 
 const InventoryAdjustmentSchema = z.object({
   variantId: z.string().min(1),
@@ -256,6 +303,59 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
   }
 });
 
+
+adminRouter.get('/media', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 100));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+    const storage = getSupabaseAdmin();
+    const { data: files, error } = await storage.storage.from('products').list('products', {
+      limit, offset, sortBy: { column: 'created_at', order: 'desc' },
+    });
+    if (error) throw error;
+    const assets = (files || []).filter((file) => file.name && !file.name.startsWith('.')).map((file) => {
+      const path = `products/${file.name}`;
+      const { data } = storage.storage.from('products').getPublicUrl(path);
+      return {
+        name: file.name, path, publicUrl: data.publicUrl,
+        createdAt: file.created_at || null, updatedAt: file.updated_at || null,
+        sizeBytes: typeof file.metadata?.size === 'number' ? file.metadata.size : null,
+        contentType: file.metadata?.mimetype || null,
+      };
+    });
+    res.json({ success: true, data: assets, count: assets.length, limit, offset });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load media library.' });
+  }
+});
+
+adminRouter.delete('/media', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const path = z.string().regex(/^products\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i, 'Invalid media path.').parse(req.body?.path);
+    const storage = getSupabaseAdmin();
+    const { data: urlData } = storage.storage.from('products').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+    const [productReference, variantReference] = await Promise.all([
+      prisma.product.findFirst({ where: { images: { has: publicUrl } }, select: { id: true, name: true } }),
+      prisma.productVariant.findFirst({ where: { OR: [{ image: publicUrl }, { altImage: publicUrl }] }, select: { id: true, sku: true } }),
+    ]);
+    if (productReference || variantReference) {
+      return res.status(409).json({ success: false, error: 'This image is still used by a product or variant. Remove it from the product first, then delete the unused asset.' });
+    }
+    const { error } = await storage.storage.from('products').remove([path]);
+    if (error) throw error;
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'MEDIA_DELETED', resource: 'PRODUCT', resourceId: path,
+      previousValue: publicUrl, note: 'Unused product image removed from storage',
+    });
+    res.json({ success: true, message: 'Image permanently deleted from storage.' });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 500).json({ success: false, error: message });
+  }
+});
+
 // 2. ORDERS
 adminRouter.get('/orders', requireAdmin, async (req: Request, res: Response) => {
   try {
@@ -339,6 +439,139 @@ adminRouter.post('/orders/:id/shipment', requireAdmin, async (req: Authenticated
   }
 });
 
+
+
+/* Category CRUD; categories with active products cannot be deactivated. */
+adminRouter.get('/categories', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const includeInactive = req.query.includeInactive === 'true';
+    const data = await prisma.category.findMany({
+      where: includeInactive ? undefined : { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      include: { _count: { select: { products: true } } },
+    });
+    res.json({ success: true, count: data.length, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load categories.' });
+  }
+});
+
+adminRouter.post('/categories', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = CreateCategorySchema.parse(req.body);
+    const slug = (input.slug || input.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, sortOrder: input.sortOrder ?? 0, isActive: true } });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_CREATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category created' });
+    res.status(201).json({ success: true, data: category });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.code === 'P2002' ? 'A category with this name or slug already exists.' : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 409).json({ success: false, error: message });
+  }
+});
+
+adminRouter.patch('/categories/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = UpdateCategorySchema.parse(req.body);
+    const data: any = { ...input };
+    if (input.name && !input.slug) data.slug = input.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const category = await prisma.category.update({ where: { id: req.params.id }, data });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_UPDATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category updated' });
+    res.json({ success: true, data: category });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.code === 'P2002' ? 'A category with this name or slug already exists.' : err.message;
+    res.status(err instanceof z.ZodError ? 400 : err.code === 'P2025' ? 404 : 409).json({ success: false, error: message });
+  }
+});
+
+adminRouter.delete('/categories/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const activeProducts = await prisma.product.count({ where: { categoryId: req.params.id, status: 'ACTIVE' } });
+    if (activeProducts > 0) return res.status(409).json({ success: false, error: 'Move or archive active products in this category before deactivating it.' });
+    const category = await prisma.category.update({ where: { id: req.params.id }, data: { isActive: false } });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_ARCHIVED', resource: 'PRODUCT', resourceId: category.id, previousValue: category.name, newValue: 'INACTIVE', note: 'Category deactivated; historical product references preserved' });
+    res.json({ success: true, message: 'Category deactivated. Existing product records were preserved.' });
+  } catch (err: any) {
+    res.status(err.code === 'P2025' ? 404 : 400).json({ success: false, error: err.message });
+  }
+});
+
+/* Product variant CRUD. Deletes are soft-deletes to preserve historical orders. */
+adminRouter.get('/variants', requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const rows = await prisma.productVariant.findMany({
+      include: { product: { select: { id: true, name: true, status: true } }, inventory: true },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+    const data = rows.map((variant) => ({
+      id: variant.id, productId: variant.productId, productName: variant.product.name,
+      productStatus: variant.product.status, sku: variant.sku, size: variant.size,
+      colour: variant.colour, colourHex: variant.colourHex, priceNGN: variant.priceNGN, priceUSD: variant.priceUSD, priceGBP: variant.priceGBP, priceEUR: variant.priceEUR,
+      costPriceNGN: variant.costPriceNGN, image: variant.image, altImage: variant.altImage, active: variant.isActive,
+      stockQuantity: variant.inventory?.stockQuantity ?? 0,
+      reservedQuantity: variant.inventory?.reservedQuantity ?? 0,
+      availableStock: (variant.inventory?.stockQuantity ?? 0) - (variant.inventory?.reservedQuantity ?? 0),
+      sortOrder: variant.sortOrder, createdAt: variant.createdAt.toISOString(),
+      updatedAt: variant.updatedAt.toISOString(),
+    }));
+    res.json({ success: true, count: data.length, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load variants.' });
+  }
+});
+
+adminRouter.post('/variants', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = CreateVariantSchema.parse(req.body);
+    const product = await prisma.product.findUnique({ where: { id: input.productId }, select: { id: true, name: true, priceNGN: true, costPriceNGN: true, images: true } });
+    if (!product) return res.status(404).json({ success: false, error: 'Product not found.' });
+    const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').toUpperCase().slice(0, 8);
+    const sku = input.sku || `PCY-${slug(product.name)}-${slug(input.colour).slice(0, 3)}-${input.size.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+    const created = await prisma.$transaction(async (tx) => {
+      const variant = await tx.productVariant.create({ data: {
+        productId: product.id, sku, size: input.size, colour: input.colour,
+        colourHex: input.colourHex || '#111111', priceNGN: input.priceNGN ?? null,
+        priceUSD: input.priceUSD ?? null, priceGBP: input.priceGBP ?? null, priceEUR: input.priceEUR ?? null,
+        costPriceNGN: input.costPriceNGN ?? product.costPriceNGN,
+        image: input.image || product.images[0] || null, altImage: input.altImage || null, isActive: true,
+      }});
+      const inventory = await tx.inventory.create({ data: { variantId: variant.id, stockQuantity: input.initialStock, reservedQuantity: 0, soldQuantity: 0, damagedQuantity: 0, returnedQuantity: 0, reorderLevel: 5 }});
+      await tx.inventoryTransaction.create({ data: {
+        inventoryId: inventory.id, variantId: variant.id, quantity: input.initialStock,
+        type: 'RESTOCK', previousStock: 0, newStock: input.initialStock,
+        referenceType: 'MANUAL', reason: 'Initial stock from admin variant creation',
+      }});
+      return tx.productVariant.findUniqueOrThrow({ where: { id: variant.id }, include: { product: { select: { id: true, name: true, status: true } }, inventory: true } });
+    });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'VARIANT_CREATED', resource: 'PRODUCT', resourceId: created.id, newValue: created.sku, note: `Created variant for ${product.name}` });
+    res.status(201).json({ success: true, data: created });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof z.ZodError ? 400 : 400).json({ success: false, error: message });
+  }
+});
+
+adminRouter.patch('/variants/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = UpdateVariantSchema.parse(req.body);
+    const updated = await prisma.productVariant.update({ where: { id: req.params.id }, data: input as any });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'VARIANT_UPDATED', resource: 'PRODUCT', resourceId: updated.id, newValue: updated.sku, note: 'Product variant updated' });
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof z.ZodError ? 400 : err.code === 'P2025' ? 404 : 400).json({ success: false, error: message });
+  }
+});
+
+adminRouter.delete('/variants/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const variant = await prisma.productVariant.update({ where: { id: req.params.id }, data: { isActive: false } });
+    await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'VARIANT_ARCHIVED', resource: 'PRODUCT', resourceId: variant.id, previousValue: variant.sku, newValue: 'INACTIVE', note: 'Variant deactivated to preserve order history' });
+    res.json({ success: true, message: 'Variant deactivated. Historical order records were preserved.' });
+  } catch (err: any) {
+    res.status(err.code === 'P2025' ? 404 : 400).json({ success: false, error: err.message });
+  }
+});
+
 // 3. PRODUCTS
 adminRouter.get('/products', requireAdmin, async (req: Request, res: Response) => {
   try {
@@ -402,24 +635,34 @@ adminRouter.patch('/products/:id', requireAdmin, async (req: AuthenticatedAdminR
 });
 
 adminRouter.delete('/products/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
-  const success = await ProductService.deleteProduct(req.params.id);
-  if (!success) {
-    return res.status(404).json({ success: false, error: 'Product not found' });
+  try {
+    const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
+    if (!previous) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    // ProductService archives products instead of hard-deleting records, preserving order references.
+    const success = await ProductService.deleteProduct(req.params.id);
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PRODUCT_ARCHIVED',
+      resource: 'PRODUCT',
+      resourceId: req.params.id,
+      previousValue: previous.name,
+      newValue: 'ARCHIVED',
+      note: 'Product moved to archive; historical order references preserved',
+    });
+
+    return res.json({ success: true, message: 'Product archived successfully.' });
+  } catch (err: any) {
+    console.error('[ADMIN_PRODUCT_ARCHIVE]', err);
+    return res.status(500).json({ success: false, error: 'Unable to archive this product. No records were intentionally hard-deleted.' });
   }
-
-  await AuditService.log({
-    adminId: req.admin?.id || 'admin',
-    adminEmail: req.admin?.email || 'admin@piercyn.com',
-    action: 'PRODUCT_ARCHIVED',
-    resource: 'PRODUCT',
-    resourceId: req.params.id,
-    previousValue: previous?.name,
-    newValue: 'ARCHIVED',
-    note: 'Product moved to archive',
-  });
-
-  res.json({ success: true, message: 'Product archived successfully' });
 });
 
 // 4. INVENTORY
