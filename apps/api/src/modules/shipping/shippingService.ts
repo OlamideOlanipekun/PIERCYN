@@ -106,6 +106,9 @@ export class ShippingService {
     let courierMetadata: string | undefined;
 
     if (!trackingNumber) {
+      if (data.courier && data.courier.toUpperCase() !== this.courierAdapter.name) {
+        throw new Error(`Automated booking for ${data.courier} is not configured. Book with that courier manually and supply its real tracking number.`);
+      }
       const courierResult = await this.courierAdapter.createShipment({
         orderNumber: order.orderNumber,
         recipientName: data.recipientName,
@@ -115,6 +118,9 @@ export class ShippingService {
         deliveryState: order.deliveryState,
         itemDescription: data.itemDescription || `PIERCYN Order ${order.orderNumber}`,
       });
+      if (!courierResult.success || !courierResult.trackingNumber) {
+        throw new Error(courierResult.message || 'Courier booking failed; no shipment was created.');
+      }
       trackingNumber = courierResult.trackingNumber;
       courierMetadata = JSON.stringify(courierResult);
     }
@@ -123,7 +129,7 @@ export class ShippingService {
       where: { orderId: order.id },
       update: {
         provider: data.courier || this.courierAdapter.name,
-        trackingNumber: trackingNumber || `TRK-${Date.now()}`,
+        trackingNumber: trackingNumber!,
         deliveryFeeNGN: data.deliveryFeeNGN ?? order.deliveryFeeNGN,
         deliveryAddress: data.deliveryAddress,
         recipientName: data.recipientName,
