@@ -38,11 +38,11 @@ export const OrderConfirmationModal: React.FC = () => {
   const paymentMethod = String(lastCreatedOrder.paymentMethod || '').toLowerCase();
   const isTransfer = paymentMethod.includes('transfer') || paymentMethod.includes('direct');
   const env = (import.meta as any).env || {};
-  const whatsappNumber = String(env.VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\\D/g, '');
+  const whatsappNumber = String(env.VITE_PIERCYN_WHATSAPP_NUMBER || '').replace(/\D/g, '');
   const bankName = String(env.VITE_PIERCYN_BANK_NAME || '').trim();
   const accountName = String(env.VITE_PIERCYN_ACCOUNT_NAME || '').trim();
-  const accountNumber = String(env.VITE_PIERCYN_ACCOUNT_NUMBER || '').replace(/\\s/g, '');
-  const hasBankDetails = Boolean(bankName && accountName && /^\\d{10}$/.test(accountNumber));
+  const accountNumber = String(env.VITE_PIERCYN_ACCOUNT_NUMBER || '').replace(/\s/g, '');
+  const hasBankDetails = Boolean(bankName && accountName && /^\d{10}$/.test(accountNumber));
 
   const whatsappMessage = encodeURIComponent(
     `Hello PIERCYN! I just placed Order #${lastCreatedOrder.orderNumber} for ₦${lastCreatedOrder.totalNGN.toLocaleString()}. ${
