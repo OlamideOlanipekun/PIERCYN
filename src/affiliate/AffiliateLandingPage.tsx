@@ -26,7 +26,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   onBackToShop,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'apply' | 'login'>('info');
-  const [itemsSoldPerMonth, setItemsSoldPerMonth] = useState<number>(100);
+  const [ordersPerMonth, setOrdersPerMonth] = useState<number>(100);
 
   // Application form state
   const [applyForm, setApplyForm] = useState({
@@ -128,7 +128,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
     }
   };
 
-  const estimatedMonthlyIncome = itemsSoldPerMonth * 500;
+  const estimatedMonthlyIncome = ordersPerMonth * 500;
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
@@ -188,7 +188,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light font-serif tracking-tight text-white mb-6 leading-[1.08]">
                 Curate Modern Luxury.
                 <br />
-                <span className="italic text-[#C9A96E] font-serif">Earn ₦500 on every single piece.</span>
+                <span className="italic text-[#C9A96E] font-serif">Earn ₦500 on every qualifying order.</span>
               </h1>
               <p className="text-[#999999] text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-light">
                 Join our private circle of stylists, taste-makers, and digital creators. Share bespoke
@@ -230,9 +230,9 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="w-12 h-12 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center text-[#C9A96E] mb-6">
                     <TrendingUp className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-serif text-white mb-2">₦500 Flat Royalty / Unit</h3>
+                  <h3 className="text-lg font-serif text-white mb-2">₦500 Per Delivered Order</h3>
                   <p className="text-sm text-[#888888] leading-relaxed font-light">
-                    Every piece in a customer order earns you a flat ₦500 commission. If a follower purchases a 4-piece capsule wardrobe, you earn ₦2,000 instantly.
+                    Earn one flat ₦500 commission for each qualifying order attributed to your link after delivery. A multi-item order still earns ₦500 total.
                   </p>
                 </div>
 
@@ -273,28 +273,28 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   Calculate Your Creator Earnings
                 </h2>
                 <p className="text-[#888888] text-sm font-light mb-8">
-                  Adjust the slider below to estimate your monthly earnings based on pieces purchased by your community.
+                  Adjust the slider to estimate your monthly earnings based on qualifying orders delivered to your community.
                 </p>
 
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-sm text-[#CCCCCC]">Units Ordered by Audience / Month</span>
-                      <span className="text-xl font-mono font-medium text-white">{itemsSoldPerMonth} Pieces</span>
+                      <span className="text-sm text-[#CCCCCC]">Qualifying Orders / Month</span>
+                      <span className="text-xl font-mono font-medium text-white">{ordersPerMonth} Orders</span>
                     </div>
                     <input
                       type="range"
                       min="10"
                       max="1000"
                       step="10"
-                      value={itemsSoldPerMonth}
-                      onChange={(e) => setItemsSoldPerMonth(parseInt(e.target.value, 10))}
+                      value={ordersPerMonth}
+                      onChange={(e) => setOrdersPerMonth(parseInt(e.target.value, 10))}
                       className="w-full h-2 bg-[#333333] rounded-lg appearance-none cursor-pointer accent-[#C9A96E]"
                     />
                     <div className="flex justify-between text-[11px] text-[#666666] mt-1 font-mono">
-                      <span>10 pieces</span>
-                      <span>500 pieces</span>
-                      <span>1,000 pieces</span>
+                      <span>10 orders</span>
+                      <span>500 orders</span>
+                      <span>1,000 orders</span>
                     </div>
                   </div>
 
