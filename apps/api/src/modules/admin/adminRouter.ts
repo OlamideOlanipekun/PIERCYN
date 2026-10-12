@@ -635,24 +635,34 @@ adminRouter.patch('/products/:id', requireAdmin, async (req: AuthenticatedAdminR
 });
 
 adminRouter.delete('/products/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
-  const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
-  const success = await ProductService.deleteProduct(req.params.id);
-  if (!success) {
-    return res.status(404).json({ success: false, error: 'Product not found' });
+  try {
+    const previous = await ProductService.getProductBySlugOrId(req.params.id, true);
+    if (!previous) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    // ProductService archives products instead of hard-deleting records, preserving order references.
+    const success = await ProductService.deleteProduct(req.params.id);
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PRODUCT_ARCHIVED',
+      resource: 'PRODUCT',
+      resourceId: req.params.id,
+      previousValue: previous.name,
+      newValue: 'ARCHIVED',
+      note: 'Product moved to archive; historical order references preserved',
+    });
+
+    return res.json({ success: true, message: 'Product archived successfully.' });
+  } catch (err: any) {
+    console.error('[ADMIN_PRODUCT_ARCHIVE]', err);
+    return res.status(500).json({ success: false, error: 'Unable to archive this product. No records were intentionally hard-deleted.' });
   }
-
-  await AuditService.log({
-    adminId: req.admin?.id || 'admin',
-    adminEmail: req.admin?.email || 'admin@piercyn.com',
-    action: 'PRODUCT_ARCHIVED',
-    resource: 'PRODUCT',
-    resourceId: req.params.id,
-    previousValue: previous?.name,
-    newValue: 'ARCHIVED',
-    note: 'Product moved to archive',
-  });
-
-  res.json({ success: true, message: 'Product archived successfully' });
 });
 
 // 4. INVENTORY
