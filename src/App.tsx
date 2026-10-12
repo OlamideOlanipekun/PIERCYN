@@ -106,6 +106,30 @@ const MainLayout: React.FC = () => {
     setIsAdminView(false);
     setIsAffiliateView(false);
 
+    const storefrontRoutes: Record<string, StorefrontPageKey> = {
+      '/shipping': 'shipping',
+      '/returns': 'returns',
+      '/contact': 'contact',
+      '/privacy': 'privacy',
+      '/terms': 'terms',
+      '/search': 'search',
+      '/size-guide': 'size-guide',
+      '/faq': 'faq',
+      '/track-order': 'track-order',
+      '/available-to-order': 'available-to-order',
+      '/cart': 'cart',
+      '/checkout': 'checkout',
+      '/order-confirmation': 'order-confirmation',
+    };
+    const storefrontRoute = storefrontRoutes[rawPath];
+    if (storefrontRoute) {
+      setStorefrontPage(storefrontRoute);
+      setCurrentPdpProduct(null);
+      document.title = `${storefrontRoute.replaceAll('-', ' ')} — PIERCYN`;
+      return;
+    }
+    setStorefrontPage(null);
+
     if (rawPath === '/shop' || rawPath === '/collections') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
