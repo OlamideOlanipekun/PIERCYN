@@ -134,6 +134,23 @@ export const AffiliatesView: React.FC = () => {
     }
   };
 
+  const handleToggleAffiliateStatus = async (affiliate: any) => {
+    const nextStatus = affiliate.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    if (!['ACTIVE', 'SUSPENDED'].includes(affiliate.status)) return;
+    const reason = window.prompt(
+      nextStatus === 'SUSPENDED' ? `Reason for suspending ${affiliate.firstName} ${affiliate.lastName}:` : `Reason for reactivating ${affiliate.firstName} ${affiliate.lastName}:`,
+      nextStatus === 'SUSPENDED' ? 'Admin review' : 'Account reinstated after review'
+    );
+    if (reason === null) return;
+    try {
+      await AdminApi.updateAffiliateStatus(affiliate.id, nextStatus, reason.trim() || undefined);
+      showNotification('success', `Affiliate ${nextStatus === 'SUSPENDED' ? 'suspended' : 'reactivated'} successfully.`);
+      await loadData();
+    } catch (err: any) {
+      showNotification('error', err.message || 'Failed to update affiliate status.');
+    }
+  };
+
   const handleViewDetail = async (id: string) => {
     setIsDetailLoading(true);
     try {
@@ -463,13 +480,24 @@ export const AffiliatesView: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <button
-                              onClick={() => handleViewDetail(aff.id)}
-                              className="px-3 py-1 bg-[#1F1F1F] hover:bg-[#2A2A2A] text-white rounded border border-[#333333] text-[11px] inline-flex items-center gap-1.5 transition-colors"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              Inspect
-                            </button>
+                            <div className="inline-flex flex-wrap justify-end gap-2">
+                              <button
+                                onClick={() => handleViewDetail(aff.id)}
+                                className="px-3 py-1 bg-[#1F1F1F] hover:bg-[#2A2A2A] text-white rounded border border-[#333333] text-[11px] inline-flex items-center gap-1.5 transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Inspect
+                              </button>
+                              {(aff.status === 'ACTIVE' || aff.status === 'SUSPENDED') && (
+                                <button
+                                  onClick={() => void handleToggleAffiliateStatus(aff)}
+                                  className={`px-3 py-1 rounded border text-[11px] inline-flex items-center gap-1.5 transition-colors ${aff.status === 'ACTIVE' ? 'border-red-900/70 text-red-300 hover:bg-red-950/40' : 'border-emerald-900/70 text-emerald-300 hover:bg-emerald-950/30'}`}
+                                >
+                                  {aff.status === 'ACTIVE' ? <Ban className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                                  {aff.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

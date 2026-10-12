@@ -18,14 +18,16 @@ export const MediaLibraryView: React.FC = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const pageSize = 100;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try { setAssets(await AdminApi.getMedia({ limit: 100, offset: 0 })); }
+    try { setAssets(await AdminApi.getMedia({ limit: pageSize, offset })); }
     catch (err: any) { setError(err?.message || 'Unable to load stored images.'); }
     finally { setLoading(false); }
-  }, []);
+  }, [offset]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -45,12 +47,15 @@ export const MediaLibraryView: React.FC = () => {
     try {
       await AdminApi.deleteMedia(asset.path);
       setAssets((current) => current.filter((item) => item.path !== asset.path));
+      if (assets.length === 1 && offset > 0) setOffset((current) => Math.max(0, current - pageSize));
       setNotice('Image permanently deleted from storage.');
     } catch (err: any) { setError(err?.message || 'Unable to delete this image.'); }
     finally { setBusyPath(null); }
   };
 
   const filtered = assets.filter((asset) => `${asset.name} ${asset.publicUrl} ${asset.contentType || ''}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const hasPrevious = offset > 0;
+  const hasNext = assets.length === pageSize;
 
   return <section className="space-y-6">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -68,7 +73,7 @@ export const MediaLibraryView: React.FC = () => {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search filenames or image URLs…" className="w-full rounded-lg border border-[#333] bg-[#0E0E0E] py-2.5 pl-9 pr-3 text-sm text-[#F2F0EB] outline-none focus:border-[#777]" />
       </label>
-      <p className="text-xs text-neutral-400">{filtered.length} image{filtered.length === 1 ? '' : 's'} shown · newest first</p>
+      <p className="text-xs text-neutral-400">{filtered.length} image{filtered.length === 1 ? '' : 's'} on this page · newest first</p>
     </div>
     {error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-900/70 bg-red-950/30 p-3 text-sm text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
     {notice && !error && <div role="status" className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 p-3 text-sm text-emerald-200">{notice}</div>}
@@ -82,6 +87,10 @@ export const MediaLibraryView: React.FC = () => {
           </div>
         </article>)}
       </div>}
-    <p className="text-xs leading-relaxed text-neutral-500">Deletion is limited to generated image files from the admin upload flow. The API refuses to delete images still referenced by products or variants. This view loads the newest 100 files.</p>
+    <div className="flex flex-col gap-3 border-t border-[#292929] pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-neutral-500">Showing files {assets.length ? offset + 1 : 0}–{offset + assets.length}. Images referenced by products or variants cannot be deleted.</p>
+      <div className="flex gap-2"><button type="button" disabled={!hasPrevious || loading} onClick={() => setOffset((current) => Math.max(0, current - pageSize))} className="rounded-lg border border-[#353535] px-4 py-2 text-xs font-semibold disabled:opacity-40">Previous</button><button type="button" disabled={!hasNext || loading} onClick={() => setOffset((current) => current + pageSize)} className="rounded-lg border border-[#353535] px-4 py-2 text-xs font-semibold disabled:opacity-40">Next</button></div>
+    </div>
+    <p className="text-xs leading-relaxed text-neutral-500">Upload new images through product create/edit. To update an image, replace it or reorder it on the product; remove unused uploads here.</p>
   </section>;
 };
