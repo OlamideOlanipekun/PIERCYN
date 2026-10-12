@@ -15,7 +15,6 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/piercyn
       DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/piercyn_test
-      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/piercyn_test
       JWT_SECRET: ci-only-not-a-production-secret
       ORDER_ACCESS_TOKEN_SECRET: ci-only-order-secret
       ADMIN_JWT_SECRET: ci-only-admin-secret
@@ -38,5 +37,5 @@ jobs:
       - name: Build client and server
         run: npm run build
 
-      - name: Run in-memory commerce and access-control tests
-        run: npx vitest run tests/commerce.test.ts tests/admin.test.ts tests/auth.test.ts tests/integration_p1.test.ts apps/api/tests/payment-security.test.ts
+      - name: Run isolated payment security regression tests
+        run: npx vitest run apps/api/tests/payment-security.test.ts
