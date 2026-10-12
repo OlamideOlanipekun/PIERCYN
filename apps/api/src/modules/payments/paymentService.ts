@@ -221,19 +221,20 @@ function createConfiguredProvider(): IPaymentProvider {
 }
 
 export class PaymentService {
-  private static provider: IPaymentProvider = createConfiguredProvider();
+  // Injection is intended for isolated tests only. Production request flows
+  // choose a provider from each order and never mutate shared provider state.
+  private static providerOverride: IPaymentProvider | null = null;
 
-  public static setProvider(p: IPaymentProvider) {
-    this.provider = p;
+  public static setProvider(p: IPaymentProvider | null) {
+    this.providerOverride = p;
   }
 
   public static getProvider(): IPaymentProvider {
-    // Webhook signature verification is only supported for Paystack. Do not
-    // depend on a mutable global provider selected by another checkout request.
-    return new PaystackPaymentProvider();
+    return this.providerOverride || new PaystackPaymentProvider();
   }
 
   private static providerForOrder(order: { paymentMethod?: string }): IPaymentProvider {
+    if (this.providerOverride) return this.providerOverride;
     const method = String(order.paymentMethod || '').toUpperCase();
     if (method === 'PAYSTACK') return new PaystackPaymentProvider();
     if (method === 'MOCK' && process.env.NODE_ENV !== 'production') return new MockPaymentProvider();
