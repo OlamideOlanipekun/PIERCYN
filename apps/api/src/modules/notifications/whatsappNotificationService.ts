@@ -38,7 +38,7 @@ export class WhatsAppNotificationService {
       `Phone: ${order.customerPhone}`,
       `Total: ${amount}`,
       'Review the order in the PIERCYN admin dashboard.',
-    ].join('\\n');
+    ].join('\n');
 
     try {
       const response = await fetch(
