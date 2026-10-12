@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
+import { processCheckoutPayment, isLivePaymentConfigured, getPaymentProvider } from '../services/paymentService';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
 import { CustomerInfo, OrderItem } from '../types';
@@ -123,11 +123,24 @@ export const CheckoutModal: React.FC = () => {
         });
 
         if (!paymentRes.success) {
-          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your reservation is held; you can complete bank transfer or WhatsApp confirmation.');
+          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your order remains unpaid.');
           setIsSubmitting(false);
           setIsCheckoutOpen(false);
           window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
           window.dispatchEvent(new PopStateEvent('popstate'));
+          showToast('Order reserved. Payment has not been confirmed.');
+          return;
+        }
+
+        // A successful browser callback is not proof of payment. Ask our API to
+        // verify the reference against Paystack's server-side transaction record.
+        const paymentVerified = await getPaymentProvider().verifyPayment(paymentRes.transactionReference);
+        if (!paymentVerified) {
+          setIsSubmitting(false);
+          setIsCheckoutOpen(false);
+          window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          showToast('Payment verification is pending. Your order is not yet marked paid.');
           return;
         }
       }
