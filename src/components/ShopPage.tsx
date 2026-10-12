@@ -328,6 +328,16 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 </div>
               </div>
 
+              {/* Mobile Availability Select */}
+              <div className="mb-6">
+                <h4 className="text-xs font-mono font-bold uppercase mb-3">AVAILABILITY</h4>
+                <select value={availability} onChange={(e) => setAvailability(e.target.value as 'all' | 'in-stock' | 'unavailable')} className="w-full rounded-lg border border-[#DAD8D1] bg-[#E8E6E1] p-3 text-xs font-semibold">
+                  <option value="all">ALL LISTINGS</option>
+                  <option value="in-stock">IN STOCK ONLY</option>
+                  <option value="unavailable">SOLD OUT / UNAVAILABLE</option>
+                </select>
+              </div>
+
               {/* Mobile Size Select */}
               <div className="mb-6">
                 <h4 className="text-xs font-mono font-bold uppercase mb-3">SIZE</h4>
