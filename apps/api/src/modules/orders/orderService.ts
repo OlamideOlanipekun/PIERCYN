@@ -235,18 +235,30 @@ export class OrderService {
         },
       });
 
-      // Upsert Payment record
+      // Persist the actual payment provider. Otherwise Paystack payments inherit
+      // the schema's DIRECT_TRANSFER default and the payment ledger lies.
+      const provider =
+        order.paymentMethod === 'PAYSTACK'
+          ? 'PAYSTACK'
+          : order.paymentMethod === 'MOCK'
+          ? 'MOCK'
+          : 'DIRECT_TRANSFER';
+
       await tx.payment.upsert({
         where: { providerReference },
         update: {
+          provider,
+          amountNGN: order.totalNGN,
+          currency: order.currency || 'NGN',
           status: 'SUCCESS',
           paidAt: now,
         },
         create: {
           orderId: order.id,
+          provider,
           providerReference,
           amountNGN: order.totalNGN,
-          currency: 'NGN',
+          currency: order.currency || 'NGN',
           status: 'SUCCESS',
           paidAt: now,
         },
