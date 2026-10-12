@@ -242,6 +242,9 @@ apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
   try {
     const validated = VerifyPaymentSchema.parse(req.body);
     const result = await PaymentService.verifyPayment(validated.reference);
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: 'Payment could not be verified. Please wait for provider confirmation or contact support.', data: result });
+    }
     res.json({ success: true, data: result });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
