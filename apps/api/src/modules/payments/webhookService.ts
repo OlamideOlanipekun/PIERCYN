@@ -66,6 +66,9 @@ export class WebhookService {
     }
 
     const orderNumber = data.metadata?.order_number || reference;
+    if (orderNumber !== reference) {
+      return { received: true, processed: false, idempotentDuplicate: false, message: 'Payment reference does not match the order reference.' };
+    }
     const order = await OrderService.getOrder(orderNumber);
     if (!order) {
       return {
@@ -74,6 +77,10 @@ export class WebhookService {
         idempotentDuplicate: false,
         message: 'No matching order found for this payment reference.',
       };
+    }
+
+    if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
+      return { received: true, processed: false, idempotentDuplicate: false, message: 'Order is not eligible for payment confirmation.' };
     }
 
     const amountKobo = Number(data.amount);
