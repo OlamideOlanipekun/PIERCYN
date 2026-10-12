@@ -29,9 +29,9 @@ const copy: Record<Exclude<StorefrontPageKey, 'search' | 'cart' | 'checkout' | '
     eyebrow: 'DELIVERY INFORMATION', title: 'Shipping & Delivery',
     intro: 'Delivery options and charges are shown at checkout and recalculated by PIERCYN’s server before an order is created.',
     sections: [
-      { title: 'Lagos delivery', body: 'The configured Lagos delivery estimate is usually 24–48 hours. Delivery costs ₦2,500 for orders below the configured free-delivery threshold.' },
-      { title: 'Delivery across Nigeria', body: '${SHIPPING_CONFIG.nationwideDescription} Delivery costs ₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()} for orders below the configured free-delivery threshold.' },
-      { title: 'Free delivery', body: 'The current checkout configuration applies free delivery to eligible orders of ₦${SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()} or more. The final eligible amount is confirmed in checkout.' },
+      { title: 'Lagos delivery', body: `${SHIPPING_CONFIG.lagosDescription} Delivery costs ₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()} for orders below the configured free-delivery threshold.` },
+      { title: 'Delivery across Nigeria', body: `${SHIPPING_CONFIG.nationwideDescription} Delivery costs ₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()} for orders below the configured free-delivery threshold.` },
+      { title: 'Free delivery', body: `The current checkout configuration applies free delivery to eligible orders of ₦${SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()} or more. The final eligible amount is confirmed in checkout.` },
       { title: 'Please note', body: 'These are estimates, not guaranteed arrival dates. Delivery timing can depend on destination, dispatch and courier conditions. Contact support with your order reference if you need help.' },
     ],
   },
@@ -90,8 +90,8 @@ const copy: Record<Exclude<StorefrontPageKey, 'search' | 'cart' | 'checkout' | '
     sections: [
       { title: 'How do I place an order?', body: 'Choose a product and its available variant, add it to your bag, enter your delivery details at checkout, select a delivery region and follow the payment instructions shown.' },
       { title: 'Do I need an account?', body: 'No customer account is required to place a guest order.' },
-      { title: 'How much is delivery?', body: 'Current configured rates are ₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()} within Lagos and ₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()} nationwide below the ₦${SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()} free-delivery threshold. Checkout displays the final charge.' },
-      { title: 'How long does delivery take?', body: 'Current estimates are ${SHIPPING_CONFIG.lagosTimeframe.toLowerCase()} within Lagos and ${SHIPPING_CONFIG.nationwideTimeframe.toLowerCase()} nationwide. These are estimates, not guarantees.' },
+      { title: 'How much is delivery?', body: `Current configured rates are ₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()} within Lagos and ₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()} nationwide below the ₦${SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()} free-delivery threshold. Checkout displays the final charge.` },
+      { title: 'How long does delivery take?', body: `Current estimates are ${SHIPPING_CONFIG.lagosTimeframe.toLowerCase()} within Lagos and ${SHIPPING_CONFIG.nationwideTimeframe.toLowerCase()} nationwide. These are estimates, not guarantees.` },
       { title: 'Can I order an item that is not in stock?', body: 'Only order-to-source products whose availability and expected timeline have been explicitly confirmed by PIERCYN. The current storefront does not yet expose a verified supplier-confirmation status for catalogue items.' },
       { title: 'What if my order is damaged or incorrect?', body: 'Keep the item and packaging, take photos, and contact support with your order reference before returning anything.' },
       { title: 'How can I track an order?', body: 'Use the secure order link on the device used at checkout. If you no longer have that link, contact support; the storefront does not provide an open order-number lookup.' },
