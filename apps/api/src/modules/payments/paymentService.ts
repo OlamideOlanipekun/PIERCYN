@@ -230,7 +230,7 @@ export class PaymentService {
     if (provider.providerType === 'MOCK' && process.env.NODE_ENV === 'production') return failed;
 
     const verified = await provider.verify(ref);
-    if (!verified.success) return verified;
+    if (!verified.success) return failed;
 
     const order = await OrderService.getOrder(verified.orderNumber) || await OrderService.getOrder(orderNumberOrRef);
     if (!order || verified.orderNumber !== order.orderNumber) return failed;
@@ -239,10 +239,12 @@ export class PaymentService {
 
     await OrderService.markOrderPaid(order.orderNumber, verified.providerReference);
     return {
-      ...verified,
       success: true,
+      providerReference: verified.providerReference,
       amountNGN: order.totalNGN,
       orderNumber: order.orderNumber,
+      currency: verified.currency,
+      paidAt: verified.paidAt,
     };
   }
 
