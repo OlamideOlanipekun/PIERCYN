@@ -226,6 +226,45 @@ export class OrderService {
 
       const now = new Date();
 
+      // A checkout reservation can expire while a customer is completing payment.
+      // Re-reserve any missing quantity if stock is still available; if it is not,
+      // record a paid inventory hold instead of decrementing stock below zero.
+      const requiredByVariant = new Map<string, number>();
+      for (const item of order.items) {
+        if (item.variantId) {
+          requiredByVariant.set(
+            item.variantId,
+            (requiredByVariant.get(item.variantId) || 0) + item.quantity,
+          );
+        }
+      }
+
+      const inventoryHoldVariantIds = new Set<string>();
+      for (const [variantId, requiredQuantity] of requiredByVariant) {
+        const activeReservations = await tx.inventoryReservation.findMany({
+          where: {
+            reference: order.orderNumber,
+            variantId,
+            status: 'ACTIVE',
+            expiresAt: { gt: now },
+          },
+          select: { quantity: true },
+        });
+        const reservedQuantity = activeReservations.reduce((sum, reservation) => sum + reservation.quantity, 0);
+        const missingQuantity = Math.max(0, requiredQuantity - reservedQuantity);
+
+        if (missingQuantity > 0) {
+          const reserved = await InventoryService.reserveStock(
+            variantId,
+            missingQuantity,
+            order.orderNumber,
+            COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
+            tx,
+          );
+          if (!reserved) inventoryHoldVariantIds.add(variantId);
+        }
+      }
+
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -236,13 +275,20 @@ export class OrderService {
         include: { items: true },
       });
 
+      const heldProductNames = order.items
+        .filter((item) => item.variantId && inventoryHoldVariantIds.has(item.variantId))
+        .map((item) => item.productName);
+      const historyNote = inventoryHoldVariantIds.size > 0
+        ? `Payment confirmed via reference ${providerReference} by ${confirmedBy}. INVENTORY HOLD — stock unavailable for: ${[...new Set(heldProductNames)].join(', ')}. Admin review required before fulfillment.`
+        : `Payment confirmed via reference ${providerReference} by ${confirmedBy}`;
+
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
           fromStatus: order.status,
           toStatus: 'PAID',
           changedBy: confirmedBy,
-          note: `Payment confirmed via reference ${providerReference} by ${confirmedBy}`,
+          note: historyNote,
         },
       });
 
@@ -275,10 +321,10 @@ export class OrderService {
         },
       });
 
-      // Finalize inventory for all items
-      for (const item of order.items) {
-        if (item.variantId) {
-          await InventoryService.finalizeSale(item.variantId, item.quantity, order.orderNumber, tx);
+      // Finalize once per variant to avoid double-decrementing duplicate cart lines.
+      for (const [variantId, quantity] of requiredByVariant) {
+        if (!inventoryHoldVariantIds.has(variantId)) {
+          await InventoryService.finalizeSale(variantId, quantity, order.orderNumber, tx);
         }
       }
 
