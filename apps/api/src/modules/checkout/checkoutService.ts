@@ -6,6 +6,7 @@ import { CustomerService } from '../customers/customerService';
 import { AffiliateService } from '../affiliate/affiliateService';
 import { prisma } from '../../db/prisma';
 import { generateOrderNumber } from '@piercyn/utils';
+import { WhatsAppNotificationService } from '../notifications/whatsappNotificationService';
 
 export interface CheckoutQuote {
   cart: CalculatedCart;
@@ -248,6 +249,15 @@ export class CheckoutService {
 
       return order;
     }, { isolationLevel: 'Serializable' });
+
+    // Best-effort operator alert; notification outages must never fail checkout.
+    void WhatsAppNotificationService.notifyOrderEvent({
+      orderNumber: createdOrder.orderNumber,
+      customerName: `${createdOrder.customerFirstName} ${createdOrder.customerLastName}`.trim(),
+      customerPhone: createdOrder.customerPhone,
+      totalNGN: createdOrder.totalNGN,
+      status: 'ORDER_PLACED',
+    });
 
     // Clear session cart
     await CartService.clearCart(sessionId);
