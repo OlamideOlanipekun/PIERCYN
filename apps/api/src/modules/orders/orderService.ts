@@ -1,3 +1,4 @@
+import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { InventoryService } from '../inventory/inventoryService';
 import { CommissionService } from '../affiliate/commissionService';
