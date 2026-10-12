@@ -349,6 +349,9 @@ const MainLayout: React.FC = () => {
           onShop={() => handleSelectPage('shop')}
           onOpenCart={() => setIsCartOpen(true)}
           onOpenCheckout={() => setIsCheckoutOpen(true)}
+          isLoadingProducts={isLoadingProducts}
+          catalogError={catalogError}
+          onRetryProducts={refreshProducts}
         />
       ) : activePage === 'product' ? (
         isLoadingProduct ? <main className="min-h-screen bg-[#F2F0EB] pt-32 text-center text-sm text-[#6E6B65]">Loading piece…</main> : <ProductDetailsPage
