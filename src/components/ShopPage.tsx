@@ -21,6 +21,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'all');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
+  const [availability, setAvailability] = useState<'all' | 'in-stock' | 'unavailable'>('all');
   const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high'>('featured');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -51,6 +52,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
         return false;
       }
 
+      // Availability Filter: unknown inventory is never treated as in stock.
+      if (availability === 'in-stock' && !(typeof p.stock === 'number' && p.stock > 0 && !p.isSoldOut)) return false;
+      if (availability === 'unavailable' && !(typeof p.stock === 'number' && (p.stock <= 0 || p.isSoldOut))) return false;
+
       // Price Filter
       if (p.priceNGN > maxPrice) {
         return false;
@@ -78,7 +83,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       }
       return 0; // featured default
     });
-  }, [products, selectedCategory, selectedSize, maxPrice, sortBy, searchQuery]);
+  }, [products, selectedCategory, selectedSize, maxPrice, availability, sortBy, searchQuery]);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -97,6 +102,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
     setSelectedCategory('all');
     setSelectedSize(null);
     setMaxPrice(100000);
+    setAvailability('all');
     setSearchQuery('');
     setSortBy('featured');
   };
@@ -236,8 +242,18 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               </select>
             </div>
 
+            {/* Availability Filter */}
+            <div>
+              <h3 className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#141414]/70 mb-3 pb-1 border-b border-[#DAD8D1]">AVAILABILITY</h3>
+              <select value={availability} onChange={(e) => setAvailability(e.target.value as 'all' | 'in-stock' | 'unavailable')} className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2 text-xs font-semibold focus:outline-none cursor-pointer">
+                <option value="all">ALL LISTINGS</option>
+                <option value="in-stock">IN STOCK ONLY</option>
+                <option value="unavailable">SOLD OUT / UNAVAILABLE</option>
+              </select>
+            </div>
+
             {/* Reset Button */}
-            {(selectedCategory !== 'all' || selectedSize || maxPrice < 100000 || searchQuery) && (
+            {(selectedCategory !== 'all' || selectedSize || maxPrice < 100000 || availability !== 'all' || searchQuery) && (
               <button
                 onClick={resetFilters}
                 className="w-full py-2 text-xs font-mono underline text-[#141414]/70 hover:text-[#141414] text-center"
