@@ -7,7 +7,7 @@ on:
     branches: [main, fix/payment-verification-hardening]
 
 concurrency:
-  group: piercyn-ci-${{ github.ref }}
+  group: piercyn-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
