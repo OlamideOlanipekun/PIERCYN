@@ -234,6 +234,7 @@ export class PaymentService {
 
     const order = await OrderService.getOrder(verified.orderNumber) || await OrderService.getOrder(orderNumberOrRef);
     if (!order || verified.orderNumber !== order.orderNumber) return failed;
+    if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) return failed;
     if (!Number.isFinite(verified.amountNGN) || verified.amountNGN !== order.totalNGN) return failed;
     if (provider.providerType === 'PAYSTACK' && verified.currency?.toUpperCase() !== 'NGN') return failed;
 
