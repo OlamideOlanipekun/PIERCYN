@@ -171,7 +171,7 @@ export class ShippingService {
       throw new Error(`Shipment ${shipmentId} not found`);
     }
 
-    const allowedStatuses = ['PENDING', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED', 'FAILED'];
+    const allowedStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'RETURNED'];
     if (!allowedStatuses.includes(status)) {
       throw new Error(`Invalid shipment status: ${status}`);
     }
