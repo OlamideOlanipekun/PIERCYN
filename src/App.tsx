@@ -5,6 +5,7 @@ import { ENABLE_WOMENSWEAR } from './config/homepage';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
 import { AnnouncementBar } from './components/AnnouncementBar';
+import { AffiliateAnnouncementModal } from './components/AffiliateAnnouncementModal';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
 import { JustDroppedSection } from './components/JustDroppedSection';
@@ -56,10 +57,26 @@ const MainLayout: React.FC = () => {
   const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
+  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);
 
   // Initialize affiliate click tracking once on mount
   useEffect(() => {
     initAffiliateTracking();
+  }, []);
+
+  // Show the affiliate invitation once per full storefront entry, not on every SPA route change.
+  useEffect(() => {
+    const initialPath = window.location.pathname.toLowerCase();
+    if (initialPath.startsWith('/admin') || initialPath.startsWith('/affiliate')) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const currentPath = window.location.pathname.toLowerCase();
+      if (!currentPath.startsWith('/admin') && !currentPath.startsWith('/affiliate')) {
+        setIsAffiliateAnnouncementOpen(true);
+      }
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   // Compute deduplicated homepage products from real backend catalog
@@ -378,6 +395,15 @@ const MainLayout: React.FC = () => {
       <OrderConfirmationModal />
       <AdminDrawer />
       <Toast />
+      {isAffiliateAnnouncementOpen && (
+        <AffiliateAnnouncementModal
+          onClose={() => setIsAffiliateAnnouncementOpen(false)}
+          onJoin={() => {
+            setIsAffiliateAnnouncementOpen(false);
+            window.location.assign('/affiliate');
+          }}
+        />
+      )}
     </div>
   );
 };
