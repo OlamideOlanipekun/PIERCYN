@@ -22,6 +22,11 @@ function expressApiPlugin(): Plugin {
 
 export default defineConfig(({ command }) => {
   return {
+    // Express and its Node-oriented dependencies are CommonJS packages; keep them
+    // external when Vite SSR loads the API middleware so Node handles interop.
+    ssr: {
+      external: ['express', 'cors', 'dotenv', '@prisma/client', '@prisma/adapter-pg', 'pg', 'bcryptjs'],
+    },
     // The Express bridge is development-only. Loading it during a production
     // build makes Node resolve the workspace TypeScript config package before
     // Vite can transform it.
