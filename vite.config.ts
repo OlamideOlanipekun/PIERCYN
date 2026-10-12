@@ -8,7 +8,7 @@ function expressApiPlugin(): Plugin {
     async configureServer(server) {
       // Vitest starts Vite's server machinery but does not need the Express dev bridge.
       // Loading Express through Vite's SSR evaluator breaks CommonJS modules (module is undefined).
-      if (process.env.VITEST) return;
+      if (process.env.VITEST || process.env.NODE_ENV === 'test') return;
       const { app } = await server.ssrLoadModule('./src/server/app.ts');
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
