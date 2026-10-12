@@ -228,7 +228,16 @@ export class PaymentService {
   }
 
   public static getProvider(): IPaymentProvider {
-    return this.provider;
+    // Webhook signature verification is only supported for Paystack. Do not
+    // depend on a mutable global provider selected by another checkout request.
+    return new PaystackPaymentProvider();
+  }
+
+  private static providerForOrder(order: { paymentMethod?: string }): IPaymentProvider {
+    const method = String(order.paymentMethod || '').toUpperCase();
+    if (method === 'PAYSTACK') return new PaystackPaymentProvider();
+    if (method === 'MOCK' && process.env.NODE_ENV !== 'production') return new MockPaymentProvider();
+    return new DirectTransferProvider();
   }
 
   public static async verifyPayment(
@@ -247,7 +256,7 @@ export class PaymentService {
       };
     }
 
-    const provider = this.provider;
+    const provider = this.providerForOrder(order);
     if (provider.providerType === 'DIRECT_TRANSFER') {
       // Bank transfers cannot be confirmed from a customer-supplied reference.
       return {
@@ -313,7 +322,8 @@ export class PaymentService {
     const order = await OrderService.getOrder(orderNumber);
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
 
-    return this.provider.initialize({
+    const provider = this.providerForOrder(order);
+    return provider.initialize({
       orderNumber: order.orderNumber,
       amountNGN: order.totalNGN,
       customerEmail: order.customerEmail,
