@@ -4,7 +4,6 @@ import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
 import { ENABLE_WOMENSWEAR } from './config/homepage';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
-import { AnnouncementBar } from './components/AnnouncementBar';
 import { AffiliateAnnouncementModal } from './components/AffiliateAnnouncementModal';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
@@ -308,9 +307,6 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] font-sans selection:bg-[#F2F0EB] selection:text-[#0A0A0A] relative">
-
-      {/* 1. Announcement Bar */}
-      <AnnouncementBar />
 
       {/* 2. Primary Navigation */}
       <Navbar 
