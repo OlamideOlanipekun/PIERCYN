@@ -228,7 +228,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                     </td>
 
                     <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                      ₦{ord.totalNGN.toLocaleString()}
+                      ₦{(ord.totalNGN || 0).toLocaleString()}
                     </td>
 
                     <td className="py-3.5">

@@ -551,7 +551,7 @@ export const ProductsView: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
                       <div>
                         <span className="text-[9px] text-neutral-500 uppercase block">Retail</span>
-                        <span className="font-bold text-[#F2F0EB]">₦{p.priceNGN.toLocaleString()}</span>
+                        <span className="font-bold text-[#F2F0EB]">₦{(p.priceNGN || 0).toLocaleString()}</span>
                       </div>
                       <div>
                         <span className="text-[9px] text-neutral-500 uppercase block">COGS</span>
@@ -639,7 +639,7 @@ export const ProductsView: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                        ₦{p.priceNGN.toLocaleString()}
+                        ₦{(p.priceNGN || 0).toLocaleString()}
                       </td>
 
                       <td className="py-3.5 font-mono text-neutral-400">

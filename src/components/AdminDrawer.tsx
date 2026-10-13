@@ -108,14 +108,14 @@ export const AdminDrawer: React.FC = () => {
                     {ord.items.map((it, idx) => (
                       <div key={idx} className="flex justify-between text-[#141414] font-mono text-[11px]">
                         <span>{it.quantity}x {it.productName} ({it.size}, {it.color})</span>
-                        <span>₦{it.totalPriceNGN.toLocaleString()}</span>
+                        <span>₦{(it.totalPriceNGN || (it.priceNGN * it.quantity) || 0).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="flex justify-between pt-2 border-t border-[#DAD8D1] font-mono font-bold text-sm">
                     <span>TOTAL ORDER VALUE</span>
-                    <span>₦{ord.totalNGN.toLocaleString()}</span>
+                    <span>₦{(ord.totalNGN || 0).toLocaleString()}</span>
                   </div>
                 </div>
               ))
@@ -131,7 +131,7 @@ export const AdminDrawer: React.FC = () => {
                     <img src={prod.images[0]} alt={prod.name} className="w-10 h-10 object-cover rounded bg-neutral-300" />
                     <div>
                       <h4 className="font-bold truncate max-w-[220px]">{prod.name}</h4>
-                      <span className="text-[10px] font-mono text-[#141414]/60 uppercase">{prod.category} • ₦{prod.priceNGN.toLocaleString()}</span>
+                      <span className="text-[10px] font-mono text-[#141414]/60 uppercase">{prod.category} • ₦{(prod.priceNGN || 0).toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="text-right font-mono">

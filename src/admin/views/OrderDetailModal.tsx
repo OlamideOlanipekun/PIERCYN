@@ -373,11 +373,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             {it.colour} / {it.size}
                           </span>
                           <span className="font-mono text-neutral-400 text-[10px]">
-                            {it.quantity} × ₦{it.unitPriceNGN.toLocaleString()}
+                            {it.quantity} × ₦{(it.unitPriceNGN || 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="font-mono font-bold text-[#F2F0EB] mt-1">
-                          ₦{it.totalPriceNGN.toLocaleString()}
+                          ₦{(it.totalPriceNGN || it.totalNGN || (it.unitPriceNGN * it.quantity) || 0).toLocaleString()}
                         </div>
                       </div>
                     </div>
@@ -420,10 +420,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           </td>
                           <td className="py-3 px-2.5 font-mono font-bold text-[#F2F0EB]">{it.quantity}</td>
                           <td className="py-3 px-2.5 font-mono text-neutral-400">
-                            ₦{it.unitPriceNGN.toLocaleString()}
+                            ₦{(it.unitPriceNGN || 0).toLocaleString()}
                           </td>
                           <td className="py-3 px-2.5 font-mono font-bold text-right text-[#F2F0EB]">
-                            ₦{it.totalPriceNGN.toLocaleString()}
+                            ₦{(it.totalPriceNGN || it.totalNGN || (it.unitPriceNGN * it.quantity) || 0).toLocaleString()}
                           </td>
                         </tr>
                       ))}
@@ -436,21 +436,21 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <div className="w-full sm:w-64 space-y-1.5 text-xs font-mono">
                     <div className="flex justify-between text-neutral-400">
                       <span>Subtotal</span>
-                      <span>₦{order.subtotalNGN.toLocaleString()}</span>
+                      <span>₦{(order.subtotalNGN || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-neutral-400">
                       <span>Delivery Fee</span>
-                      <span>₦{order.deliveryFeeNGN.toLocaleString()}</span>
+                      <span>₦{(order.deliveryFeeNGN || 0).toLocaleString()}</span>
                     </div>
-                    {order.discountNGN > 0 && (
+                    {(order.discountNGN || 0) > 0 && (
                       <div className="flex justify-between text-emerald-400">
                         <span>Discount Applied</span>
-                        <span>-₦{order.discountNGN.toLocaleString()}</span>
+                        <span>-₦{(order.discountNGN || 0).toLocaleString()}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm font-bold text-[#F2F0EB] pt-1.5 border-t border-[#262626]">
                       <span>TOTAL NGN</span>
-                      <span>₦{order.totalNGN.toLocaleString()}</span>
+                      <span>₦{(order.totalNGN || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

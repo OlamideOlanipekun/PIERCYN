@@ -423,7 +423,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                           >
                             <span className="font-mono font-bold">#{ord.orderNumber}</span>
                             <span className="text-neutral-400 truncate max-w-[120px]">{ord.customerName}</span>
-                            <span className="font-mono">₦{ord.totalNGN.toLocaleString()}</span>
+                            <span className="font-mono">₦{(ord.totalNGN || 0).toLocaleString()}</span>
                           </div>
                         ))}
                       </div>
@@ -538,7 +538,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                               </p>
                             </div>
                             <span className="font-mono font-semibold text-[#F2F0EB]">
-                              ₦{ord.totalNGN.toLocaleString()}
+                              ₦{(ord.totalNGN || 0).toLocaleString()}
                             </span>
                           </div>
                         ))}
@@ -577,7 +577,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                                 </span>
                               </div>
                             </div>
-                            <span className="font-mono text-[#F2F0EB]">₦{p.priceNGN.toLocaleString()}</span>
+                            <span className="font-mono text-[#F2F0EB]">₦{(p.priceNGN || 0).toLocaleString()}</span>
                           </div>
                         ))}
                       </div>

@@ -96,7 +96,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
       : analytics.salesTrends.last7Days;
 
   const maxRevenueInTrend = Math.max(
-    ...trendPoints.map((p) => p.revenueNGN),
+    ...trendPoints.map((p) => p.revenueNGN || 0),
     50000
   );
 
@@ -122,7 +122,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
               TOTAL REVENUE
             </span>
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#F2F0EB] truncate">
-              ₦{analytics.revenueNGN.toLocaleString()}
+              ₦{(analytics.revenueNGN || 0).toLocaleString()}
             </div>
             <p className="text-[11px] text-neutral-500 mt-1 font-sans">
               Gross sales collected
@@ -161,7 +161,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
               AVERAGE ORDER VALUE
             </span>
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#F2F0EB] truncate">
-              ₦{analytics.averageOrderValueNGN.toLocaleString()}
+              ₦{(analytics.averageOrderValueNGN || 0).toLocaleString()}
             </div>
             <p className="text-[11px] text-neutral-500 mt-1 font-sans">
               Per paid order
@@ -258,7 +258,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
             {analytics.totalAvailableStock}
           </div>
           <span className="text-[10px] text-neutral-500 block mt-1 truncate">
-            Valuation: ₦{analytics.inventoryValuationAtRetailNGN.toLocaleString()}
+            Valuation: ₦{(analytics.inventoryValuationAtRetailNGN || 0).toLocaleString()}
           </span>
         </div>
       </div>
@@ -316,7 +316,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                 TODAY'S REVENUE
               </span>
               <span className="text-2xl font-bold font-mono text-[#F2F0EB]">
-                ₦{analytics.salesTrends.today.revenueNGN.toLocaleString()}
+                ₦{(analytics.salesTrends.today.revenueNGN || 0).toLocaleString()}
               </span>
             </div>
             <div className="p-4 rounded-xl bg-[#1A1A1A] border border-[#2D2D2D]">
@@ -348,8 +348,8 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                   <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
                     {/* Tooltip */}
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 bg-[#222] border border-[#333] px-2 py-1 rounded text-[10px] font-mono pointer-events-none whitespace-nowrap z-20 shadow-lg">
-                      <div className="font-bold text-white">₦{pt.revenueNGN.toLocaleString()}</div>
-                      <div className="text-neutral-400">{pt.orders} ord • {pt.unitsSold} pcs</div>
+                      <div className="font-bold text-white">₦{(pt.revenueNGN || 0).toLocaleString()}</div>
+                      <div className="text-neutral-400">{pt.orders || 0} ord • {pt.unitsSold || 0} pcs</div>
                     </div>
 
                     <div
@@ -430,10 +430,10 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                         <div className="text-[10px] text-neutral-400 truncate max-w-[140px]">{ord.shippingCity}</div>
                       </td>
                       <td className="py-3 text-neutral-300 font-mono">
-                        {ord.items.reduce((sum, it) => sum + it.quantity, 0)} pcs
+                        {(ord.items || []).reduce((sum, it) => sum + (it.quantity || 0), 0)} pcs
                       </td>
                       <td className="py-3 font-mono font-semibold text-[#F2F0EB]">
-                        ₦{ord.totalNGN.toLocaleString()}
+                        ₦{(ord.totalNGN || 0).toLocaleString()}
                       </td>
                       <td className="py-3">
                         <span
@@ -523,7 +523,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                       </div>
                     </div>
                     <span className="font-mono font-semibold text-[#F2F0EB]">
-                      ₦{tp.revenueNGN.toLocaleString()}
+                      ₦{(tp.revenueNGN || 0).toLocaleString()}
                     </span>
                   </div>
                 ))}

@@ -329,7 +329,7 @@ export const ProductsView: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
-                        ₦{p.priceNGN.toLocaleString()}
+                        ₦{(p.priceNGN || 0).toLocaleString()}
                       </td>
 
                       <td className="py-3.5 font-mono text-neutral-400">

@@ -68,7 +68,7 @@ export const AnalyticsView: React.FC = () => {
                 GROSS REVENUE
               </span>
               <div className="text-xl sm:text-2xl font-bold font-mono text-[#F2F0EB]">
-                ₦{analytics.revenueNGN.toLocaleString()}
+                ₦{(analytics.revenueNGN || 0).toLocaleString()}
               </div>
               <p className="text-[10px] text-neutral-500 mt-1 font-sans">
                 {analytics.paidOrders} completed customer transactions
@@ -87,7 +87,7 @@ export const AnalyticsView: React.FC = () => {
                 COST OF GOODS SOLD (COGS)
               </span>
               <div className="text-xl sm:text-2xl font-bold font-mono text-rose-300">
-                ₦{analytics.cogsNGN.toLocaleString()}
+                ₦{(analytics.cogsNGN || 0).toLocaleString()}
               </div>
               <p className="text-[10px] text-neutral-500 mt-1 font-sans">
                 Direct atelier fabrication &amp; fabric cost
@@ -110,7 +110,7 @@ export const AnalyticsView: React.FC = () => {
                 </span>
               </div>
               <div className="text-2xl sm:text-3xl font-bold font-mono text-emerald-400">
-                ₦{analytics.grossProfitNGN.toLocaleString()}
+                ₦{(analytics.grossProfitNGN || 0).toLocaleString()}
               </div>
               <p className="text-[10px] text-emerald-300/70 mt-1 font-sans">
                 Available contribution capital
@@ -299,11 +299,11 @@ export const AnalyticsView: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-[9px] text-neutral-500 uppercase block">Revenue</span>
-                  <span className="font-bold text-[#F2F0EB] text-[11px]">₦{item.revenueNGN.toLocaleString()}</span>
+                  <span className="font-bold text-[#F2F0EB] text-[11px]">₦{(item.revenueNGN || 0).toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-[9px] text-neutral-500 uppercase block">Gross Profit</span>
-                  <span className="font-bold text-emerald-400 text-[11px]">₦{item.grossProfitNGN.toLocaleString()}</span>
+                  <span className="font-bold text-emerald-400 text-[11px]">₦{(item.grossProfitNGN || 0).toLocaleString()}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
@@ -343,10 +343,10 @@ export const AnalyticsView: React.FC = () => {
                     {item.unitsSold} pcs
                   </td>
                   <td className="py-3 text-[#F2F0EB]">
-                    ₦{item.revenueNGN.toLocaleString()}
+                    ₦{(item.revenueNGN || 0).toLocaleString()}
                   </td>
                   <td className="py-3 text-emerald-400 font-semibold">
-                    ₦{item.grossProfitNGN.toLocaleString()}
+                    ₦{(item.grossProfitNGN || 0).toLocaleString()}
                   </td>
                   <td className="py-3 text-neutral-300">
                     <span className={item.currentStock <= 5 ? 'text-amber-400 font-bold' : ''}>

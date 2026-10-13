@@ -399,7 +399,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ onOpenOrder }) => 
 
                           <div className="flex items-center gap-3">
                             <span className="font-bold text-[#F2F0EB]">
-                              ₦{ord.totalNGN.toLocaleString()}
+                              ₦{(ord.totalNGN || 0).toLocaleString()}
                             </span>
                             <ArrowRight className="w-3.5 h-3.5 text-neutral-500" />
                           </div>
