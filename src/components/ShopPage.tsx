@@ -16,9 +16,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   onViewProduct,
   initialCategory = 'all',
 }) => {
-  const { addToCart, toggleWishlist, isWishlisted } = useShop();
+  const { addToCart, toggleWishlist, isWishlisted, isLoadingProducts, catalogError, refreshProducts } = useShop();
 
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'all');
+  const [selectedAvailability, setSelectedAvailability] = useState<'all' | 'in_stock' | 'available_to_order'>('all');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
   const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high'>('featured');
@@ -39,6 +40,14 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      // Availability Filter
+      if (selectedAvailability === 'in_stock' && p.availabilityType !== 'in_stock') {
+        return false;
+      }
+      if (selectedAvailability === 'available_to_order' && p.availabilityType !== 'available_to_order') {
+        return false;
+      }
+
       // Category Filter
       if (selectedCategory !== 'all') {
         if (selectedCategory === 'tees' && p.category !== 'tees' && p.category !== 't-shirts') return false;
@@ -95,6 +104,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
   const resetFilters = () => {
     setSelectedCategory('all');
+    setSelectedAvailability('all');
     setSelectedSize(null);
     setMaxPrice(100000);
     setSearchQuery('');
@@ -150,6 +160,33 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-[#141414] font-sans"
                 />
                 <Search className="w-4 h-4 text-[#141414]/50 absolute left-3 top-2.5" />
+              </div>
+            </div>
+
+            {/* Availability Filter */}
+            <div>
+              <h3 className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#141414]/70 mb-3 pb-1 border-b border-[#DAD8D1]">
+                AVAILABILITY
+              </h3>
+              <div className="space-y-1">
+                {[
+                  { label: 'ALL AVAILABILITY', value: 'all' as const },
+                  { label: 'IN STOCK (24–48H)', value: 'in_stock' as const },
+                  { label: 'AVAILABLE TO ORDER (5–7D)', value: 'available_to_order' as const },
+                ].map((avail) => (
+                  <button
+                    key={avail.value}
+                    onClick={() => setSelectedAvailability(avail.value)}
+                    className={`w-full text-left py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                      selectedAvailability === avail.value
+                        ? 'bg-[#141414] text-[#F2F0EB]'
+                        : 'text-[#141414]/80 hover:bg-[#E8E6E1]'
+                    }`}
+                  >
+                    <span>{avail.label}</span>
+                    {selectedAvailability === avail.value && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -237,10 +274,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             </div>
 
             {/* Reset Button */}
-            {(selectedCategory !== 'all' || selectedSize || maxPrice < 100000 || searchQuery) && (
+            {(selectedCategory !== 'all' || selectedAvailability !== 'all' || selectedSize || maxPrice < 100000 || searchQuery) && (
               <button
                 onClick={resetFilters}
-                className="w-full py-2 text-xs font-mono underline text-[#141414]/70 hover:text-[#141414] text-center"
+                className="w-full py-2 text-xs font-mono underline text-[#141414]/70 hover:text-[#141414] text-center cursor-pointer"
               >
                 CLEAR ALL FILTERS
               </button>
@@ -249,7 +286,33 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
           {/* PRODUCTS GRID AREA */}
           <main className="flex-1 w-full">
-            {filteredProducts.length === 0 ? (
+            {isLoadingProducts ? (
+              /* SKELETON LOADING STATE */
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="animate-pulse bg-[#EAE6DD] rounded-xl overflow-hidden aspect-[3/4] flex flex-col justify-end p-4">
+                    <div className="h-4 bg-[#DAD8D1] rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-[#DAD8D1] rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : catalogError ? (
+              /* CATALOG ERROR STATE */
+              <div className="py-16 text-center bg-red-50 rounded-2xl border border-red-200 p-8">
+                <h3 className="font-editorial italic text-2xl text-red-900 mb-2">
+                  Unable to Load Catalog
+                </h3>
+                <p className="text-xs text-red-700 mb-6 font-sans max-w-md mx-auto">
+                  {catalogError || 'A network error occurred while retrieving PIERCYN pieces. Please retry.'}
+                </p>
+                <button
+                  onClick={refreshProducts}
+                  className="px-6 py-2.5 bg-[#141414] text-[#F2F0EB] text-xs font-semibold uppercase tracking-wider rounded-full hover:bg-black transition-colors cursor-pointer"
+                >
+                  RETRY DISPATCH
+                </button>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               /* EMPTY FILTER STATE */
               <div className="py-20 text-center bg-[#E8E6E1]/40 rounded-2xl border border-dashed border-[#DAD8D1] p-8">
                 <h3 className="font-editorial italic text-2xl text-[#141414] mb-2">
@@ -260,7 +323,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 </p>
                 <button
                   onClick={resetFilters}
-                  className="px-6 py-2.5 bg-[#141414] text-[#F2F0EB] text-xs font-semibold uppercase tracking-wider rounded-full hover:bg-black transition-colors"
+                  className="px-6 py-2.5 bg-[#141414] text-[#F2F0EB] text-xs font-semibold uppercase tracking-wider rounded-full hover:bg-black transition-colors cursor-pointer"
                 >
                   SEE ALL PIECES
                 </button>
@@ -288,9 +351,32 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-[#DAD8D1] mb-6">
                 <h3 className="font-editorial italic text-xl text-[#141414]">FILTERS & SORT</h3>
-                <button onClick={() => setIsMobileFilterOpen(false)} className="p-1 text-[#141414]">
+                <button onClick={() => setIsMobileFilterOpen(false)} className="p-1 text-[#141414] cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Mobile Availability Select */}
+              <div className="mb-6">
+                <h4 className="text-xs font-mono font-bold uppercase mb-3">AVAILABILITY</h4>
+                <div className="space-y-1">
+                  {[
+                    { label: 'ALL AVAILABILITY', value: 'all' as const },
+                    { label: 'IN STOCK (24–48H)', value: 'in_stock' as const },
+                    { label: 'AVAILABLE TO ORDER (5–7D)', value: 'available_to_order' as const },
+                  ].map((avail) => (
+                    <button
+                      key={avail.value}
+                      onClick={() => setSelectedAvailability(avail.value)}
+                      className={`w-full text-left py-2 px-3 rounded text-xs font-medium flex items-center justify-between cursor-pointer ${
+                        selectedAvailability === avail.value ? 'bg-[#141414] text-[#F2F0EB]' : 'bg-[#E8E6E1]'
+                      }`}
+                    >
+                      <span>{avail.label}</span>
+                      {selectedAvailability === avail.value && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Mobile Category Select */}

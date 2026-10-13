@@ -269,6 +269,18 @@ export const CartDrawer: React.FC = () => {
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
 
+              {/* View Full Bag Page */}
+              <button
+                onClick={() => {
+                  setIsCartOpen(false);
+                  window.history.pushState({}, '', '/cart');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="w-full h-11 min-h-[44px] px-6 rounded-full border border-[#141414] bg-transparent text-[#141414] hover:bg-[#141414] hover:text-[#F2F0EB] text-[11px] sm:text-[12px] uppercase tracking-[0.16em] font-bold transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                <span>VIEW FULL BAG ({cartCount})</span>
+              </button>
+
               <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.12em] text-[#6E6B65] font-sans pt-0.5 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 opacity-70 shrink-0" />
                 <span>LAGOS: 24–48H • NATIONWIDE: 3–5 DAYS</span>

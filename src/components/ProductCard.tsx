@@ -199,6 +199,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             )}
           </div>
+
+          {/* 4. Availability Status Indicator */}
+          <div className="flex items-center gap-1.5 text-[9.5px] font-mono tracking-wider pt-0.5">
+            {product.isSoldOut ? (
+              <span className="text-red-700 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                SOLD OUT
+              </span>
+            ) : product.availabilityType === 'available_to_order' ? (
+              <span className="text-[#8C6D3F] font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B89355]" />
+                AVAILABLE TO ORDER · 5–7 DAYS
+              </span>
+            ) : (
+              <span className="text-[#3F6E4D] font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#4E8C5E]" />
+                IN STOCK · 24–48H
+              </span>
+            )}
+          </div>
         </div>
 
         {/* 2.C Color Variants Swatches */}

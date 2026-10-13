@@ -9,6 +9,7 @@ import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
 import {
   Plus,
+  Minus,
   Heart,
   Ruler,
   Truck,
@@ -46,11 +47,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [sizeError, setSizeError] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   // Initialize variant selection & analytics
   useEffect(() => {
     if (product) {
       setSelectedColorIdx(0);
+      setQuantity(1);
       if (product.sizes && product.sizes.length > 0) {
         setSelectedSize(product.sizes[0]);
       } else {
@@ -106,6 +109,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const isSoldOut = product.isSoldOut || product.stock === 0;
   const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
+  const maxAvailableQuantity =
+    product.availabilityType === 'available_to_order'
+      ? 10
+      : Math.max(1, Math.min(10, product.stock !== undefined ? product.stock : 10));
+
   const handleAddToCart = () => {
     if (product.sizes.length > 0 && !selectedSize) {
       setSizeError(true);
@@ -113,12 +121,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     eventTracker.track('add_to_cart', {
       productId: product.id,
       productName: product.name,
       color: currentColor?.name,
       size: selectedSize,
+      quantity,
       priceNGN: product.priceNGN,
     });
   };
@@ -130,13 +139,14 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     setIsCheckoutOpen(true);
     eventTracker.track('buy_now_clicked', {
       productId: product.id,
       productName: product.name,
       color: currentColor?.name,
       size: selectedSize,
+      quantity,
       priceNGN: product.priceNGN,
     });
   };
@@ -210,13 +220,17 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-red-100 text-red-800">
                     SOLD OUT
                   </span>
+                ) : product.availabilityType === 'available_to_order' ? (
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    AVAILABLE TO ORDER · 5–7 DAYS
+                  </span>
                 ) : isAlmostGone ? (
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                    ALMOST GONE
+                    ALMOST GONE ({product.stock} LEFT)
                   </span>
                 ) : (
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900">
-                    IN STOCK
+                    IN STOCK · DISPATCH 24–48H
                   </span>
                 )}
               </div>
@@ -309,6 +323,46 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 <p className="text-[11px] text-[#7A7771] font-sans pt-1">
                   Fit Advice: <strong>{product.fit}</strong>. Designed for relaxed silhouette.
                 </p>
+              </div>
+            )}
+
+            {/* QUANTITY SELECTOR */}
+            {!isSoldOut && (
+              <div className="flex items-center justify-between pt-3 border-t border-[#DAD8D1]">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
+                    QUANTITY:
+                  </span>
+                  {product.availabilityType === 'in_stock' && product.stock !== undefined && product.stock <= 5 && (
+                    <span className="text-[10px] font-mono text-amber-800 font-semibold">
+                      Only {product.stock} left in physical stock
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center border border-[#141414] rounded-full bg-white/30 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-8 text-center font-mono text-xs font-bold text-[#141414]">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(maxAvailableQuantity, q + 1))}
+                    disabled={quantity >= maxAvailableQuantity}
+                    className="w-8 h-8 flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 

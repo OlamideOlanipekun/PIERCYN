@@ -82,6 +82,9 @@ export function mapServerProduct(p: any): Product {
     tag: p.tag,
     createdAt: p.createdAt,
     status: p.status === 'ARCHIVED' ? 'archived' : p.status === 'DRAFT' ? 'draft' : 'active',
+    availabilityType: p.availabilityType || (p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'available_to_order' : 'in_stock'),
+    fulfillmentTimeline: p.fulfillmentTimeline || (p.availabilityType === 'available_to_order' || p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'Sourced on order · Dispatched in 5–7 business days' : 'Dispatched in 24–48 hours from Lagos'),
+    supplierVerified: p.supplierVerified ?? true,
   };
 }
 

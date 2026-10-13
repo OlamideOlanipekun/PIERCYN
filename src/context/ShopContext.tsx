@@ -262,56 +262,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initServerCart();
   }, [products]);
 
-  // Sync orders from server backend on mount
-  useEffect(() => {
-    const fetchServerOrders = async () => {
-      try {
-        const res = await api.getOrders(user?.email);
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: Order[] = res.data.map((o: any) => ({
-            id: o.id,
-            orderNumber: o.orderNumber,
-            customer: {
-              fullName: o.customerName,
-              email: o.customerEmail,
-              phone: o.customerPhone,
-              state: o.shippingState,
-              city: o.shippingCity,
-              address: o.shippingAddressLine,
-              orderNote: o.orderNote,
-            },
-            items: o.items.map((it: any) => ({
-              productId: it.productId,
-              variantId: it.variantId,
-              sku: it.sku,
-              productName: it.productName,
-              category: it.category,
-              color: it.colour,
-              size: it.size,
-              quantity: it.quantity,
-              unitPriceNGN: it.unitPriceNGN,
-              totalPriceNGN: it.totalPriceNGN,
-              image: it.image,
-            })),
-            subtotalNGN: o.subtotalNGN,
-            deliveryFeeNGN: o.deliveryFeeNGN,
-            discountNGN: o.discountNGN || 0,
-            totalNGN: o.totalNGN,
-            shippingMethod: o.shippingMethodName,
-            paymentMethod: o.paymentMethod,
-            paymentStatus: o.paymentStatus,
-            orderStatus: o.orderStatus === 'PENDING_PAYMENT' ? 'CONFIRMED' : o.orderStatus,
-            createdAt: o.createdAt,
-          }));
-          setOrders(mapped);
-        }
-      } catch {
-        // Fallback
-      }
-    };
-
-    fetchServerOrders();
-  }, [user?.email]);
+  // NOTE: Public order listing is not available via the API (admin-only).
+  // Customer orders are tracked locally and surfaced via the order confirmation
+  // page using per-order access tokens returned at checkout.
 
   useEffect(() => {
     try {

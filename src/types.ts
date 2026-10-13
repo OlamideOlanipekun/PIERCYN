@@ -40,7 +40,35 @@ export type SortOption =
   | 'PRICE: HIGH TO LOW' 
   | 'BEST SELLING';
 
-export type ActivePageView = 'home' | 'shop' | 'men' | 'women' | 'new' | 'accessories' | 'collections' | 'lookbook' | 'about' | 'account' | 'product' | 'collection' | 'orderSuccess' | 'orderTracking' | 'notFound' | 'affiliate';
+export type ActivePageView = 
+  | 'home' 
+  | 'shop' 
+  | 'men' 
+  | 'women' 
+  | 'new' 
+  | 'accessories' 
+  | 'collections' 
+  | 'lookbook' 
+  | 'about' 
+  | 'account' 
+  | 'product' 
+  | 'collection' 
+  | 'orderSuccess' 
+  | 'orderTracking' 
+  | 'notFound' 
+  | 'affiliate'
+  | 'cart'
+  | 'checkout'
+  | 'orderConfirmation'
+  | 'shipping'
+  | 'returns'
+  | 'contact'
+  | 'privacy'
+  | 'terms'
+  | 'search'
+  | 'sizeGuide'
+  | 'faq'
+  | 'trackOrder';
 
 export interface ProductColor {
   name: string;
@@ -97,6 +125,9 @@ export interface Product {
   tag?: string;
   rating?: number;
   reviewCount?: number;
+  availabilityType?: 'in_stock' | 'available_to_order';
+  fulfillmentTimeline?: string;
+  supplierVerified?: boolean;
 }
 
 export interface CartItem {

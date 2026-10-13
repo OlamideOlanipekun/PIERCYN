@@ -64,10 +64,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
             </div>
           </div>
 
-          {/* Col 2: HELP */}
+          {/* Col 2: HELP & OPERATIONS */}
           <div className="flex flex-col space-y-3 sm:space-y-4">
             <span className="text-[#141414]/60 font-bold text-[11px] tracking-[0.22em]">
-              HELP
+              CUSTOMER CARE
             </span>
             <div className="flex flex-col space-y-2 font-medium">
               <button
@@ -79,30 +79,49 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               </button>
               <button
                 id="footer-size-guide"
-                onClick={() => setIsSizeGuideOpen(true)}
+                onClick={() => onSelectPage ? onSelectPage('sizeGuide') : setIsSizeGuideOpen(true)}
                 className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
               >
                 SIZE GUIDE
               </button>
-              <span className="min-h-[36px] flex items-center text-[#141414]/80">
+              <button
+                id="footer-shipping"
+                onClick={() => onSelectPage && onSelectPage('shipping')}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
                 SHIPPING & DELIVERY
-              </span>
-              <span className="min-h-[36px] flex items-center text-[#141414]/80">
+              </button>
+              <button
+                id="footer-returns"
+                onClick={() => onSelectPage && onSelectPage('returns')}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
                 RETURNS & EXCHANGES
-              </span>
-              <a
+              </button>
+              <button
+                id="footer-track-order"
+                onClick={() => onSelectPage && onSelectPage('trackOrder')}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                TRACK ORDER
+              </button>
+              <button
+                id="footer-faq"
+                onClick={() => onSelectPage && onSelectPage('faq')}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                FAQ
+              </button>
+              <button
                 id="footer-contact"
-                href="mailto:hello@piercyn.com"
-                className="min-h-[36px] flex items-center text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link"
+                onClick={() => onSelectPage && onSelectPage('contact')}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
               >
                 CONTACT US
-              </a>
+              </button>
               <button
                 id="footer-affiliate-program"
-                onClick={() => {
-                  window.history.pushState({}, '', '/affiliate');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
+                onClick={() => onSelectPage && onSelectPage('affiliate')}
                 className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
               >
                 AFFILIATE PROGRAM
@@ -170,8 +189,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
 
         {/* Bottom Line */}
         <div className="pt-6 sm:pt-8 border-t border-[#DAD8D1] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-[11px] sm:text-[12px] tracking-[0.15em] uppercase font-sans text-[#141414]/60 text-center sm:text-left">
-          <div>
-            © 2026 PIERCYN. ALL RIGHTS RESERVED.
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
+            <span>© 2026 PIERCYN. ALL RIGHTS RESERVED.</span>
+            <span>•</span>
+            <button
+              id="footer-privacy-policy"
+              onClick={() => onSelectPage && onSelectPage('privacy')}
+              className="hover:text-[#141414] underline cursor-pointer"
+            >
+              PRIVACY POLICY
+            </button>
+            <span>•</span>
+            <button
+              id="footer-terms-conditions"
+              onClick={() => onSelectPage && onSelectPage('terms')}
+              className="hover:text-[#141414] underline cursor-pointer"
+            >
+              TERMS & CONDITIONS
+            </button>
           </div>
 
           <div className="font-editorial italic text-[#141414] text-[15px] sm:text-[16px] tracking-normal font-normal">

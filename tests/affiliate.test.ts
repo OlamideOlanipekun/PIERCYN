@@ -15,6 +15,10 @@ describe('PIERCYN Production Affiliate & Creator System', () => {
   let testSessionId = `sess_aff_${Date.now()}`;
 
   beforeAll(async () => {
+    // Seed in-memory store
+    const { dbStore } = await import('../src/server/db/store');
+    dbStore.seedFromCatalog();
+
     // 1. Authenticate as Admin
     const adminLoginRes = await request(app)
       .post('/api/admin/auth/login')

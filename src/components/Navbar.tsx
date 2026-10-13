@@ -174,17 +174,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Main Navigation Links */}
-          <div className="flex flex-col space-y-1 my-auto py-6 font-serif text-[6.8vw] sm:text-3xl lg:text-4xl italic">
+          <div className="flex flex-col space-y-1 my-auto py-6 font-serif text-[5.8vw] sm:text-2xl lg:text-3xl italic">
             {[
-              { label: 'SHOP', pageKey: 'shop' as const },
+              { label: 'SHOP ALL', pageKey: 'shop' as const },
               { label: 'NEW ARRIVALS', pageKey: 'new' as const, badge: 'NEW' },
               { label: 'MEN', pageKey: 'men' as const },
-              { label: 'ABOUT', pageKey: 'about' as const },
+              { label: 'ABOUT PIERCYN', pageKey: 'about' as const },
+              { label: 'SHIPPING & DELIVERY', pageKey: 'shipping' as const },
+              { label: 'RETURNS & EXCHANGES', pageKey: 'returns' as const },
+              { label: 'SIZE GUIDE', pageKey: 'sizeGuide' as const },
+              { label: 'FAQ', pageKey: 'faq' as const },
+              { label: 'TRACK ORDER', pageKey: 'trackOrder' as const },
+              { label: 'CONTACT', pageKey: 'contact' as const },
+              { label: 'AFFILIATE PROGRAM', pageKey: 'affiliate' as const },
             ].map((link, idx) => (
               <button
                 key={link.label}
                 onClick={() => handleNavClick(link.pageKey)}
-                className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#F2F0EB] flex items-center justify-between group py-2 min-h-[52px]"
+                className="text-left uppercase hover:translate-x-2 transition-transform duration-300 text-[#F2F0EB] flex items-center justify-between group py-1.5 min-h-[44px]"
               >
                 <span className="tracking-tight flex items-center gap-2.5">
                   <span>{link.label}</span>
@@ -194,15 +201,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] font-mono font-normal not-italic tracking-[0.25em] text-[#F2F0EB]/30 group-hover:text-[#F2F0EB]">
-                  0{idx + 1}
+                <span className="text-[10px] font-mono font-normal not-italic tracking-[0.25em] text-[#F2F0EB]/30 group-hover:text-[#F2F0EB]">
+                  {idx + 1 < 10 ? `0${idx + 1}` : idx + 1}
                 </span>
               </button>
             ))}
           </div>
 
           {/* Bottom: Search + Contact */}
-          <div className="border-t border-[#282828]/80 pt-6 flex items-center justify-between gap-4 text-[11px] tracking-[0.22em] uppercase font-sans">
+          <div className="border-t border-[#282828]/80 pt-5 flex items-center justify-between gap-4 text-[11px] tracking-[0.22em] uppercase font-sans">
             <button
               onClick={() => {
                 setIsMobileMenuOpen(false);
@@ -224,10 +231,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </a>
 
             <button
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                document.getElementById('main-footer')?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => handleNavClick('contact')}
               className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"
             >
               CONTACT

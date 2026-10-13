@@ -24553,6 +24553,20 @@ var require_main = __commonJS({
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+function getDatabaseConnectionString() {
+  if (process.env.NODE_ENV === "test") {
+    const testUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL_NON_POOLING_TEST;
+    if (!testUrl) {
+      throw new Error("Database-backed tests require DATABASE_URL_TEST or DATABASE_URL_NON_POOLING_TEST. Refusing to fall back to DATABASE_URL.");
+    }
+    const productionUrl = process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL;
+    if (productionUrl && testUrl === productionUrl) {
+      throw new Error("DATABASE_URL_TEST must not match the production database connection.");
+    }
+    return testUrl;
+  }
+  return process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || "postgresql://postgres:postgres@localhost:5432/piercyn";
+}
 function getPrismaClient() {
   if (globalForPrisma.prisma) {
     return globalForPrisma.prisma;
@@ -24560,7 +24574,7 @@ function getPrismaClient() {
   if (prismaInstance) {
     return prismaInstance;
   }
-  const connectionString = process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || "postgresql://postgres:postgres@localhost:5432/piercyn";
+  const connectionString = getDatabaseConnectionString();
   let cleanUrl = connectionString;
   try {
     const urlObj = new URL(connectionString);
@@ -39272,6 +39286,9 @@ var InventoryService = class {
     }
   }
   static async adjustStock(variantId, quantity, type, reference, reason, adminId) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error("Inventory quantity must be a positive whole number.");
+    }
     return prisma.$transaction(async (tx) => {
       const inv = await tx.inventory.findUnique({
         where: { variantId }
@@ -42737,7 +42754,7 @@ var CheckoutService = class {
         });
       }
       return order;
-    });
+    }, { isolationLevel: "Serializable" });
     await CartService.clearCart(sessionId);
     return createdOrder;
   }
@@ -51664,7 +51681,7 @@ if (shouldShowDeprecationWarning()) console.warn("\u26A0\uFE0F  Node.js 20 and b
 // apps/api/src/modules/admin/adminAuthService.ts
 import crypto6 from "crypto";
 init_prisma();
-var HMAC_SECRET3 = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "piercyn-atelier-secret-key-2026";
+var HMAC_SECRET3 = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "piercyn-local-development-secret" : "");
 var revokedTokens3 = /* @__PURE__ */ new Set();
 var adminSessions = /* @__PURE__ */ new Map();
 var loginAttempts = /* @__PURE__ */ new Map();
@@ -51672,6 +51689,9 @@ var MAX_LOGIN_ATTEMPTS = 5;
 var LOCKOUT_DURATION_MS = 5 * 60 * 1e3;
 var SESSION_DURATION_MS2 = 7 * 24 * 60 * 60 * 1e3;
 function generateSignedToken2(admin) {
+  if (!HMAC_SECRET3) {
+    throw new Error("Admin authentication is not configured. Set ADMIN_JWT_SECRET or JWT_SECRET.");
+  }
   const payload = {
     id: admin.id,
     email: admin.email,
@@ -51718,7 +51738,7 @@ var AdminAuthService = class {
       }
     } catch {
     }
-    if (!passwordMatches && (pass === "piercyn2026" || pass === "piercynAdmin2026") && email3.toLowerCase().includes("admin")) {
+    if (process.env.NODE_ENV !== "production" && !passwordMatches && (pass === "piercyn2026" || pass === "piercynAdmin2026") && email3.toLowerCase().includes("admin")) {
       passwordMatches = true;
       adminRecord = {
         id: "admin_root",
@@ -51742,6 +51762,7 @@ var AdminAuthService = class {
   }
   static verifyToken(token) {
     if (!token || !token.startsWith("adm_tok_")) return null;
+    if (!HMAC_SECRET3) return null;
     if (revokedTokens3.has(token)) return null;
     const raw = token.slice("adm_tok_".length);
     if (raw.includes(".")) {
@@ -72109,6 +72130,13 @@ var CreateShipmentSchema = external_exports.object({
   recipientPhone: external_exports.string().min(7),
   itemDescription: external_exports.string().optional()
 });
+var MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+var ALLOWED_IMAGE_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+var UploadImageSchema = external_exports.object({
+  fileBase64: external_exports.string().min(1),
+  fileName: external_exports.string().min(1).max(255),
+  mimeType: external_exports.string()
+});
 var CreateProductSchema = external_exports.object({
   name: external_exports.string().min(2),
   slug: external_exports.string().optional(),
@@ -72149,7 +72177,7 @@ var CreateProductSchema = external_exports.object({
 });
 var InventoryAdjustmentSchema = external_exports.object({
   variantId: external_exports.string().min(1),
-  quantity: external_exports.number().int(),
+  quantity: external_exports.number().int().positive(),
   type: external_exports.enum(["PURCHASE", "SALE", "ADJUSTMENT", "DAMAGE", "RETURN"]),
   reference: external_exports.string().min(1),
   reason: external_exports.string().optional()
@@ -72193,17 +72221,23 @@ adminRouter.post("/auth/logout", requireAdmin, async (req, res) => {
 });
 adminRouter.post("/upload-image", requireAdmin, async (req, res) => {
   try {
-    const { fileBase64, fileName, mimeType, bucket = "products", folder = "" } = req.body;
-    if (!fileBase64 || !fileName || !mimeType) {
-      return res.status(400).json({ success: false, error: "fileBase64, fileName, and mimeType are required" });
+    const { fileBase64, mimeType } = UploadImageSchema.parse(req.body);
+    if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+      return res.status(400).json({ success: false, error: "Only JPEG, PNG, WebP, and GIF images are supported." });
     }
     const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, "");
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Data) || base64Data.length % 4 !== 0) {
+      return res.status(400).json({ success: false, error: "The image payload is not valid base64 data." });
+    }
     const buffer = Buffer.from(base64Data, "base64");
-    const ext = fileName.split(".").pop();
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const filePath = folder ? `${folder}/${uniqueName}` : uniqueName;
+    if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
+      return res.status(400).json({ success: false, error: "Image must be between 1 byte and 3 MB." });
+    }
+    const extension = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1];
+    const uniqueName = `${crypto.randomUUID()}.${extension}`;
+    const filePath = `products/${uniqueName}`;
     const storage = getSupabaseAdmin();
-    const { error: error62 } = await storage.storage.from(bucket).upload(filePath, buffer, {
+    const { error: error62 } = await storage.storage.from("products").upload(filePath, buffer, {
       cacheControl: "3600",
       upsert: false,
       contentType: mimeType
@@ -72212,14 +72246,15 @@ adminRouter.post("/upload-image", requireAdmin, async (req, res) => {
       console.error("[UPLOAD_IMAGE]", error62);
       return res.status(500).json({ success: false, error: `Image upload failed: ${error62.message}` });
     }
-    const { data } = storage.storage.from(bucket).getPublicUrl(filePath);
+    const { data } = storage.storage.from("products").getPublicUrl(filePath);
     if (!data?.publicUrl) {
       return res.status(500).json({ success: false, error: "Could not retrieve public URL after upload." });
     }
     res.json({ success: true, data: { publicUrl: data.publicUrl } });
   } catch (err) {
     console.error("[UPLOAD_IMAGE]", err);
-    res.status(500).json({ success: false, error: err.message });
+    const message = err instanceof external_exports.ZodError ? err.issues[0]?.message : err.message;
+    res.status(err instanceof external_exports.ZodError ? 400 : 500).json({ success: false, error: message });
   }
 });
 adminRouter.get("/orders", requireAdmin, async (req, res) => {
@@ -72392,6 +72427,9 @@ adminRouter.post("/inventory/adjust", requireAdmin, async (req, res) => {
       validated.reason,
       req.admin?.id
     );
+    if (!success2) {
+      return res.status(404).json({ success: false, error: "Inventory record not found." });
+    }
     const newInv = await InventoryService.getVariantStock(validated.variantId);
     const newAvailable = newInv ? newInv.stockQuantity - newInv.reservedQuantity : prevAvailable;
     await AuditService.log({

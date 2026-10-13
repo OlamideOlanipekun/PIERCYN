@@ -23,7 +23,7 @@ export default defineConfig(({ command }) => {
     // The Express bridge is development-only. Loading it during a production
     // build makes Node resolve the workspace TypeScript config package before
     // Vite can transform it.
-    plugins: command === 'serve'
+    plugins: command === 'serve' && !process.env.VITEST
       ? [react(), tailwindcss(), expressApiPlugin()]
       : [react(), tailwindcss()],
     resolve: {
