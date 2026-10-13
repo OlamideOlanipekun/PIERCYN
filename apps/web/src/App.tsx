@@ -26,6 +26,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { AdminApp } from './admin/AdminApp';
+import { PiercynPreloader } from './components/PiercynPreloader';
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -227,6 +228,8 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] font-sans selection:bg-[#F2F0EB] selection:text-[#0A0A0A] relative">
+
+      <PiercynPreloader />
 
       {/* 1. Announcement Bar */}
       <AnnouncementBar />
