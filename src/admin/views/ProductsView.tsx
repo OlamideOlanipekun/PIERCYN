@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AdminProduct } from '../types';
+import { AdminProduct, AdminCategory } from '../types';
 import { AdminApi } from '../api';
 import { uploadImageToSupabase } from '../utils/uploadImage';
 import {
@@ -13,6 +13,8 @@ import {
   Upload,
   ImagePlus,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // ─── Image Upload Zone ─────────────────────────────────────────────────────
@@ -49,9 +51,11 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
       const idx = slots.length + i;
       try {
         const publicUrl = await uploadImageToSupabase(slot.file!, bucket);
+        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
         updated[idx] = { url: publicUrl, uploading: false };
         onChange([...updated]);
       } catch (err: any) {
+        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
         updated[idx] = { url: '', uploading: false, error: err.message };
         onChange([...updated]);
       }
@@ -64,7 +68,17 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
   };
 
   const removeSlot = (idx: number) => {
+    const slot = slots[idx];
+    if (slot?.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
     onChange(slots.filter((_, i) => i !== idx));
+  };
+
+  const moveSlot = (idx: number, delta: number) => {
+    const target = idx + delta;
+    if (target < 0 || target >= slots.length) return;
+    const next = [...slots];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
   };
 
   return (
@@ -93,6 +107,12 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
                   alt={`Image ${idx + 1}`}
                   className="w-full h-full object-cover"
                 />
+              )}
+              {!slot.uploading && !slot.error && slots.length > 1 && (
+                <div className="absolute bottom-1 right-1 flex gap-1">
+                  <button type="button" disabled={idx === 0} onClick={() => moveSlot(idx, -1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image earlier"><ChevronLeft className="h-3 w-3" /></button>
+                  <button type="button" disabled={idx === slots.length - 1} onClick={() => moveSlot(idx, 1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image later"><ChevronRight className="h-3 w-3" /></button>
+                </div>
               )}
               {/* Remove button */}
               {!slot.uploading && (
@@ -131,7 +151,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
             Drop images here or <span className="text-[#F2F0EB] underline underline-offset-2">browse</span>
           </p>
           <p className="text-[10px] font-mono text-neutral-600 mt-0.5">
-            JPG, PNG, WEBP — max 10 MB each
+            JPG, PNG, WEBP, GIF — max 3 MB each
           </p>
         </div>
         <input
@@ -151,6 +171,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
 
 export const ProductsView: React.FC = () => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -167,12 +188,25 @@ export const ProductsView: React.FC = () => {
   // Add Product Form State
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState('cat-tees');
+  const [formCategory, setFormCategory] = useState('');
   const [formPriceNGN, setFormPriceNGN] = useState<number>(35000);
   const [formCostPriceNGN, setFormCostPriceNGN] = useState<number>(14000);
   const [formGsm, setFormGsm] = useState('280 GSM');
   const [formFit, setFormFit] = useState('Relaxed Boxy Cut');
   const [formFabric, setFormFabric] = useState('100% Heavyweight Cotton');
+  const [formShortDescription, setFormShortDescription] = useState('');
+  const [formCollection, setFormCollection] = useState('essentials');
+  const [formOrigin, setFormOrigin] = useState('');
+  const [formCareInstructions, setFormCareInstructions] = useState('');
+  const [formProductStory, setFormProductStory] = useState('');
+  const [formTag, setFormTag] = useState('');
+  const [formVideoUrl, setFormVideoUrl] = useState('');
+  const [formPriceUSD, setFormPriceUSD] = useState<number | ''>('');
+  const [formPriceGBP, setFormPriceGBP] = useState<number | ''>('');
+  const [formPriceEUR, setFormPriceEUR] = useState<number | ''>('');
+  const [formIsNewDrop, setFormIsNewDrop] = useState(false);
+  const [formIsBestSeller, setFormIsBestSeller] = useState(false);
+  const [formIsLimited, setFormIsLimited] = useState(false);
 
   // Image slot state (for both add & edit)
   const [addImageSlots, setAddImageSlots] = useState<ImageSlot[]>([]);
@@ -198,6 +232,13 @@ export const ProductsView: React.FC = () => {
   useEffect(() => {
     fetchProducts();
   }, [categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    AdminApi.getCategories().then((data) => {
+      setCategories(data);
+      setFormCategory((current) => data.some((category) => category.id === current) ? current : (data[0]?.id || ''));
+    }).catch((err: any) => setError(err?.message || 'Unable to load categories.'));
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,6 +308,19 @@ export const ProductsView: React.FC = () => {
         gsm: formGsm,
         fit: formFit,
         fabric: formFabric,
+        shortDescription: formShortDescription,
+        collection: formCollection || 'essentials',
+        origin: formOrigin,
+        careInstructions: formCareInstructions,
+        productStory: formProductStory,
+        tag: formTag,
+        videoUrl: formVideoUrl || undefined,
+        priceUSD: formPriceUSD === '' ? undefined : Number(formPriceUSD),
+        priceGBP: formPriceGBP === '' ? undefined : Number(formPriceGBP),
+        priceEUR: formPriceEUR === '' ? undefined : Number(formPriceEUR),
+        isNewDrop: formIsNewDrop,
+        isBestSeller: formIsBestSeller,
+        isLimited: formIsLimited,
         status: 'ACTIVE',
         variants: defaultVariants as any,
       });
@@ -274,6 +328,9 @@ export const ProductsView: React.FC = () => {
       setIsAddModalOpen(false);
       setFormName('');
       setFormDescription('');
+      setFormShortDescription(''); setFormCollection('essentials'); setFormOrigin(''); setFormCareInstructions('');
+      setFormProductStory(''); setFormTag(''); setFormVideoUrl(''); setFormPriceUSD(''); setFormPriceGBP(''); setFormPriceEUR('');
+      setFormIsNewDrop(false); setFormIsBestSeller(false); setFormIsLimited(false);
       setAddImageSlots([]);
       await fetchProducts();
     } catch (err: any) {
@@ -306,7 +363,24 @@ export const ProductsView: React.FC = () => {
         costPriceNGN: Number(editingProduct.costPriceNGN || 0),
         status: editingProduct.status,
         description: editingProduct.description,
-        images: validImages.length > 0 ? validImages : editingProduct.images,
+        images: validImages,
+        categoryId: editingProduct.categoryId,
+        shortDescription: editingProduct.shortDescription || '',
+        collection: editingProduct.collection || 'essentials',
+        priceUSD: Number(editingProduct.priceUSD || 0),
+        priceGBP: Number(editingProduct.priceGBP || 0),
+        priceEUR: Number(editingProduct.priceEUR || 0),
+        videoUrl: editingProduct.videoUrl || '',
+        gsm: editingProduct.gsm || '',
+        fit: editingProduct.fit || '',
+        fabric: editingProduct.fabric || '',
+        origin: editingProduct.origin || '',
+        careInstructions: editingProduct.careInstructions || '',
+        productStory: editingProduct.productStory || '',
+        tag: editingProduct.tag || '',
+        isNewDrop: Boolean(editingProduct.isNewDrop),
+        isBestSeller: Boolean(editingProduct.isBestSeller),
+        isLimited: Boolean(editingProduct.isLimited),
       });
 
       setEditingProduct(null);
@@ -383,12 +457,7 @@ export const ProductsView: React.FC = () => {
             className="bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-2.5 sm:px-3 py-2 text-[#F2F0EB] outline-hidden min-h-[40px] text-xs min-w-0"
           >
             <option value="ALL">All Categories</option>
-            <option value="cat-tees">Tees</option>
-            <option value="cat-hoodies">Hoodies</option>
-            <option value="cat-sweatshirts">Sweatshirts</option>
-            <option value="cat-jackets">Jackets</option>
-            <option value="cat-trousers">Trousers</option>
-            <option value="cat-accessories">Accessories</option>
+            {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
           </select>
 
           <select
@@ -682,12 +751,7 @@ export const ProductsView: React.FC = () => {
                   onChange={(e) => setFormCategory(e.target.value)}
                   className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
                 >
-                  <option value="cat-tees">Tees</option>
-                  <option value="cat-hoodies">Hoodies</option>
-                  <option value="cat-sweatshirts">Sweatshirts</option>
-                  <option value="cat-jackets">Jackets</option>
-                  <option value="cat-trousers">Trousers</option>
-                  <option value="cat-accessories">Accessories</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
               </div>
 
@@ -791,6 +855,32 @@ export const ProductsView: React.FC = () => {
                 </div>
               </div>
 
+              <details className="rounded-lg border border-[#2D2D2D] bg-[#101010] p-3">
+                <summary className="cursor-pointer text-[11px] font-mono uppercase tracking-wider text-[#F2F0EB]">Additional catalog fields · optional</summary>
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Short description</span><textarea rows={2} value={formShortDescription} onChange={(e) => setFormShortDescription(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Collection</span><input value={formCollection} onChange={(e) => setFormCollection(e.target.value)} placeholder="essentials" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price USD</span><input type="number" min={1} value={formPriceUSD} onChange={(e) => setFormPriceUSD(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price GBP</span><input type="number" min={1} value={formPriceGBP} onChange={(e) => setFormPriceGBP(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Price EUR</span><input type="number" min={1} value={formPriceEUR} onChange={(e) => setFormPriceEUR(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Country / origin</span><input value={formOrigin} onChange={(e) => setFormOrigin(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                    <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Product tag</span><input value={formTag} onChange={(e) => setFormTag(e.target.value)} placeholder="graphic, limited…" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  </div>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Video URL</span><input type="url" value={formVideoUrl} onChange={(e) => setFormVideoUrl(e.target.value)} placeholder="https://…" className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Care instructions</span><textarea rows={2} value={formCareInstructions} onChange={(e) => setFormCareInstructions(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <label className="block"><span className="mb-1 block text-[10px] uppercase text-neutral-400">Product story</span><textarea rows={3} value={formProductStory} onChange={(e) => setFormProductStory(e.target.value)} className="w-full rounded border border-[#2D2D2D] bg-[#0A0A0A] px-3 py-2 text-[#F2F0EB]" /></label>
+                  <div className="flex flex-wrap gap-4 text-xs">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsNewDrop} onChange={(e) => setFormIsNewDrop(e.target.checked)} />New drop</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsBestSeller} onChange={(e) => setFormIsBestSeller(e.target.checked)} />Best seller</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formIsLimited} onChange={(e) => setFormIsLimited(e.target.checked)} />Limited</label>
+                  </div>
+                </div>
+              </details>
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-neutral-400 text-[11px]">
                 ℹ️ Initial variants (Onyx Black M/L, Bone White M) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[COLOR]-[SIZE].
               </div>
@@ -912,6 +1002,50 @@ export const ProductsView: React.FC = () => {
                   <option value="DRAFT">DRAFT (Hidden from Storefront)</option>
                   <option value="ARCHIVED">ARCHIVED</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Category ID</label>
+                  <select value={editingProduct.categoryId} onChange={(e) => setEditingProduct({ ...editingProduct, categoryId: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]">
+                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Collection</label>
+                  <input value={editingProduct.collection || ''} onChange={(e) => setEditingProduct({ ...editingProduct, collection: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Short Description</label>
+                <textarea rows={2} value={editingProduct.shortDescription || ''} onChange={(e) => setEditingProduct({ ...editingProduct, shortDescription: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB]" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">GSM / Weight</label><input value={editingProduct.gsm || ''} onChange={(e) => setEditingProduct({ ...editingProduct, gsm: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Fit</label><input value={editingProduct.fit || ''} onChange={(e) => setEditingProduct({ ...editingProduct, fit: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Fabric</label><input value={editingProduct.fabric || ''} onChange={(e) => setEditingProduct({ ...editingProduct, fabric: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Country / Origin</label><input value={editingProduct.origin || ''} onChange={(e) => setEditingProduct({ ...editingProduct, origin: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Product Tag</label><input value={editingProduct.tag || ''} onChange={(e) => setEditingProduct({ ...editingProduct, tag: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Video URL</label><input type="url" value={editingProduct.videoUrl || ''} onChange={(e) => setEditingProduct({ ...editingProduct, videoUrl: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Care Instructions</label><input value={editingProduct.careInstructions || ''} onChange={(e) => setEditingProduct({ ...editingProduct, careInstructions: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Product Story</label>
+                <textarea rows={3} value={editingProduct.productStory || ''} onChange={(e) => setEditingProduct({ ...editingProduct, productStory: e.target.value })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price USD</label><input type="number" min={0} value={editingProduct.priceUSD || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceUSD: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price GBP</label><input type="number" min={0} value={editingProduct.priceGBP || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceGBP: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+                <div><label className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">Price EUR</label><input type="number" min={0} value={editingProduct.priceEUR || 0} onChange={(e) => setEditingProduct({ ...editingProduct, priceEUR: Number(e.target.value) })} className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded px-2.5 py-2 text-[#F2F0EB]" /></div>
+              </div>
+              <div className="flex flex-wrap gap-4 rounded-lg border border-[#292929] p-3">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isNewDrop)} onChange={(e) => setEditingProduct({ ...editingProduct, isNewDrop: e.target.checked })} />New drop</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isBestSeller)} onChange={(e) => setEditingProduct({ ...editingProduct, isBestSeller: e.target.checked })} />Best seller</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editingProduct.isLimited)} onChange={(e) => setEditingProduct({ ...editingProduct, isLimited: e.target.checked })} />Limited</label>
               </div>
 
               {/* ── Supabase Image Upload (Edit) ── */}

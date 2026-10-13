@@ -145,12 +145,6 @@ export const api = {
     return parseResponse(res);
   },
 
-  async getOrders(email?: string) {
-    const url = email ? `${API_BASE}/orders?email=${encodeURIComponent(email)}` : `${API_BASE}/orders`;
-    const res = await fetch(url, { headers: getHeaders() });
-    return parseResponse(res);
-  },
-
   async getOrder(orderId: string, orderAccessToken: string) {
     const res = await fetch(`${API_BASE}/orders/${orderId}`, {
       headers: { ...getHeaders(), 'x-order-access-token': orderAccessToken },

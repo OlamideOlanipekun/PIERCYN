@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './affiliate-responsive.css';
 import {
   AffiliateApiClient,
   AffiliateUser,
@@ -242,7 +243,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   const isSuspended = currentUser.status === 'SUSPENDED';
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
+    <div className="affiliate-portal-shell min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
       {/* Top Bar */}
       <header className="border-b border-[#222222] bg-[#111111]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">

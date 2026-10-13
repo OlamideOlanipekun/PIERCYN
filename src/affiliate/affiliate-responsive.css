@@ -1,0 +1,156 @@
+/* PIERCYN Affiliate experience: mobile-first layout corrections */
+.affiliate-landing-shell,
+.affiliate-portal-shell {
+  min-width: 0;
+  width: 100%;
+  overflow-x: clip;
+}
+.affiliate-landing-shell *,
+.affiliate-portal-shell * { min-width: 0; }
+.affiliate-landing-shell button,
+.affiliate-portal-shell button,
+.affiliate-landing-shell a,
+.affiliate-portal-shell a { -webkit-tap-highlight-color: transparent; }
+.affiliate-landing-shell input,
+.affiliate-landing-shell select,
+.affiliate-landing-shell textarea,
+.affiliate-portal-shell input,
+.affiliate-portal-shell select,
+.affiliate-portal-shell textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.affiliate-landing-shell input[type="checkbox"],
+.affiliate-portal-shell input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  flex: 0 0 auto;
+}
+.affiliate-landing-shell img,
+.affiliate-portal-shell img,
+.affiliate-landing-shell svg,
+.affiliate-portal-shell svg { flex-shrink: 0; }
+.affiliate-landing-shell header > div,
+.affiliate-portal-shell header > div {
+  min-height: 64px;
+  height: auto;
+  gap: 12px;
+}
+.affiliate-landing-shell header nav,
+.affiliate-landing-shell header > div > div:last-child {
+  min-width: 0;
+}
+.affiliate-portal-shell nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.affiliate-portal-shell nav::-webkit-scrollbar { display: none; }
+.affiliate-portal-shell main,
+.affiliate-landing-shell main,
+.affiliate-portal-shell section,
+.affiliate-landing-shell section { min-width: 0; }
+.affiliate-portal-shell main > * { min-width: 0; }
+.affiliate-portal-shell table { width: 100%; }
+.affiliate-portal-shell pre,
+.affiliate-portal-shell code { overflow-wrap: anywhere; }
+@media (max-width: 639px) {
+  .affiliate-landing-shell header > div,
+  .affiliate-portal-shell header > div {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .affiliate-landing-shell header > div > div:first-child,
+  .affiliate-portal-shell header > div > div:first-child {
+    flex: 1 1 auto;
+  }
+  .affiliate-landing-shell header > div > div:last-child {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .affiliate-landing-shell header > div > div:last-child button {
+    min-height: 42px;
+    padding: 10px 8px;
+    font-size: 10px;
+    line-height: 1.25;
+    letter-spacing: .08em;
+    white-space: normal;
+    text-align: center;
+  }
+  .affiliate-landing-shell header > div > div:first-child > span:first-child {
+    font-size: 20px;
+  }
+  .affiliate-landing-shell header > div > div:first-child > span:last-child {
+    font-size: 8px;
+    letter-spacing: .12em;
+  }
+  .affiliate-landing-shell section { scroll-margin-top: 100px; }
+  .affiliate-landing-shell h1 {
+    font-size: clamp(2.2rem, 10vw, 3.6rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+  .affiliate-landing-shell .grid { min-width: 0; }
+  .affiliate-landing-shell form,
+  .affiliate-portal-shell form { gap: 14px; }
+  .affiliate-landing-shell input,
+  .affiliate-landing-shell select,
+  .affiliate-landing-shell textarea,
+  .affiliate-portal-shell input,
+  .affiliate-portal-shell select,
+  .affiliate-portal-shell textarea { font-size: 16px; }
+  .affiliate-portal-shell main {
+    padding: 20px 16px max(28px, env(safe-area-inset-bottom));
+  }
+  .affiliate-portal-shell header > div {
+    gap: 10px;
+  }
+  .affiliate-portal-shell header > div > div:first-child {
+    flex: 1 1 100%;
+  }
+  .affiliate-portal-shell header > div > div:first-child > div > span:first-child {
+    font-size: 18px;
+  }
+  .affiliate-portal-shell header > div > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .affiliate-portal-shell nav {
+    gap: 4px;
+    padding: 0 0 2px;
+    scroll-snap-type: x proximity;
+  }
+  .affiliate-portal-shell nav button {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 10px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+  .affiliate-portal-shell .grid { min-width: 0; }
+  .affiliate-portal-shell .grid > * { min-width: 0; }
+  .affiliate-portal-shell .rounded-xl { border-radius: 12px; }
+  .affiliate-portal-shell .p-6 { padding: 16px; }
+  .affiliate-portal-shell .p-8 { padding: 18px; }
+  .affiliate-portal-shell button { touch-action: manipulation; }
+  .affiliate-portal-shell [class*="overflow-x-auto"] {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  .affiliate-portal-shell [class*="text-3xl"] {
+    font-size: clamp(1.5rem, 7vw, 2rem);
+  }
+}
+@media (min-width: 640px) and (max-width: 900px) {
+  .affiliate-portal-shell main { padding-left: 24px; padding-right: 24px; }
+  .affiliate-portal-shell nav { gap: 16px; }
+}

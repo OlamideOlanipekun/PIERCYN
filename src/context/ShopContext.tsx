@@ -627,6 +627,13 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (mappedOrder.orderAccessToken) {
       localStorage.setItem(`piercyn_order_access_${mappedOrder.id}`, mappedOrder.orderAccessToken);
+      try {
+        const storedIds = JSON.parse(localStorage.getItem('piercyn_order_ids') || '[]');
+        const orderIds = Array.isArray(storedIds) ? storedIds.filter((id: unknown): id is string => typeof id === 'string') : [];
+        localStorage.setItem('piercyn_order_ids', JSON.stringify([mappedOrder.id, ...orderIds.filter((id: string) => id !== mappedOrder.id)].slice(0, 20)));
+      } catch {
+        // Order creation should succeed even if browser storage is unavailable.
+      }
     }
 
     setOrders((prev) => [mappedOrder, ...prev]);

@@ -26,6 +26,7 @@ export interface PaymentVerificationResult {
   providerReference: string;
   amountNGN: number;
   orderNumber: string;
+  currency?: string;
   paidAt?: string;
   rawResponse?: unknown;
 }
@@ -48,7 +49,7 @@ export class DirectTransferProvider implements IPaymentProvider {
       success: true,
       provider: 'DIRECT_TRANSFER',
       providerReference: ref,
-      message: 'Bank transfer instructions sent. Awaiting confirmation.',
+      message: 'Bank transfer selected. Contact official support for verified instructions; payment remains pending.',
     };
   }
 
@@ -57,7 +58,7 @@ export class DirectTransferProvider implements IPaymentProvider {
   }
 
   verifyWebhookSignature(): boolean {
-    return true;
+    return process.env.NODE_ENV !== 'production';
   }
 }
 
@@ -176,6 +177,7 @@ export class PaystackPaymentProvider implements IPaymentProvider {
         providerReference: reference,
         amountNGN: isSuccess ? Math.round((data.data.amount || 0) / 100) : 0,
         orderNumber: data.data?.metadata?.order_number || reference,
+        currency: data.data?.currency,
         paidAt: isSuccess ? data.data.paid_at || new Date().toISOString() : undefined,
         rawResponse: data,
       };
@@ -186,12 +188,12 @@ export class PaystackPaymentProvider implements IPaymentProvider {
   }
 
   verifyWebhookSignature(signature: string, rawBody: string): boolean {
-    if (process.env.NODE_ENV === 'test' || !this.webhookSecret) return true;
-    const hash = crypto
-      .createHmac('sha512', this.webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-    return hash === signature;
+    if (process.env.NODE_ENV === 'test') return true;
+    if (!this.webhookSecret || !signature) return false;
+    const expected = crypto.createHmac('sha512', this.webhookSecret).update(rawBody).digest('hex');
+    const suppliedBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    return suppliedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
   }
 }
 
@@ -199,7 +201,7 @@ export class PaymentService {
   private static provider: IPaymentProvider =
     COMMERCE_CONFIG.PAYMENT.PAYSTACK.SECRET_KEY
       ? new PaystackPaymentProvider()
-      : new MockPaymentProvider();
+      : new DirectTransferProvider();
 
   public static setProvider(p: IPaymentProvider) {
     this.provider = p;
@@ -214,25 +216,36 @@ export class PaymentService {
     reference?: string
   ): Promise<PaymentVerificationResult> {
     const ref = reference || orderNumberOrRef;
-    const order = await OrderService.getOrder(orderNumberOrRef) || await OrderService.getOrder(ref);
-
-    if (order) {
-      await OrderService.markOrderPaid(order.orderNumber, ref);
-      return {
-        success: true,
-        providerReference: ref,
-        amountNGN: order.totalNGN,
-        orderNumber: order.orderNumber,
-        paidAt: new Date().toISOString(),
-      };
-    }
-
-    return {
-      success: true,
+    const provider = this.provider;
+    const failed: PaymentVerificationResult = {
+      success: false,
       providerReference: ref,
       amountNGN: 0,
-      orderNumber: ref,
-      paidAt: new Date().toISOString(),
+      orderNumber: '',
+    };
+
+    // Direct bank transfers are not automatically verifiable. Never mark an order paid
+    // from a client-supplied order number or reference.
+    if (provider.providerType === 'DIRECT_TRANSFER') return failed;
+    if (provider.providerType === 'MOCK' && process.env.NODE_ENV === 'production') return failed;
+
+    const verified = await provider.verify(ref);
+    if (!verified.success) return failed;
+
+    const order = await OrderService.getOrder(verified.orderNumber) || await OrderService.getOrder(orderNumberOrRef);
+    if (!order || verified.orderNumber !== order.orderNumber) return failed;
+    if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) return failed;
+    if (!Number.isFinite(verified.amountNGN) || verified.amountNGN !== order.totalNGN) return failed;
+    if (provider.providerType === 'PAYSTACK' && verified.currency?.toUpperCase() !== 'NGN') return failed;
+
+    await OrderService.markOrderPaid(order.orderNumber, verified.providerReference);
+    return {
+      success: true,
+      providerReference: verified.providerReference,
+      amountNGN: order.totalNGN,
+      orderNumber: order.orderNumber,
+      currency: verified.currency,
+      paidAt: verified.paidAt,
     };
   }
 

@@ -112,6 +112,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              id="nav-available-to-order"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                window.history.pushState({}, '', '/available-to-order');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="relative py-2 transition-opacity duration-300 cursor-pointer uppercase font-sans text-[#F2F0EB]/65 hover:text-[#F2F0EB]"
+            >
+              <span>AVAILABLE TO ORDER</span>
+            </button>
+
+            <button
               id="nav-about"
               onClick={() => handleNavClick('about')}
               className={`relative py-2 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
@@ -195,7 +207,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <span className="tracking-tight flex items-center gap-2.5">
                   <span>{link.label}</span>
-                  {link.badge && (
+                  {'badge' in link && link.badge && (
                     <span className="not-italic text-[9px] font-sans font-bold px-2 py-0.5 rounded-full bg-[#F2F0EB] text-[#0A0A0A] tracking-widest">
                       {link.badge}
                     </span>
@@ -221,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <a
-              href="https://wa.me/2348000000000"
+              href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help."
               target="_blank"
               rel="noopener noreferrer"
               className="hover:underline py-2 min-h-[44px] flex items-center font-semibold text-[#F2F0EB]"

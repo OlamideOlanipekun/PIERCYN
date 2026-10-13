@@ -2,6 +2,9 @@ export type AdminNavTab =
   | 'dashboard'
   | 'orders'
   | 'products'
+  | 'media'
+  | 'variants'
+  | 'categories'
   | 'inventory'
   | 'customers'
   | 'affiliates'
@@ -351,4 +354,49 @@ export interface AdminSettingsData {
   paymentGatewayConfigured: boolean;
   paymentEnvironment: string;
   shippingProviders: string[];
+}
+
+export interface AdminMediaAsset {
+  name: string;
+  path: string;
+  publicUrl: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  sizeBytes: number | null;
+  contentType: string | null;
+}
+
+export interface AdminVariantRecord {
+  id: string;
+  productId: string;
+  productName: string;
+  productStatus: string;
+  sku: string;
+  size: string;
+  colour: string;
+  colourHex: string;
+  priceNGN: number | null;
+  priceUSD: number | null;
+  priceGBP: number | null;
+  priceEUR: number | null;
+  costPriceNGN: number | null;
+  image: string | null;
+  altImage: string | null;
+  active: boolean;
+  stockQuantity: number;
+  reservedQuantity: number;
+  availableStock: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  _count?: { products: number };
 }

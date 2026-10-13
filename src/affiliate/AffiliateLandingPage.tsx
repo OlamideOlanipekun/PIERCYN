@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './affiliate-responsive.css';
 import { AffiliateApiClient, AffiliateUser } from '../services/affiliateApi';
 import {
   Sparkles,
@@ -131,7 +132,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   const estimatedMonthlyIncome = itemsSoldPerMonth * 500;
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
+    <div className="affiliate-landing-shell min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
       {/* Top Brand Header */}
       <header className="border-b border-[#262626] bg-[#0D0D0D]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
-import { CheckCircle2, MessageCircle, ArrowRight, Copy, Clock, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, MessageCircle, ArrowRight, Copy, Clock } from 'lucide-react';
 
 export const OrderConfirmationModal: React.FC = () => {
   const {
@@ -66,7 +66,7 @@ export const OrderConfirmationModal: React.FC = () => {
 
         <p className="text-xs text-[#141414]/80 mb-5 font-sans">
           {isTransfer
-            ? 'Your pieces are reserved. Please complete your bank transfer below or confirm via WhatsApp.'
+            ? 'Your order is reserved. Contact official support for verified transfer instructions; payment must be verified before fulfilment.'
             : 'Your order has been received and is being prepared for dispatch.'}
         </p>
 
@@ -85,29 +85,12 @@ export const OrderConfirmationModal: React.FC = () => {
           </button>
         </div>
 
-        {/* BANK TRANSFER DETAILS (If transfer) */}
+        {/* Never display unverified bank account details in checkout. */}
         {isTransfer && (
-          <div className="bg-[#141414] text-[#F2F0EB] p-4 rounded-xl text-left text-xs mb-4 space-y-1.5 font-mono">
-            <div className="flex items-center justify-between text-[#A48B71] text-[10px] uppercase tracking-wider font-bold mb-1">
-              <span>PIERCYN OFFICIAL ATELIER ACCOUNT</span>
-              <ShieldCheck className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Bank:</span>
-              <span className="font-semibold text-white">Providus Bank / GTBank</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Account Name:</span>
-              <span className="font-semibold text-white">PIERCYN CLOTHING ATELIER</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Account Number:</span>
-              <span className="font-bold text-[#F2F0EB]">1029384756</span>
-            </div>
-            <div className="flex justify-between pt-1 border-t border-white/20 text-white/80">
-              <span>Amount to Transfer:</span>
-              <span className="font-bold text-white">₦{lastCreatedOrder.totalNGN.toLocaleString()}</span>
-            </div>
+          <div className="bg-white p-4 rounded-xl border border-[#DAD8D1] text-left text-xs mb-4">
+            <p className="font-semibold text-[#141414]">Need verified transfer instructions?</p>
+            <p className="mt-2 leading-5 text-[#5F5C56]">Contact official PIERCYN support to confirm current payment instructions before transferring. Your order remains pending until payment is verified.</p>
+            <a href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20please%20confirm%20the%20official%20bank%20transfer%20instructions%20for%20my%20order." target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-[#141414] px-4 text-[10px] font-bold uppercase tracking-wider text-white">Confirm via WhatsApp</a>
           </div>
         )}
 
