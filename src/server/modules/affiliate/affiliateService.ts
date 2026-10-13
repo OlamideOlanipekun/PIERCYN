@@ -249,6 +249,8 @@ export class AffiliateService {
       orderBy: { createdAt: 'desc' },
     });
 
+    if (!links || !Array.isArray(links)) return [];
+
     const appUrl = COMMERCE_CONFIG.APP_URL;
 
     return links.map((link) => ({
@@ -772,6 +774,8 @@ export class AffiliateService {
       skip: options?.offset || 0,
     });
 
+    if (!affiliates || !Array.isArray(affiliates)) return [];
+
     return affiliates.map((a) => ({
       id: a.id,
       email: a.email,
@@ -970,6 +974,8 @@ export class AffiliateService {
       take: options?.limit || 50,
       skip: options?.offset || 0,
     });
+
+    if (!payouts || !Array.isArray(payouts)) return [];
 
     return payouts.map((p) => ({
       id: p.id,
