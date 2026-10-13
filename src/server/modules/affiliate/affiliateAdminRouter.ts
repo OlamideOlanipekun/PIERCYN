@@ -99,9 +99,14 @@ affiliateAdminRouter.get('/overview', async (_req: AuthenticatedAdminRequest, re
 affiliateAdminRouter.get('/', async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { status, search, limit, offset } = req.query;
+    // Sanitize query params: treat absent, empty, or literal "undefined" string as undefined
+    const sanitizedStatus =
+      status && status !== 'undefined' ? (status as string) : undefined;
+    const sanitizedSearch =
+      search && search !== 'undefined' ? (search as string) : undefined;
     const affiliates = await AffiliateService.getAllAffiliatesForAdmin({
-      status: status as any,
-      search: search as string,
+      status: sanitizedStatus,
+      search: sanitizedSearch,
       limit: limit ? parseInt(limit as string, 10) : undefined,
       offset: offset ? parseInt(offset as string, 10) : undefined,
     });
