@@ -62,7 +62,10 @@ async function parseResponse(res: Response): Promise<any> {
 export const api = {
   // Products
   async getProducts(params?: { category?: string; collection?: string }) {
-    const query = new URLSearchParams(params as any).toString();
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(filtered as any).toString();
     const res = await fetch(`${API_BASE}/products${query ? `?${query}` : ''}`, { headers: getHeaders() });
     return parseResponse(res);
   },

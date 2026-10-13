@@ -333,7 +333,10 @@ class AdminApiClient {
   }
 
   public async getAffiliates(params?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<any[]> {
-    const qs = new URLSearchParams(params as any).toString();
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(filtered as any).toString();
     return this.request(`/affiliates${qs ? `?${qs}` : ''}`);
   }
 
@@ -364,7 +367,10 @@ class AdminApiClient {
   }
 
   public async getAffiliatePayouts(params?: { status?: string; limit?: number; offset?: number }): Promise<any[]> {
-    const qs = new URLSearchParams(params as any).toString();
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(filtered as any).toString();
     return this.request(`/affiliates/payouts/all${qs ? `?${qs}` : ''}`);
   }
 
