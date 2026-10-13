@@ -26,7 +26,6 @@ import {
   ArrowRight,
   ShieldAlert,
   MoreHorizontal,
-  TrendingUp,
 } from 'lucide-react';
 import { AdminApi } from '../api';
 

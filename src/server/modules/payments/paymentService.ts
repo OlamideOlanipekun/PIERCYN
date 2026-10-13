@@ -229,23 +229,26 @@ export class PaymentService {
     const ref = reference || orderNumberOrRef;
     const order = OrderService.getOrder(orderNumberOrRef) || OrderService.getOrder(ref);
 
-    if (order) {
-      OrderService.markOrderPaid(order.orderNumber, ref);
+    const verification = await this.provider.verify(ref);
+
+    if (verification.success) {
+      if (order) {
+        OrderService.markOrderPaid(order.orderNumber, ref);
+      }
       return {
-        success: true,
-        providerReference: ref,
-        amountNGN: order.totalNGN,
-        orderNumber: order.orderNumber,
-        paidAt: new Date().toISOString(),
+        ...verification,
+        amountNGN: order ? order.totalNGN : verification.amountNGN,
+        orderNumber: order ? order.orderNumber : ref,
+        paidAt: verification.paidAt || new Date().toISOString(),
       };
     }
 
     return {
-      success: true,
+      success: false,
       providerReference: ref,
       amountNGN: 0,
-      orderNumber: ref,
-      paidAt: new Date().toISOString(),
+      orderNumber: order ? order.orderNumber : ref,
+      rawResponse: verification.rawResponse,
     };
   }
 

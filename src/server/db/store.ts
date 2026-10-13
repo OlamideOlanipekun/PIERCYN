@@ -483,12 +483,14 @@ export class CommerceDataStore {
     });
 
     // 3. Seed Default Admin User
-    // Pre-computed bcrypt hashes (cost=10) — avoids slow hashSync on cold start
-    // Generated with: bcrypt.hashSync('piercynAdmin2026', 10)
-    const adminPasswordHash = '$2b$10$EawdzBtZHOOVuJUX2RBusuWAvMjETHgkM4G2fdKdac.Ol6FYuoP2i';
+    // Can be overridden via ADMIN_EMAIL and ADMIN_PASSWORD_HASH environment variables
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@piercyn.com').trim().toLowerCase();
+    const adminPasswordHash =
+      process.env.ADMIN_PASSWORD_HASH ||
+      '$2b$10$EawdzBtZHOOVuJUX2RBusuWAvMjETHgkM4G2fdKdac.Ol6FYuoP2i'; // Default: piercynAdmin2026
     const defaultAdmin: DbUser = {
       id: 'usr-admin-01',
-      email: 'admin@piercyn.com',
+      email: adminEmail,
       passwordHash: adminPasswordHash,
       firstName: 'PIERCYN',
       lastName: 'Director',

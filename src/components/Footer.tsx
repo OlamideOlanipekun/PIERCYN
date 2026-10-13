@@ -79,7 +79,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               </button>
               <button
                 id="footer-size-guide"
-                onClick={() => onSelectPage ? onSelectPage('sizeGuide') : setIsSizeGuideOpen(true)}
+                onClick={() => onSelectPage && onSelectPage('sizeGuide')}
                 className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
               >
                 SIZE GUIDE

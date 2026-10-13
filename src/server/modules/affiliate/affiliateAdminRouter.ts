@@ -93,7 +93,50 @@ affiliateAdminRouter.get('/overview', async (_req: AuthenticatedAdminRequest, re
   }
 });
 
-// ─── AFFILIATES DIRECTORY ──────────────────────────────────────────────────
+// ─── ADMIN PAYOUTS MANAGEMENT (registered BEFORE /:id to prevent shadowing) ─────────
+
+// GET /api/admin/affiliates/payouts/all
+affiliateAdminRouter.get('/payouts/all', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { status, limit, offset } = req.query;
+    const payouts = await AffiliateService.getAllPayoutsForAdmin({
+      status: status as any,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      offset: offset ? parseInt(offset as string, 10) : undefined,
+    });
+    res.json({ success: true, count: payouts.length, data: payouts });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/affiliates/payouts/:id/process and /api/admin/affiliates/payouts/process
+affiliateAdminRouter.post(['/payouts/:id/process', '/payouts/process'], async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = ProcessAffiliatePayoutSchema.parse(req.body);
+    const targetPayoutId = req.params.id || (req.body as any).payoutId;
+    if (!targetPayoutId) {
+      return res.status(400).json({ success: false, error: 'payoutId is required' });
+    }
+    const updated = await AffiliateService.processPayout(
+      targetPayoutId,
+      validated.action,
+      req.admin!.email,
+      validated.notes || validated.adminNote,
+      validated.payoutReference || validated.paymentReference
+    );
+    res.json({
+      success: true,
+      message: `Payout successfully updated to ${validated.action}.`,
+      data: updated,
+    });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// ─── AFFILIATES DIRECTORY (/:id catch-all must come AFTER all specific routes) ──────
 
 // GET /api/admin/affiliates
 affiliateAdminRouter.get('/', async (req: AuthenticatedAdminRequest, res: Response) => {
@@ -167,48 +210,5 @@ affiliateAdminRouter.post('/:id/status', async (req: AuthenticatedAdminRequest, 
     res.json({ success: true, data: updated });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-// ─── ADMIN PAYOUTS MANAGEMENT ──────────────────────────────────────────────
-
-// GET /api/admin/affiliates/payouts/all
-affiliateAdminRouter.get('/payouts/all', async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { status, limit, offset } = req.query;
-    const payouts = await AffiliateService.getAllPayoutsForAdmin({
-      status: status as any,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-      offset: offset ? parseInt(offset as string, 10) : undefined,
-    });
-    res.json({ success: true, count: payouts.length, data: payouts });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/admin/affiliates/payouts/:id/process and /api/admin/affiliates/payouts/process
-affiliateAdminRouter.post(['/payouts/:id/process', '/payouts/process'], async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const validated = ProcessAffiliatePayoutSchema.parse(req.body);
-    const targetPayoutId = req.params.id || (req.body as any).payoutId;
-    if (!targetPayoutId) {
-      return res.status(400).json({ success: false, error: 'payoutId is required' });
-    }
-    const updated = await AffiliateService.processPayout(
-      targetPayoutId,
-      validated.action,
-      req.admin!.email,
-      validated.notes || validated.adminNote,
-      validated.payoutReference || validated.paymentReference
-    );
-    res.json({
-      success: true,
-      message: `Payout successfully updated to ${validated.action}.`,
-      data: updated,
-    });
-  } catch (err: any) {
-    const msg = err.errors ? err.errors[0]?.message : err.message;
-    res.status(400).json({ success: false, error: msg });
   }
 });

@@ -247,6 +247,18 @@ const MainLayout: React.FC = () => {
       orderTracking: '/',
       notFound: '/',
       affiliate: '/affiliate',
+      cart: '/cart',
+      checkout: '/checkout',
+      orderConfirmation: '/order-confirmation',
+      shipping: '/shipping',
+      returns: '/returns',
+      contact: '/contact',
+      privacy: '/privacy',
+      terms: '/terms',
+      search: '/search',
+      sizeGuide: '/size-guide',
+      faq: '/faq',
+      trackOrder: '/track-order',
     };
 
     const targetUrl = pathMap[page] || '/';
@@ -271,6 +283,18 @@ const MainLayout: React.FC = () => {
       orderTracking: 'Order Tracking — PIERCYN',
       notFound: 'Page Not Found — PIERCYN',
       affiliate: 'PIERCYN Creator & Affiliate Portal',
+      cart: 'Cart — PIERCYN',
+      checkout: 'Checkout — PIERCYN',
+      orderConfirmation: 'Order Confirmed — PIERCYN',
+      shipping: 'Shipping & Delivery — PIERCYN',
+      returns: 'Returns & Exchanges — PIERCYN',
+      contact: 'Contact — PIERCYN',
+      privacy: 'Privacy Policy — PIERCYN',
+      terms: 'Terms & Conditions — PIERCYN',
+      search: 'Search — PIERCYN',
+      sizeGuide: 'Size Guide — PIERCYN',
+      faq: 'FAQ — PIERCYN',
+      trackOrder: 'Track Order — PIERCYN',
     };
 
     document.title = titleMap[page] || 'PIERCYN';

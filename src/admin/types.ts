@@ -34,6 +34,8 @@ export interface AdminOrderItem {
   unitPriceNGN: number;
   costPriceNGN: number;
   totalPriceNGN: number;
+  /** @deprecated Use totalPriceNGN — kept for backward-compatibility with older API responses */
+  totalNGN?: number;
   image: string;
   quantity: number;
   createdAt: string;

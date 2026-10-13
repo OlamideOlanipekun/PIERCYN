@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { CartService, CalculatedCart } from '../cart/cartService';
 import { ShippingService } from '../shipping/shippingService';
@@ -153,7 +154,7 @@ export class CheckoutService {
 
     // 3. Historical Snapshot of Order Items (Immutable)
     const orderItems: DbOrderItem[] = quote.cart.items.map((line) => ({
-      id: `oi-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      id: `oi-${crypto.randomBytes(8).toString('hex')}`,
       orderId,
       variantId: line.variantId,
       productId: line.productId,

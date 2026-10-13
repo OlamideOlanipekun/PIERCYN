@@ -5,7 +5,9 @@ import { prisma } from '../src/server/db/prisma';
 import { CommissionService } from '../src/server/modules/affiliate/commissionService';
 import { AffiliateService } from '../src/server/modules/affiliate/affiliateService';
 
-describe('PIERCYN Production Affiliate & Creator System', () => {
+const shouldRunDbTests = Boolean(process.env.TEST_WITH_DATABASE);
+
+describe.skipIf(!shouldRunDbTests)('PIERCYN Production Affiliate & Creator System', () => {
   let adminToken: string;
   let testAffiliateEmail = `affiliate_${Date.now()}@piercyn.com`;
   let testAffiliateId: string;

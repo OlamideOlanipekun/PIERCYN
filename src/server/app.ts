@@ -5,7 +5,10 @@ export const app = express();
 
 // Lightweight Zero-Dependency CORS Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = process.env.NODE_ENV === 'production'
+    ? (process.env.APP_URL || 'https://piercyn.vercel.app')
+    : '*';
+  res.header('Access-Control-Allow-Origin', origin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-session-id, x-paystack-signature');
   if (req.method === 'OPTIONS') {
