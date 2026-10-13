@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
+const PRELOADER_VIDEO =
+  'https://pl0borck44uqlgua.public.blob.vercel-storage.com/261131174_1791887681274620.mp4';
 
 /**
- * PIERCYN's one-time entry animation.
- * Lightweight CSS animation; no blocking video download and no repeated
- * flashes when the customer navigates between store pages.
+ * Plays the supplied PIERCYN brand intro once per browser session.
+ * The video is muted so autoplay works on mobile browsers; a timeout and
+ * branded fallback ensure the storefront never stays blocked indefinitely.
  */
 export const PiercynPreloader: React.FC = () => {
   const [visible, setVisible] = useState(() => {
@@ -15,6 +18,8 @@ export const PiercynPreloader: React.FC = () => {
     }
   });
   const [leaving, setLeaving] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -27,23 +32,46 @@ export const PiercynPreloader: React.FC = () => {
         try {
           window.sessionStorage.setItem('piercyn-intro-seen', '1');
         } catch {
-          // Private browsing may disable storage; the animation still works.
+          // The intro still works when storage is unavailable.
         }
-    }, 550);
+      }, 450);
     };
 
-    // Keep the intro brief, and don't wait indefinitely for slow assets.
-    const minTimer = window.setTimeout(finish, 1750);
-    const safetyTimer = window.setTimeout(finish, 2800);
+    // Do not let a slow network or a malformed video block the storefront.
+    const safetyTimer = window.setTimeout(finish, 6500);
+    if (videoFailed) {
+      exitTimer = window.setTimeout(finish, 1400);
+    }
+
+    const video = videoRef.current;
+    if (video) {
+      const playAttempt = video.play();
+      if (playAttempt) {
+        playAttempt.catch(() => setVideoFailed(true));
+      }
+    }
 
     return () => {
-      window.clearTimeout(minTimer);
       window.clearTimeout(safetyTimer);
       if (exitTimer) window.clearTimeout(exitTimer);
     };
-  }, [visible]);
+  }, [visible, videoFailed]);
 
   if (!visible) return null;
+
+  const finishIntro = () => {
+    if (!leaving) {
+      setLeaving(true);
+      window.setTimeout(() => {
+        setVisible(false);
+        try {
+          window.sessionStorage.setItem('piercyn-intro-seen', '1');
+        } catch {
+          // Ignore unavailable session storage.
+        }
+      }, 450);
+    }
+  };
 
   return (
     <div
@@ -58,26 +86,25 @@ export const PiercynPreloader: React.FC = () => {
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; background: #080808; color: #F2F0EB;
           opacity: 1; visibility: visible;
-          transition: opacity 520ms cubic-bezier(.22,.61,.36,1), visibility 520ms;
+          transition: opacity 450ms cubic-bezier(.22,.61,.36,1), visibility 450ms;
           isolation: isolate;
         }
         .piercyn-intro--leaving { opacity: 0; visibility: hidden; pointer-events: none; }
-        .piercyn-intro__content {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 22px; padding: 24px; text-align: center;
-          animation: piercyn-intro-rise 850ms cubic-bezier(.2,.7,.2,1) both;
+        .piercyn-intro__video {
+          position: absolute; inset: 0; width: 100%; height: 100%;
+          object-fit: cover; object-position: center; background: #080808;
+        }
+        .piercyn-intro__fallback {
+          position: relative; z-index: 1; display: flex; flex-direction: column;
+          align-items: center; gap: 18px; padding: 24px; text-align: center;
+          animation: piercyn-intro-rise 700ms ease both;
         }
         .piercyn-intro__mark {
-          width: 88px; height: 88px; display: grid; place-items: center;
-          border: 1px solid rgba(242,240,235,.22); border-radius: 50%;
-          position: relative; animation: piercyn-mark-glow 1.8s ease-in-out infinite alternate;
-        }
-        .piercyn-intro__mark::before {
-          content: ''; position: absolute; inset: -7px; border: 1px solid rgba(242,240,235,.09);
-          border-radius: 50%; animation: piercyn-ring 2.8s ease-out infinite;
+          width: 76px; height: 76px; display: grid; place-items: center;
+          border: 1px solid rgba(242,240,235,.24); border-radius: 50%;
         }
         .piercyn-intro__letter {
-          font-family: Georgia, 'Times New Roman', serif; font-size: 51px;
+          font-family: Georgia, 'Times New Roman', serif; font-size: 46px;
           line-height: 1; font-weight: 400; letter-spacing: -.09em;
           transform: translateX(-2px); color: #F2F0EB;
         }
@@ -85,36 +112,38 @@ export const PiercynPreloader: React.FC = () => {
           font-family: Arial, Helvetica, sans-serif; font-size: 12px;
           letter-spacing: .42em; font-weight: 500; padding-left: .42em;
         }
-        .piercyn-intro__tagline {
-          margin-top: -13px; font-family: Arial, Helvetica, sans-serif;
-          font-size: 9px; letter-spacing: .22em; color: rgba(242,240,235,.56);
-          text-transform: uppercase;
-        }
-        .piercyn-intro__rule { height: 1px; width: 38px; background: #F2F0EB; opacity: .6; }
+        .piercyn-intro__rule { height: 1px; width: 34px; background: #F2F0EB; opacity: .6; }
         @keyframes piercyn-intro-rise {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes piercyn-mark-glow {
-          from { box-shadow: 0 0 0 rgba(242,240,235,0); }
-          to { box-shadow: 0 0 30px rgba(242,240,235,.09); }
-        }
-        @keyframes piercyn-ring {
-          0% { transform: scale(.92); opacity: .6; }
-          100% { transform: scale(1.16); opacity: 0; }
-        }
         @media (prefers-reduced-motion: reduce) {
-          .piercyn-intro, .piercyn-intro * { animation: none !important; transition-duration: 1ms !important; }
+          .piercyn-intro, .piercyn-intro * { transition-duration: 1ms !important; }
         }
       `}</style>
-      <div className="piercyn-intro__content">
-        <div className="piercyn-intro__mark" aria-hidden="true">
-          <span className="piercyn-intro__letter">P</span>
+      {!videoFailed ? (
+        <video
+          ref={videoRef}
+          className="piercyn-intro__video"
+          src={PRELOADER_VIDEO}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          onEnded={finishIntro}
+          onError={() => setVideoFailed(true)}
+          onCanPlay={() => {
+            // If the browser can play the clip, let its natural end dismiss it.
+          }}
+        />
+      ) : (
+        <div className="piercyn-intro__fallback" aria-hidden="true">
+          <div className="piercyn-intro__mark"><span className="piercyn-intro__letter">P</span></div>
+          <div className="piercyn-intro__name">PIERCYN</div>
+          <div className="piercyn-intro__rule" />
         </div>
-        <div className="piercyn-intro__name">PIERCYN</div>
-        <div className="piercyn-intro__rule" aria-hidden="true" />
-        <div className="piercyn-intro__tagline">Crafting the experience</div>
-      </div>
+      )}
     </div>
   );
 };
