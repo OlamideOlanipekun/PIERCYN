@@ -56,9 +56,14 @@ export function getPrismaClient(): PrismaClient {
     cleanUrl.includes('sslmode=require') ||
     process.env.NODE_ENV === 'production';
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  const maxConnections = process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX, 10) : (isProduction ? 2 : 10);
+
   const pool = new Pool({
     connectionString: cleanUrl,
     connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 20000,
+    max: maxConnections,
     ssl: isRemote ? { rejectUnauthorized: false } : undefined,
   });
 
@@ -73,10 +78,8 @@ export function getPrismaClient(): PrismaClient {
   });
 
   prismaInstance = client;
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
-    globalForPrisma.pgPool = pool;
-  }
+  globalForPrisma.prisma = client;
+  globalForPrisma.pgPool = pool;
 
   return client;
 }
