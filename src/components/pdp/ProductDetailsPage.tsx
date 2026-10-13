@@ -48,7 +48,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
-  const [quantity, setQuantity] = useState(1);
 
   // Initialize variant selection & analytics
   useEffect(() => {
