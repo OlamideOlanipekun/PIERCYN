@@ -1,6 +1,13 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/[...path].ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 30,
+      "includeFiles": "build/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -12,3 +19,4 @@
     }
   ]
 }
+
