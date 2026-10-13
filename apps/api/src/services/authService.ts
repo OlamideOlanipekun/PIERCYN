@@ -19,12 +19,18 @@ export interface AuthResult {
   token: string;
 }
 
-const HMAC_SECRET = process.env.CUSTOMER_JWT_SECRET || process.env.JWT_SECRET || 'piercyn-customer-session-secret-2026';
+const HMAC_SECRET =
+  process.env.CUSTOMER_JWT_SECRET ||
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV !== 'production' ? 'piercyn-customer-session-secret-2026' : '');
 
 const revokedTokens = new Set<string>();
 const authSessions = new Map<string, { userId: string; expiresAt: Date; email: string }>();
 
 function createSignedToken(userId: string, email: string): string {
+  if (!HMAC_SECRET) {
+    throw new Error('Customer authentication is not configured. Set CUSTOMER_JWT_SECRET or JWT_SECRET.');
+  }
   const payload = {
     userId,
     email,

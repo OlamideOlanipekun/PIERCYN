@@ -926,11 +926,30 @@ adminRouter.get('/audit-logs', requireAdmin, async (req: Request, res: Response)
 });
 
 // 10. SETTINGS
-adminRouter.get('/settings', requireAdmin, (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    data: storeSettingsState,
-  });
+adminRouter.get('/settings', requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const shippingConfigs = await prisma.shippingConfig.findMany();
+    const lagosConfig = shippingConfigs.find((c) => c.regionKey === 'lagos');
+    const nationwideConfig = shippingConfigs.find((c) => c.regionKey === 'nationwide');
+
+    if (lagosConfig) {
+      storeSettingsState.lagosDeliveryFeeNGN = lagosConfig.feeNGN;
+      storeSettingsState.freeShippingThresholdNGN = lagosConfig.freeShippingThresholdNGN;
+    }
+    if (nationwideConfig) {
+      storeSettingsState.nationwideDeliveryFeeNGN = nationwideConfig.feeNGN;
+    }
+
+    res.json({
+      success: true,
+      data: storeSettingsState,
+    });
+  } catch (err: any) {
+    res.json({
+      success: true,
+      data: storeSettingsState,
+    });
+  }
 });
 
 adminRouter.patch('/settings', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
@@ -960,6 +979,51 @@ adminRouter.patch('/settings', requireAdmin, async (req: AuthenticatedAdminReque
       storeSettingsState.nationwideDeliveryFeeNGN = Number(nationwideDeliveryFeeNGN);
     if (lowStockThreshold !== undefined)
       storeSettingsState.lowStockThreshold = Number(lowStockThreshold);
+
+    // Persist shipping fee and threshold updates to PostgreSQL
+    try {
+      if (lagosDeliveryFeeNGN !== undefined || freeShippingThresholdNGN !== undefined) {
+        await prisma.shippingConfig.upsert({
+          where: { regionKey: 'lagos' },
+          update: {
+            feeNGN: storeSettingsState.lagosDeliveryFeeNGN,
+            freeShippingThresholdNGN: storeSettingsState.freeShippingThresholdNGN,
+          },
+          create: {
+            regionKey: 'lagos',
+            name: 'Lagos Doorstep Delivery',
+            feeNGN: storeSettingsState.lagosDeliveryFeeNGN,
+            freeShippingThresholdNGN: storeSettingsState.freeShippingThresholdNGN,
+            estimatedTimeframe: '24–48 Hours',
+            description: 'Direct dispatch to your doorstep across Lagos State.',
+            isActive: true,
+            sortOrder: 1,
+          },
+        });
+      }
+
+      if (nationwideDeliveryFeeNGN !== undefined || freeShippingThresholdNGN !== undefined) {
+        await prisma.shippingConfig.upsert({
+          where: { regionKey: 'nationwide' },
+          update: {
+            feeNGN: storeSettingsState.nationwideDeliveryFeeNGN,
+            freeShippingThresholdNGN: storeSettingsState.freeShippingThresholdNGN,
+          },
+          create: {
+            regionKey: 'nationwide',
+            name: 'Nationwide Delivery (Nigeria)',
+            feeNGN: storeSettingsState.nationwideDeliveryFeeNGN,
+            freeShippingThresholdNGN: storeSettingsState.freeShippingThresholdNGN,
+            estimatedTimeframe: '3–5 Business Days',
+            description: 'Secure courier delivery to all 36 Nigerian states and FCT.',
+            isActive: true,
+            sortOrder: 2,
+          },
+        });
+      }
+    } catch (dbErr: any) {
+      console.warn('[SETTINGS] Could not persist shipping config to DB:', dbErr?.message);
+    }
 
     await AuditService.log({
       adminId: req.admin?.id || 'admin',

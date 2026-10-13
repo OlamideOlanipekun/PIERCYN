@@ -28,10 +28,13 @@ import { OrderPage } from './components/OrderPage';
 import { NotFoundPage } from './components/NotFoundPage';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
-import { AdminApp } from './admin/AdminApp';
-import { AffiliateApp } from './affiliate/AffiliateApp';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
+
+// Lazy-loaded portals to preserve lightweight initial storefront bundle
+const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+const AffiliateApp = React.lazy(() => import('./affiliate/AffiliateApp').then((m) => ({ default: m.AffiliateApp })));
+
 
 // V1: Simple "Why PIERCYN" brand section for homepage
 const WhyPiercynSection: React.FC = () => (
@@ -333,25 +336,41 @@ const MainLayout: React.FC = () => {
 
   if (isAdminView) {
     return (
-      <AdminApp
-        onBackToStore={() => {
-          setIsAdminView(false);
-          window.history.pushState({}, '', '/');
-          document.title = 'PIERCYN — Look Good. Spend Less.';
-        }}
-      />
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex items-center justify-center font-mono text-xs tracking-widest uppercase">
+            Loading Operations Room...
+          </div>
+        }
+      >
+        <AdminApp
+          onBackToStore={() => {
+            setIsAdminView(false);
+            window.history.pushState({}, '', '/');
+            document.title = 'PIERCYN — Look Good. Spend Less.';
+          }}
+        />
+      </React.Suspense>
     );
   }
 
   if (isAffiliateView) {
     return (
-      <AffiliateApp
-        onBackToShop={() => {
-          setIsAffiliateView(false);
-          window.history.pushState({}, '', '/');
-          document.title = 'PIERCYN — Look Good. Spend Less.';
-        }}
-      />
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex items-center justify-center font-mono text-xs tracking-widest uppercase">
+            Loading Creator Portal...
+          </div>
+        }
+      >
+        <AffiliateApp
+          onBackToShop={() => {
+            setIsAffiliateView(false);
+            window.history.pushState({}, '', '/');
+            document.title = 'PIERCYN — Look Good. Spend Less.';
+          }}
+        />
+      </React.Suspense>
     );
   }
 
