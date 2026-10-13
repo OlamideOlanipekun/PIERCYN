@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { AdminAuthService } from './adminAuthService';
 import { requireAdmin, AuthenticatedAdminRequest } from './adminMiddleware';
 import { OrderService } from '../orders/orderService';
@@ -12,6 +14,21 @@ import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
 import { dbStore, DbOrder, OrderStatusType } from '../../db/store';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { z } from 'zod';
+
+let supabaseAdmin: SupabaseClient | null = null;
+
+function getSupabaseAdmin(): SupabaseClient | null {
+  if (supabaseAdmin) return supabaseAdmin;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  try {
+    supabaseAdmin = createClient(url, serviceRoleKey);
+    return supabaseAdmin;
+  } catch {
+    return null;
+  }
+}
 
 export const adminRouter = Router();
 
@@ -166,6 +183,108 @@ adminRouter.post('/auth/logout', requireAdmin, (req: AuthenticatedAdminRequest, 
   }
 
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// -------------------------------------------------------------
+// 1b. IMAGE UPLOAD (proxied via Supabase service-role key)
+// -------------------------------------------------------------
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const storage = getSupabaseAdmin();
+    if (!storage) {
+      return res.status(503).json({ success: false, error: 'Image uploads require Supabase credentials (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY). Add them to .env to enable uploads.' });
+    }
+
+    const { fileBase64, mimeType } = req.body;
+    if (!fileBase64 || !mimeType) {
+      return res.status(400).json({ success: false, error: 'fileBase64 and mimeType are required.' });
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+      return res.status(400).json({ success: false, error: 'Only JPEG, PNG, WebP, and GIF images are supported.' });
+    }
+
+    const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
+      return res.status(400).json({ success: false, error: 'Image must be between 1 byte and 3 MB.' });
+    }
+
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
+    const uniqueName = `${crypto.randomUUID()}.${extension}`;
+    const filePath = `products/${uniqueName}`;
+
+    const { error } = await storage.storage
+      .from('products')
+      .upload(filePath, buffer, { cacheControl: '3600', upsert: false, contentType: mimeType });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: `Upload failed: ${error.message}` });
+    }
+
+    const { data } = storage.storage.from('products').getPublicUrl(filePath);
+    if (!data?.publicUrl) {
+      return res.status(500).json({ success: false, error: 'Could not retrieve public URL after upload.' });
+    }
+
+    res.json({ success: true, data: { publicUrl: data.publicUrl } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Upload failed.' });
+  }
+});
+
+adminRouter.get('/media', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const storage = getSupabaseAdmin();
+    if (!storage) return res.json({ success: true, data: [], count: 0 });
+
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 100));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+
+    const { data: files, error } = await storage.storage
+      .from('products')
+      .list('products', { limit, offset, sortBy: { column: 'created_at', order: 'desc' } });
+
+    if (error) throw error;
+
+    const assets = (files || [])
+      .filter((file) => file.name && !file.name.startsWith('.'))
+      .map((file) => {
+        const path = `products/${file.name}`;
+        const { data } = storage.storage.from('products').getPublicUrl(path);
+        return {
+          name: file.name, path, publicUrl: data.publicUrl,
+          createdAt: file.created_at || null, updatedAt: file.updated_at || null,
+          sizeBytes: typeof file.metadata?.size === 'number' ? file.metadata.size : null,
+          contentType: file.metadata?.mimetype || null,
+        };
+      });
+
+    res.json({ success: true, data: assets, count: assets.length, limit, offset });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Unable to load media library.' });
+  }
+});
+
+adminRouter.delete('/media', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const storage = getSupabaseAdmin();
+    if (!storage) return res.status(503).json({ success: false, error: 'Supabase not configured.' });
+
+    const path = req.body?.path as string;
+    if (!path || !/^products\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i.test(path)) {
+      return res.status(400).json({ success: false, error: 'Invalid media path.' });
+    }
+
+    const { error } = await storage.storage.from('products').remove([path]);
+    if (error) throw error;
+
+    res.json({ success: true, message: 'Image permanently deleted from storage.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Delete failed.' });
+  }
 });
 
 // -------------------------------------------------------------

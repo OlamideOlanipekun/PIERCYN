@@ -33,38 +33,61 @@ interface ImageUploadRowProps {
 }
 
 const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket = 'products' }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleFiles = async (files: FileList | null) => {
+  // Upload files — optionally replace a specific slot index in-place
+  const uploadFiles = async (files: FileList | null, replaceIdx?: number) => {
     if (!files || files.length === 0) return;
-    const newSlots: ImageSlot[] = Array.from(files).map((file) => ({
-      url: URL.createObjectURL(file),
-      file,
-      uploading: true,
-    }));
-    const updated = [...slots, ...newSlots];
-    onChange(updated);
 
-    // Upload each file
-    for (let i = 0; i < newSlots.length; i++) {
-      const slot = newSlots[i];
-      const idx = slots.length + i;
+    if (replaceIdx !== undefined) {
+      // Replace single slot in-place
+      const file = files[0];
+      const previewUrl = URL.createObjectURL(file);
+      const updated = [...slots];
+      const oldUrl = updated[replaceIdx]?.url;
+      if (oldUrl?.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+      updated[replaceIdx] = { url: previewUrl, file, uploading: true };
+      onChange([...updated]);
       try {
-        const publicUrl = await uploadImageToSupabase(slot.file!, bucket);
-        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
-        updated[idx] = { url: publicUrl, uploading: false };
+        const publicUrl = await uploadImageToSupabase(file, bucket);
+        if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        updated[replaceIdx] = { url: publicUrl, uploading: false };
         onChange([...updated]);
       } catch (err: any) {
-        if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
-        updated[idx] = { url: '', uploading: false, error: err.message };
+        if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        updated[replaceIdx] = { url: '', uploading: false, error: err.message };
         onChange([...updated]);
+      }
+    } else {
+      // Append new slots
+      const newSlots: ImageSlot[] = Array.from(files).map((file) => ({
+        url: URL.createObjectURL(file),
+        file,
+        uploading: true,
+      }));
+      const updated = [...slots, ...newSlots];
+      onChange(updated);
+      for (let i = 0; i < newSlots.length; i++) {
+        const slot = newSlots[i];
+        const idx = slots.length + i;
+        try {
+          const publicUrl = await uploadImageToSupabase(slot.file!, bucket);
+          if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
+          updated[idx] = { url: publicUrl, uploading: false };
+          onChange([...updated]);
+        } catch (err: any) {
+          if (slot.url.startsWith('blob:')) URL.revokeObjectURL(slot.url);
+          updated[idx] = { url: '', uploading: false, error: err.message };
+          onChange([...updated]);
+        }
       }
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    handleFiles(e.dataTransfer.files);
+    uploadFiles(e.dataTransfer.files);
   };
 
   const removeSlot = (idx: number) => {
@@ -100,47 +123,86 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-950/60 p-2">
                   <X className="w-4 h-4 text-red-400" />
                   <span className="text-[9px] font-mono text-red-300 text-center leading-tight">{slot.error}</span>
+                  <button
+                    type="button"
+                    onClick={() => replaceInputRefs.current[idx]?.click()}
+                    className="mt-1 text-[9px] font-mono uppercase bg-white/10 hover:bg-white/20 text-white rounded px-1.5 py-0.5 cursor-pointer"
+                  >Retry</button>
                 </div>
               ) : (
-                <img
-                  src={slot.url}
-                  alt={`Image ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                />
+                <img src={slot.url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
               )}
-              {!slot.uploading && !slot.error && slots.length > 1 && (
-                <div className="absolute bottom-1 right-1 flex gap-1">
-                  <button type="button" disabled={idx === 0} onClick={() => moveSlot(idx, -1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image earlier"><ChevronLeft className="h-3 w-3" /></button>
-                  <button type="button" disabled={idx === slots.length - 1} onClick={() => moveSlot(idx, 1)} className="rounded bg-black/75 p-1.5 text-white disabled:opacity-30" title="Move image later"><ChevronRight className="h-3 w-3" /></button>
-                </div>
-              )}
-              {/* Remove button */}
-              {!slot.uploading && (
-                <button
-                  type="button"
-                  onClick={() => removeSlot(idx)}
-                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80 cursor-pointer"
-                  title="Remove image"
-                >
-                  <Trash2 className="w-3 h-3 text-white" />
-                </button>
-              )}
+
               {/* Primary badge */}
               {idx === 0 && !slot.uploading && !slot.error && (
-                <span className="absolute bottom-1 left-1 text-[8px] font-mono uppercase bg-emerald-900/80 text-emerald-300 px-1.5 py-0.5 rounded">
+                <span className="absolute top-1 left-1 text-[8px] font-mono uppercase bg-emerald-900/80 text-emerald-300 px-1.5 py-0.5 rounded pointer-events-none">
                   Primary
                 </span>
               )}
+
+              {/* Action bar — visible on hover */}
+              {!slot.uploading && (
+                <div className="absolute bottom-0 inset-x-0 flex items-center gap-1 px-1 py-1 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Replace this image */}
+                  <button
+                    type="button"
+                    onClick={() => replaceInputRefs.current[idx]?.click()}
+                    className="flex-1 flex items-center justify-center gap-1 rounded bg-white/10 hover:bg-white/25 py-1 text-white cursor-pointer"
+                    title="Replace this image"
+                  >
+                    <Upload className="h-3 w-3" />
+                    <span className="text-[8px] font-mono uppercase">Replace</span>
+                  </button>
+                  {/* Reorder buttons */}
+                  {!slot.error && slots.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => moveSlot(idx, -1)}
+                        className="rounded bg-white/10 hover:bg-white/25 p-1 text-white disabled:opacity-30 cursor-pointer"
+                        title="Move earlier"
+                      ><ChevronLeft className="h-3 w-3" /></button>
+                      <button
+                        type="button"
+                        disabled={idx === slots.length - 1}
+                        onClick={() => moveSlot(idx, 1)}
+                        className="rounded bg-white/10 hover:bg-white/25 p-1 text-white disabled:opacity-30 cursor-pointer"
+                        title="Move later"
+                      ><ChevronRight className="h-3 w-3" /></button>
+                    </>
+                  )}
+                  {/* Remove */}
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(idx)}
+                    className="rounded bg-red-900/60 hover:bg-red-900 p-1 text-white cursor-pointer"
+                    title="Remove image"
+                  ><Trash2 className="h-3 w-3" /></button>
+                </div>
+              )}
+
+              {/* Hidden per-slot replace input */}
+              <input
+                ref={(el) => { replaceInputRefs.current[idx] = el; }}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  uploadFiles(e.target.files, idx);
+                  e.target.value = '';
+                }}
+              />
             </div>
           ))}
         </div>
       )}
 
-      {/* Drop zone */}
+      {/* Drop zone — add more images */}
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => addInputRef.current?.click()}
         className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#2D2D2D] rounded-xl py-6 px-4 cursor-pointer hover:border-[#F2F0EB]/30 hover:bg-white/5 transition-all group"
       >
         <div className="p-2 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
@@ -148,19 +210,23 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
         </div>
         <div className="text-center">
           <p className="text-[11px] font-semibold text-neutral-400 group-hover:text-neutral-200 transition-colors">
-            Drop images here or <span className="text-[#F2F0EB] underline underline-offset-2">browse</span>
+            {slots.length > 0 ? 'Add more images or ' : 'Drop images here or '}
+            <span className="text-[#F2F0EB] underline underline-offset-2">browse</span>
           </p>
           <p className="text-[10px] font-mono text-neutral-600 mt-0.5">
             JPG, PNG, WEBP, GIF — max 3 MB each
           </p>
         </div>
         <input
-          ref={inputRef}
+          ref={addInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => {
+            uploadFiles(e.target.files);
+            e.target.value = '';
+          }}
         />
       </div>
     </div>
@@ -357,6 +423,10 @@ export const ProductsView: React.FC = () => {
         .map((s) => s.url)
         .filter((u) => u && !u.startsWith('blob:'));
 
+      const newPrimary = validImages[0] || null;
+      // Track old primary so we can detect which variants need updating
+      const oldPrimary = (editingProduct.images || [])[0] || null;
+
       await AdminApi.updateProduct(editingProduct.id, {
         name: editingProduct.name,
         priceNGN: Number(editingProduct.priceNGN),
@@ -382,6 +452,19 @@ export const ProductsView: React.FC = () => {
         isBestSeller: Boolean(editingProduct.isBestSeller),
         isLimited: Boolean(editingProduct.isLimited),
       });
+
+      // Sync primary image to variants that were using the old primary image
+      // (i.e. variants without a custom image of their own)
+      if (newPrimary && newPrimary !== oldPrimary) {
+        const variantsToSync = (editingProduct.variants || []).filter(
+          (v) => !v.image || v.image === oldPrimary
+        );
+        await Promise.allSettled(
+          variantsToSync.map((v) =>
+            AdminApi.updateVariant(v.id, { image: newPrimary })
+          )
+        );
+      }
 
       setEditingProduct(null);
       setEditImageSlots([]);
