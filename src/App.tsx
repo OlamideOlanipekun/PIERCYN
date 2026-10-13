@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Preloader } from './components/Preloader';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
 import { ENABLE_WOMENSWEAR } from './config/homepage';
@@ -452,9 +453,22 @@ const MainLayout: React.FC = () => {
 };
 
 export default function App() {
+  const [showPreloader, setShowPreloader] = useState(() => {
+    // Only show once per browser session
+    return !sessionStorage.getItem('piercyn_preloader_seen');
+  });
+
+  const handlePreloaderDone = () => {
+    sessionStorage.setItem('piercyn_preloader_seen', '1');
+    setShowPreloader(false);
+  };
+
   return (
-    <ShopProvider>
-      <MainLayout />
-    </ShopProvider>
+    <>
+      {showPreloader && <Preloader onDone={handlePreloaderDone} />}
+      <ShopProvider>
+        <MainLayout />
+      </ShopProvider>
+    </>
   );
 }
