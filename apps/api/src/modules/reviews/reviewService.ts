@@ -1,4 +1,21 @@
 import { prisma, checkDatabaseHealth } from '../../db/prisma';
+import { dbStore } from '../../../../src/server/db/store';
+
+// Cached DB availability — shared module-level flag with 30s TTL
+let _dbAvailable: boolean | null = null;
+let _dbAvailableCheckedAt = 0;
+const DB_CACHE_TTL_MS = 30_000;
+
+async function isDbUp(): Promise<boolean> {
+  const now = Date.now();
+  if (_dbAvailable !== null && now - _dbAvailableCheckedAt < DB_CACHE_TTL_MS) {
+    return _dbAvailable;
+  }
+  const health = await checkDatabaseHealth();
+  _dbAvailable = health.ok;
+  _dbAvailableCheckedAt = now;
+  return health.ok;
+}
 
 export interface CreateReviewInput {
   productId: string;
@@ -97,57 +114,107 @@ export class ReviewService {
     const limit = Math.min(50, Math.max(1, Number(options.limit) || 10));
     const sort = options.sort || 'recent';
 
-    const whereClause = {
-      productId,
-      status: 'PUBLISHED' as const,
-    };
+    if (await isDbUp()) {
+      try {
+        const whereClause = {
+          productId,
+          status: 'PUBLISHED' as const,
+        };
 
-    const total = await prisma.productReview.count({ where: whereClause });
+        const total = await prisma.productReview.count({ where: whereClause });
 
-    let orderBy: any = { createdAt: 'desc' };
-    if (sort === 'highest') {
-      orderBy = [{ rating: 'desc' }, { createdAt: 'desc' }];
-    } else if (sort === 'lowest') {
-      orderBy = [{ rating: 'asc' }, { createdAt: 'desc' }];
+        let orderBy: any = { createdAt: 'desc' };
+        if (sort === 'highest') {
+          orderBy = [{ rating: 'desc' }, { createdAt: 'desc' }];
+        } else if (sort === 'lowest') {
+          orderBy = [{ rating: 'asc' }, { createdAt: 'desc' }];
+        }
+
+        const rawReviews = await prisma.productReview.findMany({
+          where: whereClause,
+          orderBy,
+          skip: (page - 1) * limit,
+          take: limit,
+          select: {
+            id: true,
+            productId: true,
+            rating: true,
+            reviewerDisplayName: true,
+            title: true,
+            body: true,
+            isVerifiedPurchase: true,
+            createdAt: true,
+          },
+        });
+
+        const allPublished = await prisma.productReview.findMany({
+          where: whereClause,
+          select: { rating: true },
+        });
+
+        const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        let sum = 0;
+        for (const r of allPublished) {
+          const rNum = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
+          distribution[rNum] = (distribution[rNum] || 0) + 1;
+          sum += rNum;
+        }
+
+        const averageRating =
+          allPublished.length > 0 ? Number((sum / allPublished.length).toFixed(1)) : null;
+
+        const totalPages = Math.ceil(total / limit) || 1;
+
+        return {
+          reviews: rawReviews.map((r) => ({
+            id: r.id,
+            productId: r.productId,
+            rating: r.rating,
+            reviewerDisplayName: r.reviewerDisplayName,
+            title: r.title,
+            body: r.body,
+            isVerifiedPurchase: r.isVerifiedPurchase,
+            createdAt: r.createdAt.toISOString(),
+          })),
+          summary: {
+            averageRating,
+            totalReviews: allPublished.length,
+            ratingDistribution: distribution,
+          },
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasMore: page < totalPages,
+          },
+        };
+      } catch (err) {
+        console.warn('[ReviewService] DB query failed, returning empty reviews:', (err as any)?.message);
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
     }
 
-    const rawReviews = await prisma.productReview.findMany({
-      where: whereClause,
-      orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
-      select: {
-        id: true,
-        productId: true,
-        rating: true,
-        reviewerDisplayName: true,
-        title: true,
-        body: true,
-        isVerifiedPurchase: true,
-        createdAt: true,
-      },
-    });
+    // In-memory fallback — pull from dbStore reviews
+    const memReviews = Array.from(dbStore.reviews.values())
+      .filter((r) => r.productId === productId && r.status === 'PUBLISHED')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const allPublished = await prisma.productReview.findMany({
-      where: whereClause,
-      select: { rating: true },
-    });
-
+    const total = memReviews.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paged = memReviews.slice((page - 1) * limit, page * limit);
     const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     let sum = 0;
-    for (const r of allPublished) {
-      const rNum = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
-      distribution[rNum] = (distribution[rNum] || 0) + 1;
+    for (const r of memReviews) {
+      const rNum = Math.min(5, Math.max(1, r.rating)) as 1 | 2 | 3 | 4 | 5;
+      distribution[rNum]++;
       sum += rNum;
     }
-
-    const averageRating =
-      allPublished.length > 0 ? Number((sum / allPublished.length).toFixed(1)) : null;
-
-    const totalPages = Math.ceil(total / limit) || 1;
+    const averageRating = total > 0 ? Number((sum / total).toFixed(1)) : null;
 
     return {
-      reviews: rawReviews.map((r) => ({
+      reviews: paged.map((r) => ({
         id: r.id,
         productId: r.productId,
         rating: r.rating,
@@ -155,20 +222,10 @@ export class ReviewService {
         title: r.title,
         body: r.body,
         isVerifiedPurchase: r.isVerifiedPurchase,
-        createdAt: r.createdAt.toISOString(),
+        createdAt: r.createdAt,
       })),
-      summary: {
-        averageRating,
-        totalReviews: allPublished.length,
-        ratingDistribution: distribution,
-      },
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasMore: page < totalPages,
-      },
+      summary: { averageRating, totalReviews: total, ratingDistribution: distribution },
+      pagination: { page, limit, total, totalPages, hasMore: page < totalPages },
     };
   }
 
@@ -183,33 +240,58 @@ export class ReviewService {
     const result: Record<string, { averageRating: number | null; totalReviews: number }> = {};
     if (!productIds || productIds.length === 0) return result;
 
-    const reviews = await prisma.productReview.findMany({
-      where: {
-        productId: { in: productIds },
-        status: 'PUBLISHED',
-      },
-      select: {
-        productId: true,
-        rating: true,
-      },
-    });
+    if (await isDbUp()) {
+      try {
+        const reviews = await prisma.productReview.findMany({
+          where: {
+            productId: { in: productIds },
+            status: 'PUBLISHED',
+          },
+          select: {
+            productId: true,
+            rating: true,
+          },
+        });
 
-    const grouped: Record<string, number[]> = {};
-    for (const id of productIds) grouped[id] = [];
-    for (const r of reviews) {
-      if (!grouped[r.productId]) grouped[r.productId] = [];
-      grouped[r.productId].push(r.rating);
+        const grouped: Record<string, number[]> = {};
+        for (const id of productIds) grouped[id] = [];
+        for (const r of reviews) {
+          if (!grouped[r.productId]) grouped[r.productId] = [];
+          grouped[r.productId].push(r.rating);
+        }
+
+        for (const id of productIds) {
+          const ratings = grouped[id] || [];
+          if (ratings.length === 0) {
+            result[id] = { averageRating: null, totalReviews: 0 };
+          } else {
+            const sum = ratings.reduce((acc, curr) => acc + curr, 0);
+            result[id] = {
+              averageRating: Number((sum / ratings.length).toFixed(1)),
+              totalReviews: ratings.length,
+            };
+          }
+        }
+        return result;
+      } catch (err) {
+        console.warn('[ReviewService] batchGetRatingSummaries DB failed, falling back to in-memory:', (err as any)?.message);
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
     }
 
+    // In-memory fallback — read from dbStore reviews
     for (const id of productIds) {
-      const ratings = grouped[id] || [];
-      if (ratings.length === 0) {
+      const memReviews = Array.from(dbStore.reviews.values()).filter(
+        (r) => r.productId === id && r.status === 'PUBLISHED'
+      );
+      if (memReviews.length === 0) {
         result[id] = { averageRating: null, totalReviews: 0 };
       } else {
-        const sum = ratings.reduce((acc, curr) => acc + curr, 0);
+        const sum = memReviews.reduce((acc, r) => acc + r.rating, 0);
         result[id] = {
-          averageRating: Number((sum / ratings.length).toFixed(1)),
-          totalReviews: ratings.length,
+          averageRating: Number((sum / memReviews.length).toFixed(1)),
+          totalReviews: memReviews.length,
         };
       }
     }

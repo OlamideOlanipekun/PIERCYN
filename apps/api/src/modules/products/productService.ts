@@ -1,5 +1,23 @@
-import { prisma } from '../../db/prisma';
+import { prisma, checkDatabaseHealth } from '../../db/prisma';
 import { slugify } from '@piercyn/utils';
+import { dbStore } from '../../../../src/server/db/store';
+import { ProductService as MemProductService } from '../../../../src/server/modules/products/productService';
+
+// Cached availability flag — reset after 30s so transient failures recover automatically
+let _dbAvailable: boolean | null = null;
+let _dbAvailableCheckedAt = 0;
+const DB_CACHE_TTL_MS = 30_000;
+
+async function isDatabaseAvailable(): Promise<boolean> {
+  const now = Date.now();
+  if (_dbAvailable !== null && now - _dbAvailableCheckedAt < DB_CACHE_TTL_MS) {
+    return _dbAvailable;
+  }
+  const health = await checkDatabaseHealth();
+  _dbAvailable = health.ok;
+  _dbAvailableCheckedAt = now;
+  return health.ok;
+}
 
 export interface EnrichedProductVariant {
   id: string;
@@ -172,79 +190,110 @@ export class ProductService {
     search?: string;
     includeInactive?: boolean;
   }): Promise<EnrichedProduct[]> {
-    const where: any = {};
+    const dbUp = await isDatabaseAvailable();
+    if (dbUp) {
+      try {
+        const where: any = {};
 
-    if (!filter?.includeInactive && !filter?.status) {
-      where.status = 'ACTIVE';
-    } else if (filter?.status) {
-      where.status = filter.status;
-    }
+        if (!filter?.includeInactive && !filter?.status) {
+          where.status = 'ACTIVE';
+        } else if (filter?.status) {
+          where.status = filter.status;
+        }
 
-    if (filter?.category) {
-      where.category = {
-        OR: [
-          { slug: filter.category.toLowerCase() },
-          { name: { equals: filter.category, mode: 'insensitive' } },
-        ],
-      };
-    }
+        if (filter?.category) {
+          where.category = {
+            OR: [
+              { slug: filter.category.toLowerCase() },
+              { name: { equals: filter.category, mode: 'insensitive' } },
+            ],
+          };
+        }
 
-    if (filter?.collection) {
-      where.collection = { equals: filter.collection, mode: 'insensitive' };
-    }
+        if (filter?.collection) {
+          where.collection = { equals: filter.collection, mode: 'insensitive' };
+        }
 
-    if (filter?.search) {
-      where.OR = [
-        { name: { contains: filter.search, mode: 'insensitive' } },
-        { description: { contains: filter.search, mode: 'insensitive' } },
-        { tag: { contains: filter.search, mode: 'insensitive' } },
-      ];
-    }
+        if (filter?.search) {
+          where.OR = [
+            { name: { contains: filter.search, mode: 'insensitive' } },
+            { description: { contains: filter.search, mode: 'insensitive' } },
+            { tag: { contains: filter.search, mode: 'insensitive' } },
+          ];
+        }
 
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        category: true,
-        variants: {
+        const products = await prisma.product.findMany({
+          where,
           include: {
-            inventory: true,
+            category: true,
+            variants: {
+              include: { inventory: true },
+              orderBy: { sortOrder: 'asc' },
+            },
           },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-    });
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+        });
 
-    return products.map((p) => this.mapPrismaProduct(p));
+        return products.map((p) => this.mapPrismaProduct(p));
+      } catch (err) {
+        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
+        // Mark unavailable so next request skips the DB probe for DB_CACHE_TTL_MS
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
+    }
+
+    // In-memory fallback — uses the same seeded catalog as the Vite dev server
+    console.warn('[ProductService] Serving catalog from in-memory store (DB unavailable)');
+    const memProducts = MemProductService.getAllProducts({
+      category: filter?.category,
+      collection: filter?.collection,
+      status: filter?.status,
+      search: filter?.search,
+      includeInactive: filter?.includeInactive,
+    });
+    // Cast to EnrichedProduct — the in-memory variant shape is compatible
+    return memProducts as unknown as EnrichedProduct[];
   }
 
   public static async getProductBySlugOrId(
     slugOrId: string,
     includeInactive: boolean = false
   ): Promise<EnrichedProduct | null> {
-    const where: any = {
-      OR: [{ id: slugOrId }, { slug: slugOrId }],
-    };
+    const dbUp = await isDatabaseAvailable();
+    if (dbUp) {
+      try {
+        const where: any = {
+          OR: [{ id: slugOrId }, { slug: slugOrId }],
+        };
 
-    if (!includeInactive) {
-      where.status = 'ACTIVE';
+        if (!includeInactive) {
+          where.status = 'ACTIVE';
+        }
+
+        const prod = await prisma.product.findFirst({
+          where,
+          include: {
+            category: true,
+            variants: {
+              include: { inventory: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        });
+
+        if (!prod) return null;
+        return this.mapPrismaProduct(prod);
+      } catch (err) {
+        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
     }
 
-    const prod = await prisma.product.findFirst({
-      where,
-      include: {
-        category: true,
-        variants: {
-          include: {
-            inventory: true,
-          },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
-
-    if (!prod) return null;
-    return this.mapPrismaProduct(prod);
+    // In-memory fallback
+    const mem = MemProductService.getProductBySlugOrId(slugOrId, includeInactive);
+    return mem as unknown as EnrichedProduct | null;
   }
 
   public static async getProductBySlug(slug: string): Promise<EnrichedProduct | null> {
@@ -252,43 +301,72 @@ export class ProductService {
   }
 
   public static async getVariantByIdOrSku(identifier: string): Promise<EnrichedProductVariant | null> {
-    const variant = await prisma.productVariant.findFirst({
-      where: {
-        OR: [{ id: identifier }, { sku: identifier }],
-      },
-      include: {
-        product: { include: { category: true } },
-        inventory: true,
-      },
-    });
+    const dbUp = await isDatabaseAvailable();
+    if (dbUp) {
+      try {
+        const variant = await prisma.productVariant.findFirst({
+          where: {
+            OR: [{ id: identifier }, { sku: identifier }],
+          },
+          include: {
+            product: { include: { category: true } },
+            inventory: true,
+          },
+        });
 
-    if (!variant) return null;
+        if (!variant) return null;
 
-    const stockQty = variant.inventory ? variant.inventory.stockQuantity : 0;
-    const reservedQty = variant.inventory ? variant.inventory.reservedQuantity : 0;
-    const available = Math.max(0, stockQty - reservedQty);
+        const stockQty = variant.inventory ? variant.inventory.stockQuantity : 0;
+        const reservedQty = variant.inventory ? variant.inventory.reservedQuantity : 0;
+        const available = Math.max(0, stockQty - reservedQty);
 
+        return {
+          id: variant.id,
+          productId: variant.productId,
+          sku: variant.sku,
+          size: variant.size,
+          colour: variant.colour,
+          colourHex: variant.colourHex,
+          priceNGN: variant.priceNGN,
+          costPriceNGN: variant.costPriceNGN,
+          priceUSD: variant.priceUSD,
+          priceGBP: variant.priceGBP,
+          priceEUR: variant.priceEUR,
+          image: variant.image,
+          altImage: variant.altImage,
+          active: variant.isActive,
+          sortOrder: variant.sortOrder,
+          availableStock: available,
+          isAvailable: variant.isActive && available > 0,
+          createdAt: variant.createdAt.toISOString(),
+          updatedAt: variant.updatedAt.toISOString(),
+        };
+      } catch (err) {
+        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
+    }
+
+    // In-memory fallback
+    const mem = MemProductService.getVariantByIdOrSku(identifier);
+    if (!mem) return null;
+    const inv = dbStore.inventory.get(identifier) ?? dbStore.inventory.get(mem.id);
+    const avail = inv ? inv.availableStock : 0;
     return {
-      id: variant.id,
-      productId: variant.productId,
-      sku: variant.sku,
-      size: variant.size,
-      colour: variant.colour,
-      colourHex: variant.colourHex,
-      priceNGN: variant.priceNGN,
-      costPriceNGN: variant.costPriceNGN,
-      priceUSD: variant.priceUSD,
-      priceGBP: variant.priceGBP,
-      priceEUR: variant.priceEUR,
-      image: variant.image,
-      altImage: variant.altImage,
-      active: variant.isActive,
-      sortOrder: variant.sortOrder,
-      availableStock: available,
-      isAvailable: variant.isActive && available > 0,
-      createdAt: variant.createdAt.toISOString(),
-      updatedAt: variant.updatedAt.toISOString(),
-    };
+      ...mem,
+      availableStock: avail,
+      isAvailable: mem.active && avail > 0,
+      priceNGN: mem.priceNGN ?? null,
+      costPriceNGN: mem.costPriceNGN ?? null,
+      priceUSD: mem.priceUSD ?? null,
+      priceGBP: mem.priceGBP ?? null,
+      priceEUR: mem.priceEUR ?? null,
+      image: mem.image ?? null,
+      altImage: mem.altImage ?? null,
+      createdAt: mem.createdAt ?? new Date().toISOString(),
+      updatedAt: mem.updatedAt ?? new Date().toISOString(),
+    } as EnrichedProductVariant;
   }
 
   public static async createProduct(input: CreateProductInput): Promise<EnrichedProduct> {
@@ -434,9 +512,23 @@ export class ProductService {
   }
 
   public static async getCategories(): Promise<any[]> {
-    return prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const dbUp = await isDatabaseAvailable();
+    if (dbUp) {
+      try {
+        return await prisma.category.findMany({
+          where: { isActive: true },
+          orderBy: { sortOrder: 'asc' },
+        });
+      } catch (err) {
+        console.warn('[ProductService] DB getCategories failed, falling back to in-memory:', (err as any)?.message);
+        _dbAvailable = false;
+        _dbAvailableCheckedAt = Date.now();
+      }
+    }
+
+    // In-memory fallback
+    return Array.from(dbStore.categories.values())
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description, sortOrder: c.sortOrder, isActive: true }));
   }
 }
