@@ -89,6 +89,23 @@ export function mapServerProduct(p: any): Product {
   };
 }
 
+export interface CatalogQuery {
+  category?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sizes?: string[];
+  inStock?: boolean;
+  sort?: 'featured' | 'newest' | 'price-asc' | 'price-desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface CatalogPage {
+  products: Product[];
+  total: number;
+}
+
 export const catalogService = {
   async getProducts(params?: { category?: string; collection?: string }): Promise<Product[]> {
     const res = await api.getProducts(params);
@@ -96,6 +113,17 @@ export const catalogService = {
       return res.data.map(mapServerProduct);
     }
     return [];
+  },
+
+  async getCatalog(query: CatalogQuery): Promise<CatalogPage> {
+    const res = await api.getProducts({
+      ...query,
+      sizes: query.sizes?.join(','),
+    });
+    if (!res.success || !Array.isArray(res.data)) {
+      throw new Error(res.error || 'Unable to load the catalog.');
+    }
+    return { products: res.data.map(mapServerProduct), total: Number(res.meta?.total ?? res.count ?? res.data.length) };
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {

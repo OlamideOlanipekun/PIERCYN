@@ -61,7 +61,7 @@ async function parseResponse(res: Response): Promise<any> {
 
 export const api = {
   // Products
-  async getProducts(params?: { category?: string; collection?: string }) {
+  async getProducts(params?: Record<string, string | number | boolean | undefined>) {
     const filtered = Object.fromEntries(
       Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
     );

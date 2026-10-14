@@ -86,22 +86,43 @@ function getAuthorizedOrderId(req: Request): string | null {
 // -------------------------------------------------------------
 apiRouter.get('/products', async (req: Request, res: Response) => {
   try {
-    const { category, collection, status, search } = req.query;
-    const products = ProductService.getAllProducts({
-      category: category as string,
-      collection: collection as string,
-      // Public API: only show ACTIVE products unless explicit status filter is passed by admin
-      status: status as string,
-      search: search as string,
+    const list = (value: unknown) => typeof value === 'string' ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
+    const number = (value: unknown) => typeof value === 'string' && value.trim() !== '' ? Number(value) : undefined;
+    const boolean = (value: unknown) => value === 'true' ? true : value === 'false' ? false : undefined;
+    const minPrice = number(req.query.minPrice);
+    const maxPrice = number(req.query.maxPrice);
+    if ((minPrice !== undefined && (!Number.isFinite(minPrice) || minPrice < 0)) ||
+      (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice < 0)) ||
+      (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice)) {
+      return res.status(400).json({ success: false, error: 'Invalid price range.' });
+    }
+    const sort = req.query.sort;
+    if (sort !== undefined && !['featured', 'newest', 'price-asc', 'price-desc'].includes(String(sort))) {
+      return res.status(400).json({ success: false, error: 'Invalid sort option.' });
+    }
+    const catalog = ProductService.getCatalog({
+      category: typeof req.query.category === 'string' ? req.query.category : undefined,
+      collection: typeof req.query.collection === 'string' ? req.query.collection : undefined,
+      search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      minPrice,
+      maxPrice,
+      sizes: list(req.query.sizes),
+      colours: list(req.query.colours),
+      inStock: boolean(req.query.inStock),
+      sort: sort as any,
+      page: number(req.query.page),
+      limit: number(req.query.limit),
     });
     // Attach rating summaries in batch
-    const productIds = products.map((p) => p.id);
+    const productIds = catalog.products.map((p) => p.id);
     const ratingSummaries = await ReviewService.batchGetRatingSummaries(productIds);
-    const enriched = products.map((p) => ({
+    const enriched = catalog.products.map((p) => ({
       ...p,
       ratingSummary: ratingSummaries[p.id] || { averageRating: null, totalReviews: 0 },
     }));
-    res.json({ success: true, count: enriched.length, data: enriched });
+    res.json({ success: true, count: catalog.total, data: enriched, meta: {
+      total: catalog.total, page: catalog.page, limit: catalog.limit, totalPages: catalog.totalPages,
+    } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

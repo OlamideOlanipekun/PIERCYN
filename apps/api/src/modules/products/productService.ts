@@ -76,6 +76,30 @@ export interface EnrichedProduct {
   updatedAt: string;
 }
 
+export type CatalogSort = 'featured' | 'newest' | 'price-asc' | 'price-desc';
+
+export interface CatalogFilter {
+  category?: string;
+  collection?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sizes?: string[];
+  colours?: string[];
+  inStock?: boolean;
+  sort?: CatalogSort;
+  page?: number;
+  limit?: number;
+}
+
+export interface CatalogResult {
+  products: EnrichedProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface CreateProductInput {
   name: string;
   slug?: string;
@@ -189,6 +213,12 @@ export class ProductService {
     status?: string;
     search?: string;
     includeInactive?: boolean;
+    minPrice?: number;
+    maxPrice?: number;
+    sizes?: string[];
+    colours?: string[];
+    inStock?: boolean;
+    sort?: CatalogSort;
   }): Promise<EnrichedProduct[]> {
     const dbUp = await isDatabaseAvailable();
     if (dbUp) {
@@ -222,6 +252,27 @@ export class ProductService {
           ];
         }
 
+        if (filter?.minPrice !== undefined || filter?.maxPrice !== undefined) {
+          where.priceNGN = {
+            ...(filter.minPrice !== undefined ? { gte: filter.minPrice } : {}),
+            ...(filter.maxPrice !== undefined ? { lte: filter.maxPrice } : {}),
+          };
+        }
+
+        const variantConditions: any[] = [];
+        if (filter?.sizes?.length) variantConditions.push({ variants: { some: { size: { in: filter.sizes } } } });
+        if (filter?.colours?.length) variantConditions.push({ variants: { some: { colour: { in: filter.colours, mode: 'insensitive' } } } });
+        if (filter?.inStock) variantConditions.push({ variants: { some: { isActive: true, inventory: { stockQuantity: { gt: 0 } } } } });
+        if (variantConditions.length) where.AND = [...(where.AND || []), ...variantConditions];
+
+        const orderBy = filter?.sort === 'newest'
+          ? [{ createdAt: 'desc' }, { sortOrder: 'asc' }]
+          : filter?.sort === 'price-asc'
+            ? [{ priceNGN: 'asc' }, { sortOrder: 'asc' }]
+            : filter?.sort === 'price-desc'
+              ? [{ priceNGN: 'desc' }, { sortOrder: 'asc' }]
+              : [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
+
         const products = await prisma.product.findMany({
           where,
           include: {
@@ -231,7 +282,7 @@ export class ProductService {
               orderBy: { sortOrder: 'asc' },
             },
           },
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+          orderBy: orderBy as any,
         });
 
         return products.map((p) => this.mapPrismaProduct(p));
@@ -254,6 +305,36 @@ export class ProductService {
     });
     // Cast to EnrichedProduct — the in-memory variant shape is compatible
     return memProducts as unknown as EnrichedProduct[];
+  }
+
+  public static async getCatalog(filter: CatalogFilter = {}): Promise<CatalogResult> {
+    const page = Math.max(1, Math.floor(filter.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(filter.limit || 24)));
+    const minPrice = Number.isFinite(filter.minPrice) ? Math.max(0, filter.minPrice!) : undefined;
+    const maxPrice = Number.isFinite(filter.maxPrice) ? Math.max(0, filter.maxPrice!) : undefined;
+    const sizes = (filter.sizes || []).map((size) => size.trim()).filter(Boolean);
+    const colours = (filter.colours || []).map((colour) => colour.trim()).filter(Boolean);
+    const products = (await this.getAllProducts({
+      category: filter.category,
+      collection: filter.collection,
+      search: filter.search?.trim() || undefined,
+      minPrice,
+      maxPrice,
+      sizes,
+      colours,
+      inStock: filter.inStock,
+      sort: filter.sort,
+    })).filter((product) => filter.inStock === undefined || (filter.inStock
+      ? product.variants.some((variant) => variant.isAvailable)
+      : !product.variants.some((variant) => variant.isAvailable)));
+    const total = products.length;
+    return {
+      products: products.slice((page - 1) * limit, page * limit),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   public static async getProductBySlugOrId(

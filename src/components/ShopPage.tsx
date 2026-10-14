@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Product, ProductCategory } from '../types';
 import { useShop } from '../context/ShopContext';
 import { Filter, SlidersHorizontal, X, Check, Search, ArrowUpDown } from 'lucide-react';
 import { eventTracker } from '../services/eventTracker';
 import { ProductCard } from './ProductCard';
+import { catalogService } from '../services/catalogService';
 
 interface ShopPageProps {
   products: Product[];
@@ -21,11 +22,16 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'all');
   const [selectedAvailability, setSelectedAvailability] = useState<'all' | 'in_stock' | 'available_to_order'>('all');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [minPrice, setMinPrice] = useState<number>(0);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
   const [availability, setAvailability] = useState<'all' | 'in-stock' | 'unavailable'>('all');
   const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high'>('featured');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const [resultTotal, setResultTotal] = useState(products.length);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [catalogLoadError, setCatalogLoadError] = useState<string | null>(null);
 
   const categories: { label: string; value: string }[] = [
     { label: 'ALL PIECES', value: 'all' },
@@ -38,61 +44,43 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
   const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-  // Filter & Sort Logic
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      // Availability Filter
-      if (selectedAvailability === 'in_stock' && p.availabilityType !== 'in_stock') {
-        return false;
-      }
-      if (selectedAvailability === 'available_to_order' && p.availabilityType !== 'available_to_order') {
-        return false;
-      }
+  useEffect(() => { setSelectedCategory(initialCategory || 'all'); }, [initialCategory]);
 
-      // Category Filter
-      if (selectedCategory !== 'all') {
-        if (selectedCategory === 'tees' && p.category !== 'tees' && p.category !== 't-shirts') return false;
-        if (selectedCategory === 'hoodies' && p.category !== 'hoodies' && p.category !== 'sweatshirts') return false;
-        if (selectedCategory !== 'tees' && selectedCategory !== 'hoodies' && p.category !== selectedCategory) return false;
-      }
-
-      // Size Filter
-      if (selectedSize && !p.sizes.includes(selectedSize as any)) {
-        return false;
-      }
-
-      // Availability Filter: unknown inventory is never treated as in stock.
-      if (availability === 'in-stock' && !(typeof p.stock === 'number' && p.stock > 0 && !p.isSoldOut)) return false;
-      if (availability === 'unavailable' && !(typeof p.stock === 'number' && (p.stock <= 0 || p.isSoldOut))) return false;
-
-      // Price Filter
-      if (p.priceNGN > maxPrice) {
-        return false;
-      }
-
-      // Search Query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = p.name.toLowerCase().includes(query);
-        const matchesDesc = p.description.toLowerCase().includes(query);
-        const matchesCategory = p.category.toLowerCase().includes(query);
-        if (!matchesName && !matchesDesc && !matchesCategory) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-      }
-      if (sortBy === 'price-low') {
-        return a.priceNGN - b.priceNGN;
-      }
-      if (sortBy === 'price-high') {
-        return b.priceNGN - a.priceNGN;
-      }
-      return 0; // featured default
-    });
-  }, [products, selectedCategory, selectedSize, maxPrice, availability, sortBy, searchQuery]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      let cancelled = false;
+      const request = {
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        sizes: selectedSize ? [selectedSize] : undefined,
+        minPrice: minPrice || undefined,
+        maxPrice: maxPrice < 100000 ? maxPrice : undefined,
+        search: searchQuery.trim() || undefined,
+        inStock: availability === 'in-stock' || selectedAvailability === 'in_stock'
+          ? true
+          : availability === 'unavailable' || selectedAvailability === 'available_to_order'
+            ? false
+            : undefined,
+        sort: sortBy === 'price-low' ? 'price-asc' as const : sortBy === 'price-high' ? 'price-desc' as const : sortBy,
+        page: 1,
+        limit: 48,
+      };
+      const url = new URL(window.location.href);
+      Object.entries({ category: request.category, size: selectedSize || undefined, minPrice: request.minPrice, maxPrice: request.maxPrice, search: request.search, availability: availability === 'all' ? undefined : availability, orderability: selectedAvailability === 'all' ? undefined : selectedAvailability, sort: sortBy === 'featured' ? undefined : sortBy }).forEach(([key, value]) => {
+        if (value === undefined || value === '') url.searchParams.delete(key);
+        else url.searchParams.set(key, String(value));
+      });
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+      setIsLoadingCatalog(true);
+      setCatalogLoadError(null);
+      catalogService.getCatalog(request).then((result) => {
+        if (!cancelled) { setFilteredProducts(result.products); setResultTotal(result.total); }
+      }).catch((error) => {
+        if (!cancelled) { setFilteredProducts([]); setResultTotal(0); setCatalogLoadError(error instanceof Error ? error.message : 'Unable to load products.'); }
+      }).finally(() => { if (!cancelled) setIsLoadingCatalog(false); });
+      return () => { cancelled = true; };
+    }, searchQuery ? 250 : 0);
+    return () => window.clearTimeout(timeout);
+  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery]);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -111,6 +99,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
     setSelectedCategory('all');
     setSelectedAvailability('all');
     setSelectedSize(null);
+    setMinPrice(0);
     setMaxPrice(100000);
     setAvailability('all');
     setSearchQuery('');
@@ -132,7 +121,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs font-mono text-[#141414]/70">
-              SHOWING {filteredProducts.length} OF {products.length} PIECES
+              {isLoadingCatalog ? 'UPDATING PIECES...' : `SHOWING ${filteredProducts.length} OF ${resultTotal} PIECES`}
             </span>
           </div>
         </div>
@@ -260,6 +249,17 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
                 className="w-full accent-[#141414] cursor-pointer"
               />
+              <label className="mt-3 mb-1 block text-[10px] font-mono text-[#141414]/60">MINIMUM PRICE</label>
+              <input
+                type="number"
+                min="0"
+                max={maxPrice}
+                step="2500"
+                value={minPrice || ''}
+                onChange={(e) => setMinPrice(Math.min(maxPrice, Math.max(0, Number(e.target.value) || 0)))}
+                placeholder="No minimum"
+                className="w-full rounded-lg border border-[#DAD8D1] bg-[#E8E6E1] p-2 text-xs font-mono focus:outline-none"
+              />
             </div>
 
             {/* Sort Options */}
@@ -290,7 +290,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             </div>
 
             {/* Reset Button */}
-            {(selectedCategory !== 'all' || selectedAvailability !== 'all' || selectedSize || maxPrice < 100000 || searchQuery) && (
+            {(selectedCategory !== 'all' || selectedAvailability !== 'all' || selectedSize || minPrice || maxPrice < 100000 || searchQuery || availability !== 'all' || sortBy !== 'featured') && (
               <button
                 onClick={resetFilters}
                 className="w-full py-2 text-xs font-mono underline text-[#141414]/70 hover:text-[#141414] text-center cursor-pointer"
@@ -302,6 +302,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
           {/* PRODUCTS GRID AREA */}
           <main className="flex-1 w-full">
+            {catalogLoadError && <div className="mb-5 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">{catalogLoadError}</div>}
+            {isLoadingCatalog && <div className="mb-5 text-xs font-mono text-[#141414]/60">UPDATING CATALOG...</div>}
             {isLoadingProducts ? (
               /* SKELETON LOADING STATE */
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
@@ -441,13 +443,28 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   ))}
                 </div>
               </div>
+
+              <div className="mb-6">
+                <h4 className="text-xs font-mono font-bold uppercase mb-3">SEARCH, PRICE & SORT</h4>
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search collection" className="mb-2 w-full rounded bg-[#E8E6E1] p-2 text-xs" />
+                <div className="mb-2 grid grid-cols-2 gap-2">
+                  <input type="number" min="0" max={maxPrice} value={minPrice || ''} onChange={(e) => setMinPrice(Math.min(maxPrice, Math.max(0, Number(e.target.value) || 0)))} placeholder="Min price" className="rounded bg-[#E8E6E1] p-2 text-xs" />
+                  <input type="number" min={minPrice} max="100000" value={maxPrice} onChange={(e) => setMaxPrice(Math.max(minPrice, Number(e.target.value) || 100000))} placeholder="Max price" className="rounded bg-[#E8E6E1] p-2 text-xs" />
+                </div>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="w-full rounded bg-[#E8E6E1] p-2 text-xs">
+                  <option value="featured">FEATURED CURATION</option>
+                  <option value="newest">NEWEST ARRIVALS</option>
+                  <option value="price-low">PRICE: LOW TO HIGH</option>
+                  <option value="price-high">PRICE: HIGH TO LOW</option>
+                </select>
+              </div>
             </div>
 
             <button
               onClick={() => setIsMobileFilterOpen(false)}
               className="w-full py-3 bg-[#141414] text-[#F2F0EB] text-xs font-semibold uppercase rounded-full"
             >
-              VIEW {filteredProducts.length} PIECES
+              VIEW {resultTotal} PIECES
             </button>
           </div>
         </div>

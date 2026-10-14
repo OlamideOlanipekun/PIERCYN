@@ -11,6 +11,30 @@ export interface EnrichedProduct extends DbProduct {
   totalAvailableStock: number;
 }
 
+export type CatalogSort = 'featured' | 'newest' | 'price-asc' | 'price-desc';
+
+export interface CatalogFilter {
+  category?: string;
+  collection?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sizes?: string[];
+  colours?: string[];
+  inStock?: boolean;
+  sort?: CatalogSort;
+  page?: number;
+  limit?: number;
+}
+
+export interface CatalogResult {
+  products: EnrichedProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface CreateProductInput {
   name: string;
   slug?: string;
@@ -128,6 +152,46 @@ export class ProductService {
     }
 
     return list.sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  /** Public catalog query used by the storefront. Prices are stored and displayed in NGN. */
+  public static getCatalog(filter: CatalogFilter = {}): CatalogResult {
+    const page = Math.max(1, Math.floor(filter.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(filter.limit || 24)));
+    const minPrice = Number.isFinite(filter.minPrice) ? Math.max(0, filter.minPrice!) : undefined;
+    const maxPrice = Number.isFinite(filter.maxPrice) ? Math.max(0, filter.maxPrice!) : undefined;
+    const sizes = new Set((filter.sizes || []).map((size) => size.trim().toLowerCase()).filter(Boolean));
+    const colours = new Set((filter.colours || []).map((colour) => colour.trim().toLowerCase()).filter(Boolean));
+
+    let products = this.getAllProducts({
+      category: filter.category,
+      collection: filter.collection,
+      search: filter.search?.trim() || undefined,
+    }).filter((product) => {
+      if (minPrice !== undefined && product.priceNGN < minPrice) return false;
+      if (maxPrice !== undefined && product.priceNGN > maxPrice) return false;
+      if (sizes.size && !product.variants.some((variant) => sizes.has(variant.size.toLowerCase()))) return false;
+      if (colours.size && !product.variants.some((variant) => colours.has(variant.colour.toLowerCase()))) return false;
+      if (filter.inStock === true && !product.variants.some((variant) => variant.isAvailable)) return false;
+      if (filter.inStock === false && product.variants.some((variant) => variant.isAvailable)) return false;
+      return true;
+    });
+
+    products = [...products].sort((left, right) => {
+      if (filter.sort === 'newest') return Date.parse(right.createdAt) - Date.parse(left.createdAt) || left.sortOrder - right.sortOrder;
+      if (filter.sort === 'price-asc') return left.priceNGN - right.priceNGN || left.sortOrder - right.sortOrder;
+      if (filter.sort === 'price-desc') return right.priceNGN - left.priceNGN || left.sortOrder - right.sortOrder;
+      return left.sortOrder - right.sortOrder || Date.parse(right.createdAt) - Date.parse(left.createdAt);
+    });
+
+    const total = products.length;
+    return {
+      products: products.slice((page - 1) * limit, page * limit),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**
