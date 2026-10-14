@@ -52,6 +52,13 @@ enum ProductStatus {
   ARCHIVED
 }
 
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+  REJECTED
+}
+
 enum CartStatus {
   ACTIVE
   CONVERTED
@@ -217,6 +224,7 @@ model Product {
 
   variants         ProductVariant[]
   events           AnalyticsEvent[]
+  reviews          ProductReview[]
 
   @@index([slug])
   @@index([status])
@@ -368,6 +376,7 @@ model Customer {
   orders      Order[]
   carts       Cart[]
   events      AnalyticsEvent[]
+  reviews     ProductReview[]
 
   @@index([email])
   @@index([phone])
@@ -505,6 +514,7 @@ model Order {
   statusHistory  OrderStatusHistory[]
   events         AnalyticsEvent[]
   commissions    AffiliateCommission[]
+  reviews        ProductReview[]
 
   @@index([orderNumber])
   @@index([status])
@@ -549,6 +559,7 @@ model OrderItem {
   createdAt     DateTime      @default(now())
 
   commissions   AffiliateCommission[]
+  review        ProductReview?
 
   @@index([orderId])
   @@index([sku])
@@ -938,3 +949,43 @@ model AffiliatePayout {
   @@index([status])
   @@index([requestedAt])
 }
+
+// ============================================================
+// PRODUCT REVIEW
+// Authentic customer ratings and feedback.
+// 1 to 5 integer rating.
+// Server-verified purchase check via orderId & orderItemId.
+// Moderation lifecycle: PENDING -> PUBLISHED | HIDDEN | REJECTED.
+// ============================================================
+
+model ProductReview {
+  id                  String       @id @default(cuid())
+  productId           String
+  product             Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId             String?
+  order               Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItemId         String?      @unique
+  orderItem           OrderItem?   @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  customerId          String?
+  customer            Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  reviewerDisplayName String
+  reviewerEmail       String?
+  rating              Int          // 1 to 5 integer
+  title               String?
+  body                String
+  status              ReviewStatus @default(PENDING)
+  isVerifiedPurchase  Boolean      @default(false)
+  moderatedBy         String?      // adminId
+  moderationNote      String?
+  moderatedAt         DateTime?
+  publishedAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([productId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orderId])
+  @@index([customerId])
+}
+

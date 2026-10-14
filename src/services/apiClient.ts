@@ -238,4 +238,65 @@ export const api = {
     });
     return parseResponse(res);
   },
+
+  // Reviews
+  async getProductReviews(
+    productId: string,
+    params?: { page?: number; limit?: number; sort?: 'recent' | 'highest' | 'lowest' }
+  ) {
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && (v as any) !== '')
+    );
+    const qs = new URLSearchParams(filtered as any).toString();
+    const res = await fetch(`${API_BASE}/products/${productId}/reviews${qs ? `?${qs}` : ''}`, {
+      headers: getHeaders(),
+    });
+    return parseResponse(res);
+  },
+
+  async getProductRatingSummary(productId: string) {
+    const res = await fetch(`${API_BASE}/products/${productId}/reviews/summary`, {
+      headers: getHeaders(),
+    });
+    return parseResponse(res);
+  },
+
+  async submitReview(
+    productId: string,
+    data: {
+      rating: number;
+      reviewerDisplayName: string;
+      reviewerEmail?: string;
+      title?: string;
+      body: string;
+      orderNumber?: string;
+    }
+  ) {
+    const res = await fetch(`${API_BASE}/products/${productId}/reviews`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return parseResponse(res);
+  },
+
+  async updateReview(
+    reviewId: string,
+    data: { rating?: number; title?: string; body?: string }
+  ) {
+    const res = await fetch(`${API_BASE}/reviews/${reviewId}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return parseResponse(res);
+  },
+
+  async withdrawReview(reviewId: string) {
+    const res = await fetch(`${API_BASE}/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    return parseResponse(res);
+  },
 };

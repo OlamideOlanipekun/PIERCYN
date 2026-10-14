@@ -7,6 +7,8 @@ import { eventTracker } from '../../services/eventTracker';
 import { ProductGallery } from './ProductGallery';
 import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
+import { ReviewsSection } from '../reviews/ReviewsSection';
+import { StarRatingDisplay } from '../reviews/StarRating';
 import {
   Plus,
   Minus,
@@ -169,6 +171,39 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   return (
     <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-screen pt-20 sm:pt-24 pb-20 font-sans">
+      {/* Structured Data (Schema.org) for Rich Snippets */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.description,
+            image: product.images,
+            offers: {
+              '@type': 'Offer',
+              price: product.priceNGN,
+              priceCurrency: 'NGN',
+              availability:
+                product.isSoldOut || (typeof selectedStock === 'number' && selectedStock <= 0)
+                  ? 'https://schema.org/OutOfStock'
+                  : 'https://schema.org/InStock',
+            },
+            ...(product.ratingSummary && product.ratingSummary.totalReviews > 0
+              ? {
+                  aggregateRating: {
+                    '@type': 'AggregateRating',
+                    ratingValue: product.ratingSummary.averageRating,
+                    reviewCount: product.ratingSummary.totalReviews,
+                    bestRating: 5,
+                    worstRating: 1,
+                  },
+                }
+              : {}),
+          }),
+        }}
+      />
       <div className="piercyn-container">
         
         {/* Breadcrumb Navigation */}
@@ -218,6 +253,25 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               <h1 className="font-editorial text-3xl sm:text-4xl lg:text-5xl uppercase tracking-tight text-[#141414] leading-[0.96]">
                 {product.name}
               </h1>
+
+              {/* Star Rating Badge Anchor */}
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById('product-reviews')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="mt-2.5 inline-flex items-center gap-2 group cursor-pointer focus:outline-none"
+                aria-label={`Jump to reviews for ${product.name}`}
+              >
+                <StarRatingDisplay
+                  rating={product.ratingSummary?.averageRating ?? product.rating ?? null}
+                  reviewCount={product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0}
+                  size="sm"
+                />
+                <span className="text-[11px] font-mono text-[#7A7771] group-hover:underline">
+                  ({product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0} {(product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0) === 1 ? 'review' : 'reviews'})
+                </span>
+              </button>
 
               <div className="mt-3 flex items-baseline gap-3">
                 <span className="font-mono text-2xl sm:text-3xl font-bold text-[#141414]">
@@ -504,6 +558,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </div>
           </section>
         )}
+
+        {/* RATINGS & REVIEWS SECTION */}
+        <ReviewsSection
+          productId={product.id}
+          productName={product.name}
+        />
 
       </div>
 

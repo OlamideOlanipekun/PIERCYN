@@ -125,9 +125,45 @@ export interface Product {
   tag?: string;
   rating?: number;
   reviewCount?: number;
+  ratingSummary?: ProductRatingSummary;
   availabilityType?: 'in_stock' | 'available_to_order';
   fulfillmentTimeline?: string;
   supplierVerified?: boolean;
+}
+
+export interface ProductRatingSummary {
+  averageRating: number | null;
+  totalReviews: number;
+  ratingDistribution?: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  rating: number;
+  reviewerDisplayName: string;
+  title?: string | null;
+  body: string;
+  isVerifiedPurchase: boolean;
+  createdAt: string;
+}
+
+export interface ProductReviewsResponse {
+  reviews: ProductReview[];
+  summary: ProductRatingSummary;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
 }
 
 export interface CartItem {

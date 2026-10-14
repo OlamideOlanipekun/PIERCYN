@@ -26,6 +26,7 @@ import {
   ArrowRight,
   ShieldAlert,
   MoreHorizontal,
+  Star,
 } from 'lucide-react';
 import { AdminApi } from '../api';
 
@@ -137,6 +138,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       badgeColor: 'bg-rose-700 text-white',
     },
     { id: 'customers', label: 'Customers', icon: Users },
+    { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'affiliates', label: 'Affiliates', icon: TrendingUp },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'audit', label: 'Audit Log', icon: History },
@@ -190,6 +192,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         return {
           title: 'Operations Audit Log',
           subtitle: 'Immutable record of order transitions, inventory adjustments & config edits',
+        };
+      case 'reviews':
+        return {
+          title: 'Product Reviews',
+          subtitle: 'Moderate verified buyer feedback, review scores, visibility & customer insights',
         };
       case 'settings':
         return {

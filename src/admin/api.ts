@@ -12,6 +12,8 @@ import {
   AdminMediaAsset,
   AdminVariantRecord,
   AdminCategory,
+  AdminReviewsResult,
+  AdminReview,
 } from './types';
 
 const ADMIN_TOKEN_KEY = 'piercyn_admin_token';
@@ -383,6 +385,37 @@ class AdminApiClient {
     return this.request(`/affiliates/payouts/${id}/process`, {
       method: 'POST',
       body: JSON.stringify({ action, notes, payoutReference }),
+    });
+  }
+
+  // 13. Review Management
+  public async getReviews(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    rating?: number;
+    productId?: string;
+    search?: string;
+  }): Promise<AdminReviewsResult> {
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(filtered as any).toString();
+    return this.request<AdminReviewsResult>(`/reviews${qs ? `?${qs}` : ''}`);
+  }
+
+  public async getReview(reviewId: string): Promise<AdminReview> {
+    return this.request<AdminReview>(`/reviews/${reviewId}`);
+  }
+
+  public async moderateReview(
+    reviewId: string,
+    action: 'PUBLISH' | 'HIDE' | 'REJECT' | 'RESTORE',
+    note?: string
+  ): Promise<AdminReview> {
+    return this.request<AdminReview>(`/reviews/${reviewId}/moderate`, {
+      method: 'POST',
+      body: JSON.stringify({ action, note }),
     });
   }
 }

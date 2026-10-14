@@ -12,6 +12,8 @@ import { EventService } from '../services/eventService';
 import { AuthService } from '../services/authService';
 import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
+import { reviewRouter } from '../modules/reviews/reviewRouter';
+import { ReviewService } from '../modules/reviews/reviewService';
 import {
   AddToCartSchema,
   UpdateCartItemSchema,
@@ -27,6 +29,7 @@ export const apiRouter = Router();
 
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
+apiRouter.use('/', reviewRouter);
 
 const getSessionId = (req: Request): string => {
   return (req.headers['x-session-id'] as string) || (req.query.sessionId as string) || 'guest-session';
@@ -84,7 +87,13 @@ apiRouter.get('/products', async (req: Request, res: Response) => {
       status: status as string,
       search: search as string,
     });
-    res.json({ success: true, count: products.length, data: products });
+    const productIds = products.map((p) => p.id);
+    const ratingSummaries = await ReviewService.batchGetRatingSummaries(productIds);
+    const enriched = products.map((p) => ({
+      ...p,
+      ratingSummary: ratingSummaries[p.id] || { averageRating: null, totalReviews: 0 },
+    }));
+    res.json({ success: true, count: enriched.length, data: enriched });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -96,7 +105,8 @@ apiRouter.get('/products/:slug', async (req: Request, res: Response) => {
     if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
-    res.json({ success: true, data: product });
+    const ratingSummary = await ReviewService.getProductRatingSummary(product.id);
+    res.json({ success: true, data: { ...product, ratingSummary } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

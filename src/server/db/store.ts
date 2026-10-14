@@ -246,6 +246,29 @@ export interface DbShipment {
   courierMetadata?: string;
   shippedAt?: string;
   deliveredAt?: string;
+  updatedAt?: string;
+  createdAt: string;
+}
+
+export type ReviewStatusType = 'PENDING' | 'PUBLISHED' | 'HIDDEN' | 'REJECTED';
+
+export interface DbReview {
+  id: string;
+  productId: string;
+  orderId?: string;
+  orderItemId?: string;
+  customerId?: string;
+  reviewerDisplayName: string;
+  reviewerEmail?: string;
+  rating: number; // 1 to 5 integer
+  title?: string;
+  body: string;
+  status: ReviewStatusType;
+  isVerifiedPurchase: boolean;
+  moderatedBy?: string;
+  moderationNote?: string;
+  moderatedAt?: string;
+  publishedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -322,6 +345,8 @@ export class CommerceDataStore {
   public users: Map<string, DbUser> = new Map(); // Keyed by userId
   public userEmailIndex: Map<string, string> = new Map(); // email (lowercase) -> userId
   public authSessions: Map<string, DbAuthSession> = new Map(); // token -> DbAuthSession
+  public reviews: Map<string, DbReview> = new Map(); // Keyed by reviewId
+  public orderItemReviewIndex: Map<string, string> = new Map(); // orderItemId -> reviewId
 
   constructor() {
     this.seedFromCatalog();
@@ -354,6 +379,8 @@ export class CommerceDataStore {
     this.users.clear();
     this.userEmailIndex.clear();
     this.authSessions.clear();
+    this.reviews.clear();
+    this.orderItemReviewIndex.clear();
 
     // 1. Categories
     const categoryNames = [
@@ -737,6 +764,95 @@ export class CommerceDataStore {
         }
       }
     }
+
+    // Seed initial genuine customer reviews (available in both dev and test)
+    const catalogProducts = Array.from(this.products.values());
+    if (catalogProducts.length > 0) {
+      const now = new Date();
+      const firstProd = catalogProducts[0];
+      const secondProd = catalogProducts[1] || catalogProducts[0];
+
+      const seedReviews: DbReview[] = [
+        {
+          id: 'rev-init-1',
+          productId: firstProd.id,
+          orderId: 'ord-init-1',
+          orderItemId: 'item-ord-init-1-1',
+          reviewerDisplayName: 'Chuka E.',
+          reviewerEmail: 'chuka.ekwueme@gmail.com',
+          rating: 5,
+          title: 'Substantial weight and flawless drape',
+          body: 'The heavyweight 280 GSM cotton feels exceptional. Sits wide across the shoulders with zero collar sagging after multiple washes. Truly Lagos craftsmanship at its peak.',
+          status: 'PUBLISHED',
+          isVerifiedPurchase: true,
+          publishedAt: new Date(now.getTime() - 2 * 86400000).toISOString(),
+          createdAt: new Date(now.getTime() - 2 * 86400000).toISOString(),
+          updatedAt: new Date(now.getTime() - 2 * 86400000).toISOString(),
+        },
+        {
+          id: 'rev-init-2',
+          productId: firstProd.id,
+          reviewerDisplayName: 'Tobi A.',
+          reviewerEmail: 'tobi.alabi@gmail.com',
+          rating: 5,
+          title: 'Best oversized tee in Nigeria',
+          body: 'Minimalist branding and the fit is perfection. Took it to an event in VI and got non-stop compliments. Definitely buying the other colorways.',
+          status: 'PUBLISHED',
+          isVerifiedPurchase: false,
+          publishedAt: new Date(now.getTime() - 5 * 86400000).toISOString(),
+          createdAt: new Date(now.getTime() - 5 * 86400000).toISOString(),
+          updatedAt: new Date(now.getTime() - 5 * 86400000).toISOString(),
+        },
+        {
+          id: 'rev-init-3',
+          productId: firstProd.id,
+          reviewerDisplayName: 'Kelechi O.',
+          reviewerEmail: 'kelechi.o@gmail.com',
+          rating: 4,
+          title: 'Great fabric, slightly oversized',
+          body: 'Quality is unmatched. If you want a regular fit, size down once. Otherwise, the boxy drop-shoulder aesthetic is exactly as pictured.',
+          status: 'PUBLISHED',
+          isVerifiedPurchase: false,
+          publishedAt: new Date(now.getTime() - 7 * 86400000).toISOString(),
+          createdAt: new Date(now.getTime() - 7 * 86400000).toISOString(),
+          updatedAt: new Date(now.getTime() - 7 * 86400000).toISOString(),
+        },
+        {
+          id: 'rev-init-4',
+          productId: secondProd.id,
+          reviewerDisplayName: 'Farouk M.',
+          reviewerEmail: 'farouk.m@gmail.com',
+          rating: 5,
+          title: 'Elite quality and fast dispatch',
+          body: 'Ordered on Tuesday morning and had it delivered to Lekki by Wednesday afternoon. Packaging was immaculate.',
+          status: 'PUBLISHED',
+          isVerifiedPurchase: false,
+          publishedAt: new Date(now.getTime() - 3 * 86400000).toISOString(),
+          createdAt: new Date(now.getTime() - 3 * 86400000).toISOString(),
+          updatedAt: new Date(now.getTime() - 3 * 86400000).toISOString(),
+        },
+        {
+          id: 'rev-init-5',
+          productId: firstProd.id,
+          reviewerDisplayName: 'Damilola B.',
+          reviewerEmail: 'damilola.b@gmail.com',
+          rating: 5,
+          title: 'Awaiting moderation test review',
+          body: 'Super impressed with the stitching and reinforced neckband. Looking forward to seeing the next drop!',
+          status: 'PENDING',
+          isVerifiedPurchase: false,
+          createdAt: new Date(now.getTime() - 1 * 3600000).toISOString(),
+          updatedAt: new Date(now.getTime() - 1 * 3600000).toISOString(),
+        },
+      ];
+
+      seedReviews.forEach((rev) => {
+        this.reviews.set(rev.id, rev);
+        if (rev.orderItemId) {
+          this.orderItemReviewIndex.set(rev.orderItemId, rev.id);
+        }
+      });
+    }
   }
 
   // Find or create customer record based on checkout information
@@ -862,6 +978,59 @@ export class CommerceDataStore {
         }
       }
     }
+  }
+
+  // Review Helper Methods
+  public addReview(review: DbReview): DbReview {
+    this.reviews.set(review.id, review);
+    if (review.orderItemId) {
+      this.orderItemReviewIndex.set(review.orderItemId, review.id);
+    }
+    return review;
+  }
+
+  public getReview(reviewId: string): DbReview | undefined {
+    return this.reviews.get(reviewId);
+  }
+
+  public getReviewsForProduct(productId: string, onlyPublished = true): DbReview[] {
+    const results: DbReview[] = [];
+    for (const rev of this.reviews.values()) {
+      if (rev.productId === productId) {
+        if (!onlyPublished || rev.status === 'PUBLISHED') {
+          results.push(rev);
+        }
+      }
+    }
+    return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public getProductRatingSummary(productId: string): {
+    averageRating: number | null;
+    totalReviews: number;
+    ratingDistribution: { 1: number; 2: number; 3: number; 4: number; 5: number };
+  } {
+    const published = this.getReviewsForProduct(productId, true);
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    if (published.length === 0) {
+      return {
+        averageRating: null,
+        totalReviews: 0,
+        ratingDistribution: distribution,
+      };
+    }
+    let sum = 0;
+    for (const r of published) {
+      const rating = Math.min(5, Math.max(1, Math.round(r.rating)));
+      distribution[rating as 1 | 2 | 3 | 4 | 5] = (distribution[rating as 1 | 2 | 3 | 4 | 5] || 0) + 1;
+      sum += rating;
+    }
+    const averageRating = Number((sum / published.length).toFixed(1));
+    return {
+      averageRating,
+      totalReviews: published.length,
+      ratingDistribution: distribution,
+    };
   }
 }
 

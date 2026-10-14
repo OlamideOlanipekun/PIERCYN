@@ -3,6 +3,7 @@ import { useShop } from '../context/ShopContext';
 import { Product } from '../types';
 import { formatPrice, formatNumericPrice } from '../utils/currency';
 import { Heart, Check, Loader2, X } from 'lucide-react';
+import { StarRatingDisplay } from './reviews/StarRating';
 
 export interface ProductCardProps {
   product: Product;
@@ -188,7 +189,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {descriptor}
           </p>
 
-          {/* 3. Price row (Current selling price in bold + Optional strikethrough original price) */}
+          {/* 3. Rating Row */}
+          <div className="pt-0.5">
+            {(product.ratingSummary?.averageRating ?? product.rating) ? (
+              <StarRatingDisplay
+                rating={product.ratingSummary?.averageRating ?? product.rating ?? null}
+                reviewCount={product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0}
+                size="xs"
+                showCount
+              />
+            ) : (
+              <span className="text-[9.5px] font-mono text-[#B0ADA7] italic">
+                Be the first to review
+              </span>
+            )}
+          </div>
+
+          {/* 4. Price row (Current selling price in bold + Optional strikethrough original price) */}
           <div className="flex items-baseline gap-2 pt-0.5">
             <span className="text-[13px] sm:text-[14.5px] font-bold text-[#141414] tracking-tight">
               {formatPrice(product, currency)}

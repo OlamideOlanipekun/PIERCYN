@@ -10,6 +10,7 @@ export type AdminNavTab =
   | 'affiliates'
   | 'analytics'
   | 'audit'
+  | 'reviews'
   | 'settings';
 
 export interface AdminUser {
@@ -402,3 +403,52 @@ export interface AdminCategory {
   sortOrder: number;
   _count?: { products: number };
 }
+
+// ============================================================
+// ADMIN REVIEW TYPES
+// ============================================================
+
+export type AdminReviewStatus = 'PENDING' | 'PUBLISHED' | 'HIDDEN' | 'REJECTED';
+
+export interface AdminReview {
+  id: string;
+  productId: string;
+  productName?: string;
+  orderId?: string;
+  orderItemId?: string;
+  customerId?: string;
+  reviewerDisplayName: string;
+  reviewerEmail?: string;
+  rating: number;
+  title?: string;
+  body: string;
+  status: AdminReviewStatus;
+  isVerifiedPurchase: boolean;
+  moderatedBy?: string;
+  moderationNote?: string;
+  moderatedAt?: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminReviewMetrics {
+  totalReviews: number;
+  publishedCount: number;
+  pendingCount: number;
+  hiddenCount: number;
+  rejectedCount: number;
+  averagePublishedRating: number | null;
+}
+
+export interface AdminReviewsResult {
+  reviews: AdminReview[];
+  metrics: AdminReviewMetrics;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+

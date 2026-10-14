@@ -15,6 +15,7 @@ import { AffiliatesView } from './views/AffiliatesView';
 import { AnalyticsView } from './views/AnalyticsView';
 import { AuditLogView } from './views/AuditLogView';
 import { SettingsView } from './views/SettingsView';
+import { ReviewsView } from './views/ReviewsView';
 import { AdminNavTab } from './types';
 import { Loader2 } from 'lucide-react';
 import { PiercynMonogram } from '../components/PiercynLogo';
@@ -43,6 +44,7 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     else if (path.includes('/admin/affiliates')) setActiveTab('affiliates');
     else if (path.includes('/admin/analytics')) setActiveTab('analytics');
     else if (path.includes('/admin/audit')) setActiveTab('audit');
+    else if (path.includes('/admin/reviews')) setActiveTab('reviews');
     else if (path.includes('/admin/settings')) setActiveTab('settings');
     else setActiveTab('dashboard');
   }, []);
@@ -110,6 +112,8 @@ const AdminContent: React.FC<AdminAppProps> = ({ onBackToStore }) => {
         {activeTab === 'customers' && (
           <CustomersView onOpenOrder={(orderId) => setSelectedOrderId(orderId)} />
         )}
+
+        {activeTab === 'reviews' && <ReviewsView />}
 
         {activeTab === 'affiliates' && <AffiliatesView />}
 

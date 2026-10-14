@@ -11,6 +11,7 @@ import { ShippingService } from '../shipping/shippingService';
 import { AnalyticsService } from '../analytics/analyticsService';
 import { AuditService } from './auditService';
 import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
+import { ReviewService } from '../reviews/reviewService';
 import { dbStore, DbOrder, OrderStatusType } from '../../db/store';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { z } from 'zod';
@@ -1015,5 +1016,68 @@ adminRouter.post('/seed-sample-orders', requireAdmin, (req: AuthenticatedAdminRe
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN REVIEW MANAGEMENT
+// All endpoints require admin authentication.
+// ============================================================
+
+const ModerateReviewSchema = z.object({
+  action: z.enum(['PUBLISH', 'HIDE', 'REJECT', 'RESTORE']),
+  note: z.string().max(500).optional(),
+});
+
+// GET /api/admin/reviews — List reviews with filters & metrics
+adminRouter.get('/reviews', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { page, limit, status, rating, productId, search } = req.query;
+    const result = await ReviewService.adminListReviews({
+      page: page ? parseInt(page as string, 10) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      status: status as string | undefined,
+      rating: rating ? parseInt(rating as string, 10) : undefined,
+      productId: productId as string | undefined,
+      search: search as string | undefined,
+    });
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to fetch reviews.' });
+  }
+});
+
+// GET /api/admin/reviews/:reviewId — Get full review detail
+adminRouter.get('/reviews/:reviewId', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const result = await ReviewService.adminListReviews({ search: req.params.reviewId });
+    // Find the specific review by ID
+    const review = result.reviews.find((r) => r.id === req.params.reviewId);
+    if (!review) {
+      return res.status(404).json({ success: false, error: 'Review not found.' });
+    }
+    res.json({ success: true, data: review });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to fetch review.' });
+  }
+});
+
+// POST /api/admin/reviews/:reviewId/moderate — Publish, hide, reject, or restore a review
+adminRouter.post('/reviews/:reviewId/moderate', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const parsed = ModerateReviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || 'Invalid moderation action.' });
+    }
+    const { action, note } = parsed.data;
+    const adminId = req.admin?.id || 'admin';
+    const updated = await ReviewService.adminModerateReview(req.params.reviewId, adminId, action, note);
+    res.json({
+      success: true,
+      message: `Review ${action.toLowerCase()}ed successfully.`,
+      data: updated,
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message || 'Moderation action failed.' });
   }
 });
