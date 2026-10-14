@@ -50,7 +50,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <p className="mt-3 max-w-md text-[13px] leading-6 text-[#4A4844]">Modern pieces. Considered prices. Made for standing out.</p>
             </div>
           </div>
-          <a href="/contact" className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-[#141414]/30 pb-1 text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors hover:border-[#141414]">GET IN TOUCH <span aria-hidden="true">↗</span></a>
+          <button type="button" onClick={() => selectPage('contact')} className="inline-flex min-h-11 w-fit items-center gap-2 border-b border-[#141414]/30 pb-1 text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors hover:border-[#141414] cursor-pointer">GET IN TOUCH <span aria-hidden="true">↗</span></button>
         </div>
 
         <div className="hidden grid-cols-4 gap-8 py-12 md:grid lg:gap-12 lg:py-16">
@@ -60,7 +60,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <button id="footer-shop-all" onClick={() => selectPage('shop')} className={footerLinkClass}>ALL PIECES</button>
               <button id="footer-shop-men" onClick={() => selectPage('men')} className={footerLinkClass}>MEN</button>
               <button id="footer-new-arrivals" onClick={() => selectPage('new')} className={footerLinkClass}>NEW ARRIVALS</button>
-              <a href="/available-to-order" className={footerLinkClass}>AVAILABLE TO ORDER</a>
+              <button type="button" id="footer-available-to-order" onClick={() => { window.history.pushState({}, '', '/available-to-order'); window.dispatchEvent(new PopStateEvent('popstate')); }} className={footerLinkClass}>AVAILABLE TO ORDER</button>
             </nav>
           </div>
 
@@ -212,10 +212,10 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             {groupHeader('help', 'HELP')}
             <div id="footer-mobile-help" hidden={!openGroups.help} className="py-2"><nav className="flex flex-col">
               <button onClick={() => selectPage('about')} className={footerLinkClass}>ABOUT PIERCYN</button>
-              <a href="/size-guide" className={footerLinkClass}>SIZE GUIDE</a>
-              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="/contact" className={footerLinkClass}>CONTACT US</a>
+              <button onClick={() => selectPage('sizeGuide')} className={footerLinkClass}>SIZE GUIDE</button>
+              <button onClick={() => selectPage('shipping')} className={footerLinkClass}>SHIPPING & DELIVERY</button>
+              <button onClick={() => selectPage('returns')} className={footerLinkClass}>RETURNS & EXCHANGES</button>
+              <button onClick={() => selectPage('contact')} className={footerLinkClass}>CONTACT US</button>
               <button onClick={goToAffiliate} className={footerLinkClass}>AFFILIATE PROGRAM</button>
             </nav></div>
           </section>
@@ -230,9 +230,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <section>
             {groupHeader('legal', 'LEGAL & SUPPORT')}
             <div id="footer-mobile-legal" hidden={!openGroups.legal} className="py-2"><nav className="flex flex-col">
-              <a href="/shipping" className={footerLinkClass}>SHIPPING & DELIVERY</a>
-              <a href="/returns" className={footerLinkClass}>RETURNS & EXCHANGES</a>
-              <a href="/contact" className={footerLinkClass}>CONTACT SUPPORT</a>
+              <button onClick={() => selectPage('shipping')} className={footerLinkClass}>SHIPPING & DELIVERY</button>
+              <button onClick={() => selectPage('returns')} className={footerLinkClass}>RETURNS & EXCHANGES</button>
+              <button onClick={() => selectPage('contact')} className={footerLinkClass}>CONTACT SUPPORT</button>
             </nav></div>
           </section>
         </div>
@@ -250,7 +250,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <div className="flex flex-col gap-4 pt-5 text-[9px] font-medium uppercase tracking-[0.12em] text-[#F2F0EB]/55 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:pt-6 sm:text-[10px]">
             <p>© 2026 PIERCYN. ALL RIGHTS RESERVED.</p>
             <p className="text-[#F2F0EB]/75">LAGOS · NIGERIA</p>
-            <button id="footer-admin-trigger" onClick={goToAdmin} className="min-h-8 w-fit underline underline-offset-4 transition-colors hover:text-[#F2F0EB]">ADMIN</button>
+            <button id="footer-admin-bottom-trigger" onClick={goToAdmin} className="min-h-8 w-fit underline underline-offset-4 transition-colors hover:text-[#F2F0EB]">ADMIN</button>
           </div>
         </div>
       </div>

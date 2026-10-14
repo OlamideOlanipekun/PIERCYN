@@ -30,6 +30,14 @@ import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
+import { CartPage } from './components/CartPage';
+import { CheckoutPage } from './components/CheckoutPage';
+import { WomenCollectionPage } from './components/women/WomenCollectionPage';
+import { AccessoriesPage } from './components/AccessoriesPage';
+import { AccountDashboard } from './components/AccountDashboard';
+import { CollectionsGrid } from './components/CollectionsGrid';
+import { LookbookSection } from './components/LookbookSection';
+import { LookbookModal } from './components/LookbookModal';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -121,10 +129,7 @@ const MainLayout: React.FC = () => {
       '/faq': 'faq',
       '/track-order': 'track-order',
       '/available-to-order': 'available-to-order',
-      '/cart': 'cart',
-      '/checkout': 'checkout',
-      '/order-confirmation': 'order-confirmation',
-    };
+          };
     const storefrontRoute = storefrontRoutes[rawPath];
     if (storefrontRoute) {
       setStorefrontPage(storefrontRoute);
@@ -134,7 +139,21 @@ const MainLayout: React.FC = () => {
     }
     setStorefrontPage(null);
 
-    if (rawPath === '/shop' || rawPath === '/collections') {
+    if (rawPath === '/cart') {
+      setActivePage('cart');
+      setCurrentPdpProduct(null);
+      document.title = 'Cart — PIERCYN';
+    } else if (rawPath === '/checkout') {
+      setActivePage('checkout');
+      setCurrentPdpProduct(null);
+      document.title = 'Checkout — PIERCYN';
+    } else if (rawPath === '/order-confirmation' || rawPath.startsWith('/order/success/')) {
+      const orderId = new URLSearchParams(window.location.search).get('orderId') || rawPath.replace('/order/success/', '');
+      setRouteParam(orderId);
+      setActivePage('orderSuccess');
+      setCurrentPdpProduct(null);
+      document.title = 'Order Confirmed — PIERCYN';
+    } else if (rawPath === '/shop') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Shop All';
@@ -142,10 +161,30 @@ const MainLayout: React.FC = () => {
       setActivePage('men');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Men';
+    } else if (rawPath === '/women') {
+      setActivePage('women');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Women';
     } else if (rawPath === '/new' || rawPath === '/new-in' || rawPath === '/new-arrivals') {
       setActivePage('new');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — New Arrivals';
+    } else if (rawPath === '/accessories') {
+      setActivePage('accessories');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Accessories';
+    } else if (rawPath === '/account') {
+      setActivePage('account');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Account';
+    } else if (rawPath === '/lookbook') {
+      setActivePage('lookbook');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Lookbook';
+    } else if (rawPath === '/collections') {
+      setActivePage('collections');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Collections';
     } else if (rawPath === '/about') {
       setActivePage('about');
       setCurrentPdpProduct(null);
@@ -246,8 +285,8 @@ const MainLayout: React.FC = () => {
       account: '/account',
       product: '/shop',
       collection: '/collections',
-      orderSuccess: '/',
-      orderTracking: '/',
+      orderSuccess: '/order-confirmation',
+      orderTracking: '/track-order',
       notFound: '/',
       affiliate: '/affiliate',
       cart: '/cart',
@@ -268,6 +307,8 @@ const MainLayout: React.FC = () => {
     if (window.location.pathname !== targetUrl) {
       window.history.pushState({ page }, '', targetUrl);
     }
+
+    syncRouteFromUrl();
 
     const titleMap: Record<ActivePageView, string> = {
       home: 'PIERCYN — Look Good. Spend Less.',
@@ -411,6 +452,10 @@ const MainLayout: React.FC = () => {
         <OrderPage orderId={routeParam} mode="tracking" onShop={() => handleSelectPage('shop')} />
       ) : activePage === 'notFound' ? (
         <NotFoundPage onShop={() => handleSelectPage('shop')} />
+      ) : activePage === 'cart' ? (
+        <CartPage onSelectPage={handleSelectPage} onViewProduct={handleViewProduct} />
+      ) : activePage === 'checkout' ? (
+        <CheckoutPage onSelectPage={handleSelectPage} onViewProduct={handleViewProduct} />
       ) : activePage === 'shop' ? (
         <ShopPage
           products={products}
@@ -419,8 +464,25 @@ const MainLayout: React.FC = () => {
         />
       ) : activePage === 'men' ? (
         <MenCollectionPage onNavigateSection={handleNavigateSection} />
+      ) : activePage === 'women' ? (
+        <WomenCollectionPage onNavigateSection={handleNavigateSection} />
+
+
       ) : activePage === 'new' ? (
         <NewArrivalsPage onSelectPage={handleSelectPage} />
+      ) : activePage === 'accessories' ? (
+        <AccessoriesPage onSelectPage={handleSelectPage} />
+      ) : activePage === 'account' ? (
+        <AccountDashboard onSelectPage={handleSelectPage} onViewProduct={handleViewProduct} />
+      ) : activePage === 'collections' ? (
+        <CollectionsGrid onSelectCollection={(colId) => {
+          window.history.pushState({}, '', `/collections/${colId}`);
+          syncRouteFromUrl();
+        }} />
+      ) : activePage === 'lookbook' ? (
+        <main className="min-h-screen bg-[#F2F0EB] pt-20 sm:pt-24 pb-16 text-[#141414]">
+          <LookbookSection onSelectLook={(look) => setActiveLook(look)} />
+        </main>
       ) : activePage === 'about' ? (
         <AboutPage onSelectPage={handleSelectPage} />
       ) : (
@@ -479,6 +541,7 @@ const MainLayout: React.FC = () => {
       <SizeGuideModal />
       <CheckoutModal />
       <OrderConfirmationModal />
+      <LookbookModal />
       <AdminDrawer />
       <Toast />
       {isAffiliateAnnouncementOpen && (
