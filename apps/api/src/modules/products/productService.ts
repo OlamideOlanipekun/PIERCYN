@@ -1,7 +1,7 @@
 import { prisma, checkDatabaseHealth } from '../../db/prisma';
 import { slugify } from '@piercyn/utils';
-import { dbStore } from '../../../../src/server/db/store';
-import { ProductService as MemProductService } from '../../../../src/server/modules/products/productService';
+import { dbStore } from '../../../../../src/server/db/store';
+import { ProductService as MemProductService } from '../../../../../src/server/modules/products/productService';
 
 // Cached availability flag — reset after 30s so transient failures recover automatically
 let _dbAvailable: boolean | null = null;

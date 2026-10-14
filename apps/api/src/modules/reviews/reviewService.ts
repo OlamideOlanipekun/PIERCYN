@@ -1,5 +1,5 @@
 import { prisma, checkDatabaseHealth } from '../../db/prisma';
-import { dbStore } from '../../../../src/server/db/store';
+import { dbStore } from '../../../../../src/server/db/store';
 
 // Cached DB availability — shared module-level flag with 30s TTL
 let _dbAvailable: boolean | null = null;
