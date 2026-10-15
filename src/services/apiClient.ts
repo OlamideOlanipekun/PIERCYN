@@ -75,6 +75,11 @@ export const api = {
     return parseResponse(res);
   },
 
+  async getCategories() {
+    const res = await fetch(`${API_BASE}/categories`, { headers: getHeaders() });
+    return parseResponse(res);
+  },
+
   // Cart
   async getCart() {
     const res = await fetch(`${API_BASE}/cart`, { headers: getHeaders() });

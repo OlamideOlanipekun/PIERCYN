@@ -213,7 +213,7 @@ class AdminApiClient {
     return this.request<AdminCategory[]>(`/categories${includeInactive ? '?includeInactive=true' : ''}`);
   }
 
-  public async createCategory(input: { name: string; slug?: string; description?: string; sortOrder?: number }): Promise<AdminCategory> {
+  public async createCategory(input: { name: string; slug?: string; description?: string; imageUrl?: string; sortOrder?: number }): Promise<AdminCategory> {
     return this.request<AdminCategory>('/categories', { method: 'POST', body: JSON.stringify(input) });
   }
 

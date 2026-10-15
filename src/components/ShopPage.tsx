@@ -33,14 +33,35 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [catalogLoadError, setCatalogLoadError] = useState<string | null>(null);
 
-  const categories: { label: string; value: string }[] = [
+  const [categories, setCategories] = useState<{ label: string; value: string }[]>([
     { label: 'ALL PIECES', value: 'all' },
     { label: 'HOODIES & FLEECE', value: 'hoodies' },
     { label: 'TEES & TOPS', value: 'tees' },
     { label: 'POLOS', value: 'polos' },
     { label: 'TROUSERS & CARGOS', value: 'trousers' },
     { label: 'OUTERWEAR & BOMBERS', value: 'outerwear' },
-  ];
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    catalogService
+      .getCategories()
+      .then((cats) => {
+        if (!cancelled && cats && cats.length > 0) {
+          setCategories([
+            { label: 'ALL PIECES', value: 'all' },
+            ...cats.map((c) => ({
+              label: c.name.toUpperCase(),
+              value: c.slug,
+            })),
+          ]);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 

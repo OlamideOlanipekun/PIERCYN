@@ -166,6 +166,7 @@ model Category {
   name        String    @unique
   slug        String    @unique
   description String?
+  imageUrl    String?
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
@@ -988,4 +989,3 @@ model ProductReview {
   @@index([orderId])
   @@index([customerId])
 }
-

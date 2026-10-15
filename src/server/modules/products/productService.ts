@@ -382,9 +382,133 @@ export class ProductService {
   }
 
   /**
-   * Category listing
+   * Category listing — active only (public storefront)
    */
-  public static getCategories(): DbCategory[] {
-    return Array.from(dbStore.categories.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+  public static getCategories(includeInactive = false): (DbCategory & { _count: { products: number } })[] {
+    const all = Array.from(dbStore.categories.values()).filter(
+      (cat) => includeInactive || cat.isActive
+    );
+    return all
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((cat) => ({
+        ...cat,
+        _count: {
+          products: Array.from(dbStore.products.values()).filter(
+            (p) => p.categoryId === cat.id && p.status !== 'ARCHIVED'
+          ).length,
+        },
+      }));
+  }
+
+  /**
+   * Admin: Create a new category
+   */
+  public static createCategory(input: {
+    name: string;
+    slug?: string;
+    description?: string;
+    imageUrl?: string;
+    sortOrder?: number;
+  }): DbCategory & { _count: { products: number } } {
+    const name = input.name.trim();
+    if (!name) throw new Error('Category name is required.');
+
+    const slug = (input.slug?.trim() || this.slugify(name));
+    if (!slug) throw new Error('Category slug is required.');
+
+    // Uniqueness checks
+    for (const cat of dbStore.categories.values()) {
+      if (cat.name.toLowerCase() === name.toLowerCase()) {
+        throw new Error(`A category named "${name}" already exists.`);
+      }
+      if (cat.slug === slug) {
+        throw new Error(`A category with slug "${slug}" already exists.`);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const id = `cat-${slug}-${Date.now().toString().slice(-5)}`;
+    const sortOrder = input.sortOrder ?? dbStore.categories.size;
+
+    const category: DbCategory = {
+      id,
+      name,
+      slug,
+      description: input.description?.trim() || undefined,
+      imageUrl: input.imageUrl || undefined,
+      isActive: true,
+      sortOrder,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    dbStore.categories.set(id, category);
+    return { ...category, _count: { products: 0 } };
+  }
+
+  /**
+   * Admin: Update an existing category
+   */
+  public static updateCategory(
+    id: string,
+    updates: Partial<Pick<DbCategory, 'name' | 'slug' | 'description' | 'imageUrl' | 'isActive' | 'sortOrder'>>
+  ): DbCategory & { _count: { products: number } } {
+    const category = dbStore.categories.get(id);
+    if (!category) throw new Error(`Category not found: ${id}`);
+
+    if (updates.name !== undefined) {
+      const name = updates.name.trim();
+      for (const cat of dbStore.categories.values()) {
+        if (cat.id !== id && cat.name.toLowerCase() === name.toLowerCase()) {
+          throw new Error(`A category named "${name}" already exists.`);
+        }
+      }
+      updates.name = name;
+    }
+
+    if (updates.slug !== undefined) {
+      const slug = updates.slug.trim() || (updates.name ? this.slugify(updates.name) : this.slugify(category.name));
+      for (const cat of dbStore.categories.values()) {
+        if (cat.id !== id && cat.slug === slug) {
+          throw new Error(`A category with slug "${slug}" already exists.`);
+        }
+      }
+      updates.slug = slug;
+    }
+
+    Object.assign(category, updates, { updatedAt: new Date().toISOString() });
+
+    const productCount = Array.from(dbStore.products.values()).filter(
+      (p) => p.categoryId === id && p.status !== 'ARCHIVED'
+    ).length;
+
+    return { ...category, _count: { products: productCount } };
+  }
+
+  /**
+   * Admin: Deactivate a category (soft delete). Blocks if products are assigned.
+   * Pass `force: true` to deactivate even with products (they are NOT deleted).
+   */
+  public static deactivateCategory(
+    id: string,
+    force = false
+  ): { success: boolean; message: string } {
+    const category = dbStore.categories.get(id);
+    if (!category) throw new Error(`Category not found: ${id}`);
+
+    const productCount = Array.from(dbStore.products.values()).filter(
+      (p) => p.categoryId === id && p.status !== 'ARCHIVED'
+    ).length;
+
+    if (productCount > 0 && !force) {
+      throw new Error(
+        `Cannot deactivate "${category.name}" — it has ${productCount} active product(s). ` +
+        `Reassign or archive those products first, or confirm forced deactivation.`
+      );
+    }
+
+    category.isActive = false;
+    category.updatedAt = new Date().toISOString();
+    return { success: true, message: `Category "${category.name}" deactivated.` };
   }
 }

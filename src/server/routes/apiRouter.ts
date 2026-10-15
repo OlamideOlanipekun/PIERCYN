@@ -143,7 +143,8 @@ apiRouter.get('/products/:slug', async (req: Request, res: Response) => {
 
 apiRouter.get('/categories', (_req: Request, res: Response) => {
   try {
-    res.json({ success: true, data: ProductService.getCategories() });
+    // Public storefront: active categories only with product counts
+    res.json({ success: true, data: ProductService.getCategories(false) });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

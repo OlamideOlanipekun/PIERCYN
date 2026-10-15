@@ -227,6 +227,7 @@ export class ProductService {
 
         if (!filter?.includeInactive && !filter?.status) {
           where.status = 'ACTIVE';
+          where.category = { isActive: true };
         } else if (filter?.status) {
           where.status = filter.status;
         }
@@ -350,6 +351,7 @@ export class ProductService {
 
         if (!includeInactive) {
           where.status = 'ACTIVE';
+          where.category = { isActive: true };
         }
 
         const prod = await prisma.product.findFirst({
@@ -610,6 +612,6 @@ export class ProductService {
     // In-memory fallback
     return Array.from(dbStore.categories.values())
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description, sortOrder: c.sortOrder, isActive: true }));
+      .map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description, imageUrl: null, sortOrder: c.sortOrder, isActive: true }));
   }
 }

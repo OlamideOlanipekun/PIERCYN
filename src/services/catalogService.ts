@@ -106,7 +106,21 @@ export interface CatalogPage {
   total: number;
 }
 
+export interface StorefrontCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  sortOrder: number;
+}
+
 export const catalogService = {
+  async getCategories(): Promise<StorefrontCategory[]> {
+    const res = await api.getCategories();
+    return res.success && Array.isArray(res.data) ? res.data : [];
+  },
+
   async getProducts(params?: { category?: string; collection?: string }): Promise<Product[]> {
     const res = await api.getProducts(params);
     if (res.success && Array.isArray(res.data)) {

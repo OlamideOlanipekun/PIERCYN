@@ -129,6 +129,7 @@ export interface AdminVariant {
   priceNGN?: number;
   costPriceNGN?: number;
   image?: string;
+  altImage?: string;
   active: boolean;
   stock?: {
     availableStock: number;
@@ -399,6 +400,7 @@ export interface AdminCategory {
   name: string;
   slug: string;
   description?: string | null;
+  imageUrl?: string | null;
   isActive: boolean;
   sortOrder: number;
   _count?: { products: number };

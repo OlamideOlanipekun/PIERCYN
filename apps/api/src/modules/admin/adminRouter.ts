@@ -172,12 +172,14 @@ const CreateCategorySchema = z.object({
   name: z.string().trim().min(2).max(80),
   slug: z.string().trim().min(2).max(100).optional(),
   description: z.string().trim().max(500).optional(),
+  imageUrl: z.string().url().optional().or(z.literal('')),
   sortOrder: z.number().int().nonnegative().optional(),
 });
 const UpdateCategorySchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
   slug: z.string().trim().min(2).max(100).optional(),
   description: z.string().trim().max(500).nullable().optional(),
+  imageUrl: z.string().url().nullable().optional().or(z.literal('')),
   sortOrder: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),
 }).refine((value) => Object.keys(value).length > 0, 'Provide at least one category field to update');
@@ -461,7 +463,7 @@ adminRouter.post('/categories', requireAdmin, async (req: AuthenticatedAdminRequ
   try {
     const input = CreateCategorySchema.parse(req.body);
     const slug = (input.slug || input.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, sortOrder: input.sortOrder ?? 0, isActive: true } });
+    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, imageUrl: input.imageUrl || null, sortOrder: input.sortOrder ?? 0, isActive: true } });
     await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_CREATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category created' });
     res.status(201).json({ success: true, data: category });
   } catch (err: any) {
@@ -473,7 +475,7 @@ adminRouter.post('/categories', requireAdmin, async (req: AuthenticatedAdminRequ
 adminRouter.patch('/categories/:id', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const input = UpdateCategorySchema.parse(req.body);
-    const data: any = { ...input };
+    const data: any = { ...input, ...(input.imageUrl === '' ? { imageUrl: null } : {}) };
     if (input.name && !input.slug) data.slug = input.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const category = await prisma.category.update({ where: { id: req.params.id }, data });
     await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_UPDATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category updated' });

@@ -136,6 +136,23 @@ const InventoryAdjustmentSchema = z.object({
   reason: z.string().optional(),
 });
 
+const CreateCategorySchema = z.object({
+  name: z.string().trim().min(2, 'Category name must be at least 2 characters.'),
+  slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens only.').optional().or(z.literal('')),
+  description: z.string().trim().max(500).optional(),
+  imageUrl: z.string().url('Image URL must be a valid URL.').optional().or(z.literal('')),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
+
+const UpdateCategorySchema = z.object({
+  name: z.string().trim().min(2).optional(),
+  slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional().or(z.literal('')),
+  description: z.string().trim().max(500).optional(),
+  imageUrl: z.string().url().optional().or(z.literal('')),
+  sortOrder: z.number().int().nonnegative().optional(),
+  isActive: z.boolean().optional(),
+});
+
 // -------------------------------------------------------------
 // 1. ADMIN AUTHENTICATION
 // -------------------------------------------------------------
@@ -493,6 +510,112 @@ adminRouter.delete('/products/:id', requireAdmin, (req: AuthenticatedAdminReques
   });
 
   res.json({ success: true, message: 'Product archived successfully' });
+});
+
+// -------------------------------------------------------------
+// 3b. ADMIN CATEGORY MANAGEMENT
+// -------------------------------------------------------------
+
+// GET /api/admin/categories — list all categories with product counts
+adminRouter.get('/categories', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    const includeInactive = (_req.query.includeInactive as string) === 'true';
+    const categories = ProductService.getCategories(includeInactive);
+    res.json({ success: true, count: categories.length, data: categories });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/categories — create a new category
+adminRouter.post('/categories', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = CreateCategorySchema.parse(req.body);
+    const created = ProductService.createCategory({
+      ...validated,
+      slug: validated.slug || undefined,
+      imageUrl: validated.imageUrl || undefined,
+    });
+
+    AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'CATEGORY_CREATED',
+      resource: 'PRODUCT',
+      resourceId: created.id,
+      newValue: `${created.name} (/${created.slug})`,
+      note: 'New product category created',
+    });
+
+    res.status(201).json({ success: true, data: created });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// PATCH /api/admin/categories/:id — update a category
+adminRouter.patch('/categories/:id', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const previous = dbStore.categories.get(req.params.id);
+    if (!previous) {
+      return res.status(404).json({ success: false, error: 'Category not found.' });
+    }
+
+    const validated = UpdateCategorySchema.parse(req.body);
+    const updated = ProductService.updateCategory(req.params.id, {
+      ...validated,
+      slug: validated.slug || undefined,
+      imageUrl: validated.imageUrl || undefined,
+    });
+
+    AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'CATEGORY_UPDATED',
+      resource: 'PRODUCT',
+      resourceId: updated.id,
+      previousValue: previous.name,
+      newValue: `${updated.name} (isActive: ${updated.isActive})`,
+      note: 'Category details updated',
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// DELETE /api/admin/categories/:id — deactivate a category (blocks if products assigned)
+adminRouter.delete('/categories/:id', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const previous = dbStore.categories.get(req.params.id);
+    if (!previous) {
+      return res.status(404).json({ success: false, error: 'Category not found.' });
+    }
+
+    // force=true allows deactivating a category that still has products assigned
+    const force = req.query.force === 'true';
+    const result = ProductService.deactivateCategory(req.params.id, force);
+
+    AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'CATEGORY_DEACTIVATED',
+      resource: 'PRODUCT',
+      resourceId: req.params.id,
+      previousValue: 'ACTIVE',
+      newValue: 'INACTIVE',
+      note: `Category "${previous.name}" deactivated${force ? ' (forced)' : ''}`,
+    });
+
+    res.json({ success: result.success, message: result.message });
+  } catch (err: any) {
+    // If the error is a product-count blocking error, return 409 Conflict
+    const isConflict = err.message?.includes('active product');
+    res.status(isConflict ? 409 : 400).json({ success: false, error: err.message });
+  }
 });
 
 // -------------------------------------------------------------

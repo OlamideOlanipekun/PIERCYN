@@ -6,7 +6,11 @@ export interface DbCategory {
   name: string;
   slug: string;
   description?: string;
+  imageUrl?: string;
+  isActive: boolean;
   sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DbProduct {
@@ -393,14 +397,19 @@ export class CommerceDataStore {
       'accessories',
     ];
 
+    const now = new Date().toISOString();
     categoryNames.forEach((catName, idx) => {
       const catId = `cat-${this.slugify(catName)}`;
       this.categories.set(catId, {
         id: catId,
-        name: catName.toUpperCase(),
+        name: catName.charAt(0).toUpperCase() + catName.slice(1),
         slug: this.slugify(catName),
         description: `Signature PIERCYN ${catName} collection`,
+        imageUrl: undefined,
+        isActive: true,
         sortOrder: idx,
+        createdAt: now,
+        updatedAt: now,
       });
     });
 
@@ -411,9 +420,13 @@ export class CommerceDataStore {
       if (!this.categories.has(catId)) {
         this.categories.set(catId, {
           id: catId,
-          name: p.category.toUpperCase(),
+          name: p.category.charAt(0).toUpperCase() + p.category.slice(1),
           slug: catSlug,
+          imageUrl: undefined,
+          isActive: true,
           sortOrder: 10 + pIdx,
+          createdAt: now,
+          updatedAt: now,
         });
       }
 

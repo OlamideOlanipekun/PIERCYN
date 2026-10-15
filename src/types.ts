@@ -10,7 +10,8 @@ export type ProductCategory =
   | 'outerwear' 
   | 'trousers' 
   | 'jeans' 
-  | 'accessories';
+  | 'accessories'
+  | (string & {});
 
 export type MenCategory = 
   | 'ALL' 
@@ -53,6 +54,7 @@ export type ActivePageView =
   | 'account' 
   | 'product' 
   | 'collection' 
+  | 'category'
   | 'orderSuccess' 
   | 'orderTracking' 
   | 'notFound' 

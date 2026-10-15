@@ -143,6 +143,18 @@ apiRouter.get('/categories', async (_req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/categories/:slug/products', async (req: Request, res: Response) => {
+  try {
+    const category = (await ProductService.getCategories()).find((item) => item.slug === req.params.slug.toLowerCase());
+    if (!category) return res.status(404).json({ success: false, error: 'Category not found' });
+
+    const catalog = await ProductService.getCatalog({ category: category.slug, page: 1, limit: 100 });
+    res.json({ success: true, data: { category, products: catalog.products, meta: { total: catalog.total } } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 2. CART
 apiRouter.get('/cart', async (req: Request, res: Response) => {
   try {

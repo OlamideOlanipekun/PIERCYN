@@ -24,6 +24,7 @@ import { OrderConfirmationModal } from './components/OrderConfirmationModal';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { CollectionPage } from './components/CollectionPage';
+import { CategoryPage } from './components/CategoryPage';
 import { OrderPage } from './components/OrderPage';
 import { NotFoundPage } from './components/NotFoundPage';
 import { AdminDrawer } from './components/AdminDrawer';
@@ -227,6 +228,12 @@ const MainLayout: React.FC = () => {
       setActivePage('collection');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Collection';
+    } else if (rawPath.startsWith('/categories/') || rawPath.startsWith('/category/')) {
+      const catSlug = rawPath.replace(/^\/categor(?:ies|y)\//, '');
+      setRouteParam(catSlug);
+      setActivePage('category');
+      setCurrentPdpProduct(null);
+      document.title = 'PIERCYN — Category';
     } else if (rawPath.startsWith('/order/success/')) {
       setRouteParam(rawPath.replace('/order/success/', ''));
       setActivePage('orderSuccess');
@@ -285,6 +292,7 @@ const MainLayout: React.FC = () => {
       account: '/account',
       product: '/shop',
       collection: '/collections',
+      category: '/shop',
       orderSuccess: '/order-confirmation',
       orderTracking: '/track-order',
       notFound: '/',
@@ -323,6 +331,7 @@ const MainLayout: React.FC = () => {
       account: 'PIERCYN — Account',
       product: 'PIERCYN',
       collection: 'PIERCYN — Collection',
+      category: 'PIERCYN — Category',
       orderSuccess: 'Order Confirmed — PIERCYN',
       orderTracking: 'Order Tracking — PIERCYN',
       notFound: 'Page Not Found — PIERCYN',
@@ -446,6 +455,13 @@ const MainLayout: React.FC = () => {
         />
       ) : activePage === 'collection' ? (
         <CollectionPage slug={routeParam} products={products} loading={isLoadingProducts} error={catalogError} onRetry={refreshProducts} onViewProduct={handleViewProduct} onBackToShop={() => handleSelectPage('shop')} onNotFound={() => setActivePage('notFound')} />
+      ) : activePage === 'category' ? (
+        <CategoryPage
+          slug={routeParam}
+          onViewProduct={handleViewProduct}
+          onBackToShop={() => handleSelectPage('shop')}
+          onNotFound={() => setActivePage('notFound')}
+        />
       ) : activePage === 'orderSuccess' ? (
         <OrderPage orderId={routeParam} mode="success" onShop={() => handleSelectPage('shop')} />
       ) : activePage === 'orderTracking' ? (
