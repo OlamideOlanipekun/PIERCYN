@@ -10,7 +10,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage }) => {
-  const { setIsSizeGuideOpen, setIsAdminOpen } = useShop();
+  const { setIsSizeGuideOpen } = useShop();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -171,16 +171,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
           <div className="flex items-center gap-4">
             <span>LAGOS • NIGERIA</span>
             <span>•</span>
-            <button
-              id="footer-admin-trigger"
-              onClick={() => {
-                window.history.pushState({}, '', '/admin');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              className="underline hover:text-[#141414] cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
-            >
-              ADMIN
-            </button>
           </div>
         </div>
 
