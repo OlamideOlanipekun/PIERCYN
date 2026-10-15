@@ -22,11 +22,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
     window.dispatchEvent(new PopStateEvent('popstate'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const goToAdmin = () => {
-    window.history.pushState({}, '', '/admin');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
   const selectPage = (page: ActivePageView) => onSelectPage?.(page);
   const footerLinkClass = 'flex min-h-10 items-center text-left text-[12px] font-medium tracking-[0.08em] text-[#141414]/70 transition-colors hover:text-[#141414] editorial-link';
   const groupHeader = (group: FooterGroup, label: string) => (
@@ -186,16 +181,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <div className="flex items-center gap-4">
             <span>LAGOS • NIGERIA</span>
             <span>•</span>
-            <button
-              id="footer-admin-trigger"
-              onClick={() => {
-                window.history.pushState({}, '', '/admin');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              className="underline hover:text-[#141414] cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
-            >
-              ADMIN
-            </button>
           </div>
         </div>
 
@@ -250,7 +235,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
           <div className="flex flex-col gap-4 pt-5 text-[9px] font-medium uppercase tracking-[0.12em] text-[#F2F0EB]/55 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:pt-6 sm:text-[10px]">
             <p>© 2026 PIERCYN. ALL RIGHTS RESERVED.</p>
             <p className="text-[#F2F0EB]/75">LAGOS · NIGERIA</p>
-            <button id="footer-admin-bottom-trigger" onClick={goToAdmin} className="min-h-8 w-fit underline underline-offset-4 transition-colors hover:text-[#F2F0EB]">ADMIN</button>
           </div>
         </div>
       </div>
