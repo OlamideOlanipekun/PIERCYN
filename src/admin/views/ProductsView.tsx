@@ -15,6 +15,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Star,
 } from 'lucide-react';
 
 // ─── Image Upload Zone ─────────────────────────────────────────────────────
@@ -32,6 +33,15 @@ interface ImageUploadRowProps {
   bucket?: string;
 }
 
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+function validateImageFile(file: File): string | null {
+  if (!ACCEPTED_IMAGE_TYPES.has(file.type)) return 'Use a JPEG, PNG, WebP, or GIF image.';
+  if (file.size === 0 || file.size > MAX_IMAGE_SIZE_BYTES) return 'Each image must be between 1 byte and 3 MB.';
+  return null;
+}
+
 const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket = 'products' }) => {
   const addInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -39,10 +49,16 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
   // Upload files — optionally replace a specific slot index in-place
   const uploadFiles = async (files: FileList | null, replaceIdx?: number) => {
     if (!files || files.length === 0) return;
+    const selectedFiles = Array.from(files);
+    const invalidFile = selectedFiles.map(validateImageFile).find(Boolean);
+    if (invalidFile) {
+      window.alert(invalidFile);
+      return;
+    }
 
     if (replaceIdx !== undefined) {
       // Replace single slot in-place
-      const file = files[0];
+      const file = selectedFiles[0];
       const previewUrl = URL.createObjectURL(file);
       const updated = [...slots];
       const oldUrl = updated[replaceIdx]?.url;
@@ -61,7 +77,15 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
       }
     } else {
       // Append new slots
-      const newSlots: ImageSlot[] = Array.from(files).map((file) => ({
+      const existingFiles = new Set(slots.map((slot) => slot.file ? `${slot.file.name}:${slot.file.size}:${slot.file.lastModified}` : slot.url));
+      const uniqueFiles = selectedFiles.filter((file) => {
+        const key = `${file.name}:${file.size}:${file.lastModified}`;
+        if (existingFiles.has(key)) return false;
+        existingFiles.add(key);
+        return true;
+      });
+      if (uniqueFiles.length === 0) return;
+      const newSlots: ImageSlot[] = uniqueFiles.map((file) => ({
         url: URL.createObjectURL(file),
         file,
         uploading: true,
@@ -101,6 +125,14 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
     if (target < 0 || target >= slots.length) return;
     const next = [...slots];
     [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
+  };
+
+  const setPrimary = (idx: number) => {
+    if (idx === 0) return;
+    const next = [...slots];
+    const [selected] = next.splice(idx, 1);
+    next.unshift(selected);
     onChange(next);
   };
 
@@ -153,6 +185,15 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
                     <Upload className="h-3 w-3" />
                     <span className="text-[8px] font-mono uppercase">Replace</span>
                   </button>
+                  {!slot.error && idx !== 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPrimary(idx)}
+                      className="rounded bg-white/10 hover:bg-white/25 p-1 text-white cursor-pointer"
+                      title="Make primary image"
+                      aria-label={`Make image ${idx + 1} the primary image`}
+                    ><Star className="h-3 w-3" /></button>
+                  )}
                   {/* Reorder buttons */}
                   {!slot.error && slots.length > 1 && (
                     <>
@@ -332,6 +373,11 @@ export const ProductsView: React.FC = () => {
         .map((s) => s.url)
         .filter((u) => u && !u.startsWith('blob:'));
 
+      if (validImages.length === 0) {
+        setError('Upload at least one product image before creating the product.');
+        return;
+      }
+
       const defaultVariants = [
         {
           sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-BLK-M`,
@@ -368,9 +414,7 @@ export const ProductsView: React.FC = () => {
         categoryId: formCategory,
         priceNGN: Number(formPriceNGN),
         costPriceNGN: Number(formCostPriceNGN),
-        images: validImages.length > 0
-          ? validImages
-          : ['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'],
+        images: validImages,
         gsm: formGsm,
         fit: formFit,
         fabric: formFabric,
@@ -422,6 +466,11 @@ export const ProductsView: React.FC = () => {
       const validImages = editImageSlots
         .map((s) => s.url)
         .filter((u) => u && !u.startsWith('blob:'));
+
+      if (validImages.length === 0) {
+        setError('A product must retain at least one image.');
+        return;
+      }
 
       const newPrimary = validImages[0] || null;
       // Track old primary so we can detect which variants need updating

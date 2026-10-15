@@ -52,6 +52,32 @@ describe('PIERCYN V1 Admin Dashboard & Operations Engine', () => {
     });
   });
 
+  describe('Product image galleries', () => {
+    it('persists gallery order when a new primary image is selected', () => {
+      const product = ProductService.getAllProducts()[0];
+      const images = ['https://example.test/front.jpg', 'https://example.test/side.jpg', 'https://example.test/back.jpg'];
+
+      ProductService.updateProduct(product.id, { images: [images[2], images[0], images[1]] });
+
+      expect(ProductService.getProductBySlugOrId(product.id, true)?.images).toEqual([
+        'https://example.test/back.jpg',
+        'https://example.test/front.jpg',
+        'https://example.test/side.jpg',
+      ]);
+    });
+
+    it('replaces one gallery image without changing the other entries', () => {
+      const product = ProductService.getAllProducts()[0];
+      ProductService.updateProduct(product.id, { images: ['first.jpg', 'replacement.jpg', 'third.jpg'] });
+
+      expect(ProductService.getProductBySlugOrId(product.id, true)?.images).toEqual([
+        'first.jpg',
+        'replacement.jpg',
+        'third.jpg',
+      ]);
+    });
+  });
+
   describe('2. Order Operations & State Machine Transitions', () => {
     it('creates an order and respects valid state transitions: PENDING_PAYMENT -> PAID -> PROCESSING -> PACKED -> SHIPPED -> DELIVERED -> COMPLETED', () => {
       const products = ProductService.getAllProducts();

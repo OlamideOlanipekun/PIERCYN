@@ -191,6 +191,32 @@ adminRouter.post('/auth/logout', requireAdmin, (req: AuthenticatedAdminRequest, 
 // -------------------------------------------------------------
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const PRODUCT_IMAGE_PATH = /^\/storage\/v1\/object\/public\/products\/products\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i;
+
+function hasExpectedImageSignature(buffer: Buffer, mimeType: string): boolean {
+  if (mimeType === 'image/jpeg') return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (mimeType === 'image/png') return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (mimeType === 'image/gif') return buffer.length >= 6 && (buffer.subarray(0, 6).toString('ascii') === 'GIF87a' || buffer.subarray(0, 6).toString('ascii') === 'GIF89a');
+  return buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+}
+
+function isManagedProductImageUrl(value: string): boolean {
+  try {
+    const storageUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    if (!storageUrl) return false;
+    const url = new URL(value);
+    return url.origin === new URL(storageUrl).origin && PRODUCT_IMAGE_PATH.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function assertAuthorizedProductImages(images: string[], existingImages: string[] = []): void {
+  const existing = new Set(existingImages);
+  if (images.length === 0 || images.some((image) => !isManagedProductImageUrl(image) && !existing.has(image))) {
+    throw new Error('Product images must be uploaded through the admin image uploader.');
+  }
+}
 
 adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
@@ -208,9 +234,15 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
     }
 
     const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Data)) {
+      return res.status(400).json({ success: false, error: 'Invalid image encoding.' });
+    }
     const buffer = Buffer.from(base64Data, 'base64');
     if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
       return res.status(400).json({ success: false, error: 'Image must be between 1 byte and 3 MB.' });
+    }
+    if (!hasExpectedImageSignature(buffer, mimeType)) {
+      return res.status(400).json({ success: false, error: 'Image contents do not match the declared file type.' });
     }
 
     const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
@@ -389,6 +421,7 @@ adminRouter.get('/products', requireAdmin, (req: Request, res: Response) => {
 adminRouter.post('/products', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const validated = CreateProductSchema.parse(req.body);
+    assertAuthorizedProductImages(validated.images);
     const created = ProductService.createProduct(validated as any);
 
     AuditService.log({
@@ -411,6 +444,15 @@ adminRouter.post('/products', requireAdmin, (req: AuthenticatedAdminRequest, res
 adminRouter.patch('/products/:id', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const previous = dbStore.products.get(req.params.id);
+    if (!previous) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+    if (req.body.images !== undefined) {
+      if (!Array.isArray(req.body.images) || !req.body.images.every((image: unknown) => typeof image === 'string')) {
+        return res.status(400).json({ success: false, error: 'images must be an array of image URLs.' });
+      }
+      assertAuthorizedProductImages(req.body.images, previous.images);
+    }
     const prevDetails = previous ? `${previous.name} | ₦${previous.priceNGN} | ${previous.status}` : '';
 
     const updated = ProductService.updateProduct(req.params.id, req.body);
