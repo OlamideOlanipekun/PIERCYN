@@ -174,7 +174,7 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
 
               {/* Action bar — visible on hover */}
               {!slot.uploading && (
-                <div className="absolute bottom-0 inset-x-0 flex items-center gap-1 px-1 py-1 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute bottom-0 inset-x-0 flex items-center gap-1 px-1 py-1 bg-black/80 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                   {/* Replace this image */}
                   <button
                     type="button"
