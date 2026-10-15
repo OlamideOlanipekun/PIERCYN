@@ -22,9 +22,19 @@ import {
 
 interface ImageSlot {
   url: string;        // final URL (remote or object URL for preview)
+  originalUrl?: string;
   file?: File;        // pending file to upload
   uploading?: boolean;
   error?: string;
+}
+
+function gallerySlotsForProduct(product: AdminProduct): ImageSlot[] {
+  const urls = [
+    ...(product.images || []),
+    ...(product.variants || []).flatMap((variant) => [variant.image, variant.altImage]),
+  ].filter((url): url is string => Boolean(url));
+
+  return Array.from(new Set(urls)).map((url) => ({ url, originalUrl: url }));
 }
 
 interface ImageUploadRowProps {
@@ -61,18 +71,20 @@ const ImageUploadRow: React.FC<ImageUploadRowProps> = ({ slots, onChange, bucket
       const file = selectedFiles[0];
       const previewUrl = URL.createObjectURL(file);
       const updated = [...slots];
-      const oldUrl = updated[replaceIdx]?.url;
+      const oldSlot = updated[replaceIdx];
+      const oldUrl = oldSlot?.url;
+      const originalUrl = oldSlot?.originalUrl || oldUrl;
       if (oldUrl?.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
-      updated[replaceIdx] = { url: previewUrl, file, uploading: true };
+      updated[replaceIdx] = { url: previewUrl, originalUrl, file, uploading: true };
       onChange([...updated]);
       try {
         const publicUrl = await uploadImageToSupabase(file, bucket);
         if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-        updated[replaceIdx] = { url: publicUrl, uploading: false };
+        updated[replaceIdx] = { url: publicUrl, originalUrl, uploading: false };
         onChange([...updated]);
       } catch (err: any) {
         if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-        updated[replaceIdx] = { url: '', uploading: false, error: err.message };
+        updated[replaceIdx] = { ...oldSlot, uploading: false, error: err.message };
         onChange([...updated]);
       }
     } else {
@@ -502,6 +514,23 @@ export const ProductsView: React.FC = () => {
         isLimited: Boolean(editingProduct.isLimited),
       });
 
+      const replacements = new Map(
+        editImageSlots
+          .filter((slot) => slot.originalUrl && slot.url && slot.originalUrl !== slot.url)
+          .map((slot) => [slot.originalUrl as string, slot.url])
+      );
+      if (replacements.size > 0) {
+        await Promise.allSettled(
+          (editingProduct.variants || []).flatMap((variant) => {
+            const image = variant.image ? replacements.get(variant.image) : undefined;
+            const altImage = variant.altImage ? replacements.get(variant.altImage) : undefined;
+            return image || altImage
+              ? [AdminApi.updateVariant(variant.id, { ...(image ? { image } : {}), ...(altImage ? { altImage } : {}) })]
+              : [];
+          })
+        );
+      }
+
       // Sync primary image to variants that were using the old primary image
       // (i.e. variants without a custom image of their own)
       if (newPrimary && newPrimary !== oldPrimary) {
@@ -700,7 +729,7 @@ export const ProductsView: React.FC = () => {
                       <button
                         onClick={() => {
                           setEditingProduct(p);
-                          setEditImageSlots((p.images || []).map((url) => ({ url })));
+                          setEditImageSlots(gallerySlotsForProduct(p));
                         }}
                         className="flex-1 py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[42px]"
                       >
@@ -809,10 +838,7 @@ export const ProductsView: React.FC = () => {
                         <button
                           onClick={() => {
                             setEditingProduct(p);
-                            // Pre-populate edit image slots from existing product images
-                            setEditImageSlots(
-                              (p.images || []).map((url) => ({ url }))
-                            );
+                            setEditImageSlots(gallerySlotsForProduct(p));
                           }}
                           className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
                           title="Edit Product"
