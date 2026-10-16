@@ -190,6 +190,37 @@ class AdminApiClient {
     });
   }
 
+  public async previewBulkProducts(data: any): Promise<any> {
+    return this.request('/products/bulk-preview', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  public async bulkUpdateProducts(data: any): Promise<any> {
+    return this.request('/products/bulk', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  public async restoreProducts(productIds: string[]): Promise<{ restored: number }> {
+    return this.request('/products/bulk/restore', { method: 'POST', body: JSON.stringify({ productIds }) });
+  }
+
+  public async previewProductImport(csvText: string, mode: 'CREATE' | 'UPDATE'): Promise<any> {
+    return this.request('/products/import/preview', { method: 'POST', body: JSON.stringify({ csvText, mode }) });
+  }
+
+  public async commitProductImport(csvText: string, mode: 'CREATE' | 'UPDATE', allowPublish: boolean): Promise<any> {
+    return this.request('/products/import/commit', { method: 'POST', body: JSON.stringify({ csvText, mode, allowPublish }) });
+  }
+
+  public async downloadProducts(params?: { ids?: string[]; category?: string; status?: string; search?: string }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params?.ids?.length) query.set('ids', params.ids.join(','));
+    if (params?.category && params.category !== 'ALL') query.set('category', params.category);
+    if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+    if (params?.search) query.set('search', params.search);
+    const res = await fetch(`${ADMIN_API_BASE}/products/export?${query.toString()}`, { headers: this.getHeaders() });
+    if (!res.ok) throw new Error('Unable to export products.');
+    return res.blob();
+  }
+
   public async uploadProductImage(file: File): Promise<{ publicUrl: string }> {
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
       throw new Error('Only JPEG, PNG, WebP, and GIF images are supported.');

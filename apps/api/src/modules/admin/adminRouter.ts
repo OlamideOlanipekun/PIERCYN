@@ -14,6 +14,7 @@ import { ReviewService } from '../reviews/reviewService';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { z } from 'zod';
+import { commitProductCsv, createProductCsvTemplate, productRowsToCsv, validateProductCsv } from './bulkProductService';
 
 // Storage is optional for API boot. Create the privileged client only on upload requests.
 let supabaseAdmin: SupabaseClient | null = null;
@@ -87,6 +88,14 @@ const CreateShipmentSchema = z.object({
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+function hasExpectedImageSignature(buffer: Buffer, mimeType: string): boolean {
+  if (mimeType === 'image/jpeg') return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  if (mimeType === 'image/png') return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (mimeType === 'image/gif') return buffer.length >= 6 && ['GIF87a', 'GIF89a'].includes(buffer.subarray(0, 6).toString('ascii'));
+  if (mimeType === 'image/webp') return buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+  return false;
+}
 
 const UploadImageSchema = z.object({
   fileBase64: z.string().min(1),
@@ -174,6 +183,32 @@ const CreateCategorySchema = z.object({
   description: z.string().trim().max(500).optional(),
   imageUrl: z.string().url().optional().or(z.literal('')),
   sortOrder: z.number().int().nonnegative().optional(),
+});
+
+const BulkProductSchema = z.object({
+  productIds: z.array(z.string().min(1)).min(1).max(100),
+  operation: z.enum(['SET_CATEGORY', 'SET_STATUS', 'ADJUST_PRICE']),
+  categoryId: z.string().min(1).optional(),
+  status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+  priceAdjustment: z.object({
+    type: z.enum(['FIXED', 'PERCENTAGE']),
+    amount: z.number().finite(),
+  }).optional(),
+}).superRefine((value, context) => {
+  if (value.operation === 'SET_CATEGORY' && !value.categoryId) context.addIssue({ code: 'custom', message: 'A category is required.' });
+  if (value.operation === 'SET_STATUS' && !value.status) context.addIssue({ code: 'custom', message: 'A status is required.' });
+  if (value.operation === 'ADJUST_PRICE' && !value.priceAdjustment) context.addIssue({ code: 'custom', message: 'A price adjustment is required.' });
+});
+
+const CsvImportSchema = z.object({
+  csvText: z.string().min(1).max(750_000),
+  mode: z.enum(['CREATE', 'UPDATE']),
+  allowPublish: z.boolean().optional(),
+});
+
+const PermanentDeleteSchema = z.object({
+  productIds: z.array(z.string().min(1)).min(1).max(25),
+  confirmation: z.string().min(1),
 });
 const UpdateCategorySchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
@@ -272,6 +307,9 @@ adminRouter.post('/upload-image', requireAdmin, async (req: AuthenticatedAdminRe
     const buffer = Buffer.from(base64Data, 'base64');
     if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) {
       return res.status(400).json({ success: false, error: 'Image must be between 1 byte and 3 MB.' });
+    }
+    if (!hasExpectedImageSignature(buffer, mimeType)) {
+      return res.status(400).json({ success: false, error: 'Image contents do not match the declared file type.' });
     }
 
     const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
@@ -588,6 +626,159 @@ adminRouter.get('/products', requireAdmin, async (req: Request, res: Response) =
     res.json({ success: true, count: products.length, data: products });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.get('/products/export', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const ids = typeof req.query.ids === 'string' ? req.query.ids.split(',').map((id) => id.trim()).filter(Boolean).slice(0, 100) : undefined;
+    const products = await ProductService.getAllProducts({
+      category: req.query.category as string,
+      status: req.query.status as string,
+      search: req.query.search as string,
+      includeInactive: true,
+    });
+    const selected = ids?.length ? products.filter((product) => ids.includes(product.id)) : products;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="piercyn-products.csv"');
+    return res.send(productRowsToCsv(selected));
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Unable to export products.' });
+  }
+});
+
+adminRouter.get('/products/import-template', requireAdmin, (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="piercyn-product-import-template.csv"');
+  return res.send(createProductCsvTemplate());
+});
+
+adminRouter.post('/products/import/preview', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const input = CsvImportSchema.parse(req.body);
+    const rows = await validateProductCsv(input.csvText, input.mode);
+    const validRows = rows.filter((row) => row.errors.length === 0).length;
+    return res.json({ success: true, data: { rows, validRows, invalidRows: rows.length - validRows } });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Invalid CSV import.' });
+  }
+});
+
+adminRouter.post('/products/import/commit', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = CsvImportSchema.parse(req.body);
+    const rows = await validateProductCsv(input.csvText, input.mode);
+    const invalidRows = rows.filter((row) => row.errors.length > 0);
+    if (invalidRows.length) {
+      return res.status(409).json({ success: false, error: 'Resolve all CSV validation errors before importing.', data: { rows, invalidRows: invalidRows.length } });
+    }
+    const results = await commitProductCsv(rows, input.mode, input.allowPublish === true);
+    const failed = results.filter((result) => result.action === 'FAILED');
+    await AuditService.log({
+      adminId: req.admin?.id, adminEmail: req.admin?.email,
+      action: 'PRODUCT_CSV_IMPORT', resource: 'PRODUCT', resourceId: `import-${Date.now()}`,
+      newValue: JSON.stringify({ mode: input.mode, imported: results.length - failed.length, failed: failed.length }),
+      note: 'Bounded CSV catalogue import',
+    });
+    return res.status(failed.length ? 207 : 201).json({ success: true, data: { results, createdOrUpdated: results.length - failed.length, failed: failed.length } });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Unable to import products.' });
+  }
+});
+
+async function getBulkPreview(input: z.infer<typeof BulkProductSchema>) {
+  const products = await prisma.product.findMany({
+    where: { id: { in: input.productIds } },
+    select: { id: true, name: true, priceNGN: true, status: true, categoryId: true },
+  });
+  let categoryId = input.categoryId;
+  if (input.operation === 'SET_CATEGORY') {
+    const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { id: true } });
+    if (!category) throw new Error('The selected category does not exist.');
+  }
+  const items = products.map((product) => {
+    const nextPrice = input.operation === 'ADJUST_PRICE'
+      ? Math.round(input.priceAdjustment!.type === 'PERCENTAGE'
+        ? product.priceNGN * (1 + input.priceAdjustment!.amount / 100)
+        : product.priceNGN + input.priceAdjustment!.amount)
+      : product.priceNGN;
+    return {
+      id: product.id, name: product.name, currentPriceNGN: product.priceNGN, nextPriceNGN: nextPrice,
+      currentStatus: product.status, nextStatus: input.operation === 'SET_STATUS' ? input.status : product.status,
+      currentCategoryId: product.categoryId, nextCategoryId: input.operation === 'SET_CATEGORY' ? categoryId : product.categoryId,
+      valid: nextPrice > 0,
+    };
+  });
+  return { items, missingProductIds: input.productIds.filter((id) => !products.some((product) => product.id === id)) };
+}
+
+adminRouter.post('/products/bulk-preview', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const input = BulkProductSchema.parse(req.body);
+    return res.json({ success: true, data: await getBulkPreview(input) });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Invalid bulk operation.' });
+  }
+});
+
+adminRouter.post('/products/bulk', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = BulkProductSchema.parse(req.body);
+    const preview = await getBulkPreview(input);
+    if (preview.missingProductIds.length || preview.items.some((item) => !item.valid)) {
+      return res.status(409).json({ success: false, error: 'The bulk operation is no longer valid. Refresh the preview and try again.', data: preview });
+    }
+    await prisma.$transaction(preview.items.map((item) => {
+      const data = input.operation === 'SET_CATEGORY' ? { categoryId: input.categoryId! }
+        : input.operation === 'SET_STATUS' ? { status: input.status! }
+        : { priceNGN: item.nextPriceNGN };
+      return prisma.product.update({ where: { id: item.id }, data });
+    }));
+    if (input.operation === 'SET_STATUS' && input.status === 'ARCHIVED') {
+      await prisma.productVariant.updateMany({ where: { productId: { in: input.productIds } }, data: { isActive: false } });
+    }
+    await AuditService.log({
+      adminId: req.admin?.id, adminEmail: req.admin?.email, action: 'PRODUCT_BULK_UPDATED', resource: 'PRODUCT',
+      resourceId: input.productIds.join(','), newValue: JSON.stringify(input), note: `${preview.items.length} products updated`,
+    });
+    return res.json({ success: true, data: { updated: preview.items.length, skipped: 0, items: preview.items } });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Unable to complete bulk operation.' });
+  }
+});
+
+adminRouter.post('/products/bulk/restore', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const productIds = z.object({ productIds: z.array(z.string().min(1)).min(1).max(100) }).parse(req.body).productIds;
+    const result = await prisma.product.updateMany({ where: { id: { in: productIds }, status: 'ARCHIVED' }, data: { status: 'DRAFT' } });
+    await AuditService.log({ adminId: req.admin?.id, adminEmail: req.admin?.email, action: 'PRODUCT_BULK_RESTORED', resource: 'PRODUCT', resourceId: productIds.join(','), newValue: 'DRAFT', note: 'Restored as drafts; explicit publishing is required.' });
+    return res.json({ success: true, data: { restored: result.count } });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Unable to restore products.' });
+  }
+});
+
+adminRouter.delete('/products/bulk/permanent', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = PermanentDeleteSchema.parse(req.body);
+    const expected = `DELETE ${input.productIds.length} PRODUCTS`;
+    if (input.confirmation.trim().toUpperCase() !== expected) return res.status(400).json({ success: false, error: `Type "${expected}" to confirm permanent deletion.` });
+    const products = await prisma.product.findMany({ where: { id: { in: input.productIds } }, select: { id: true, name: true, _count: { select: { reviews: true } } } });
+    const orderItems = await prisma.orderItem.findMany({ where: { productId: { in: input.productIds } }, select: { productId: true } });
+    const orderedIds = new Set(orderItems.map((item) => item.productId));
+    const eligible = products.filter((product) => !orderedIds.has(product.id) && product._count.reviews === 0);
+    const protectedProducts = products.filter((product) => !eligible.includes(product)).map((product) => ({ id: product.id, name: product.name, reason: orderedIds.has(product.id) ? 'Referenced by historical order items.' : 'Has product reviews.' }));
+    if (eligible.length) await prisma.product.deleteMany({ where: { id: { in: eligible.map((product) => product.id) } } });
+    await AuditService.log({ adminId: req.admin?.id, adminEmail: req.admin?.email, action: 'PRODUCT_PERMANENT_DELETE', resource: 'PRODUCT', resourceId: input.productIds.join(','), newValue: JSON.stringify({ deleted: eligible.map((product) => product.id), protectedProducts }), note: 'Historical records and referenced images were not deleted.' });
+    return res.json({ success: true, data: { deleted: eligible.map((product) => ({ id: product.id, name: product.name })), protectedProducts } });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    return res.status(400).json({ success: false, error: message || 'Unable to permanently delete products.' });
   }
 });
 

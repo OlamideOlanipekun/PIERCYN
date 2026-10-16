@@ -30,4 +30,22 @@ describe('public catalog filtering', () => {
     expect(invalid.status).toBe(400);
     expect(invalid.body.success).toBe(false);
   });
+
+  it('includes published-only rating summaries in listing and search responses', async () => {
+    const allProducts = Array.from(dbStore.products.values());
+    const reviewedProduct = allProducts[0];
+    const unreviewedProduct = allProducts[allProducts.length - 1];
+
+    const listing = await request(app).get('/api/products').query({ limit: 100 });
+    expect(listing.status).toBe(200);
+    expect(listing.body.data.find((product: any) => product.id === reviewedProduct.id).ratingSummary)
+      .toMatchObject({ averageRating: 4.7, totalReviews: 3 });
+    expect(listing.body.data.find((product: any) => product.id === unreviewedProduct.id).ratingSummary)
+      .toEqual({ averageRating: null, totalReviews: 0 });
+
+    const search = await request(app).get('/api/products').query({ search: reviewedProduct.name, limit: 100 });
+    expect(search.status).toBe(200);
+    expect(search.body.data.find((product: any) => product.id === reviewedProduct.id).ratingSummary)
+      .toMatchObject({ averageRating: 4.7, totalReviews: 3 });
+  });
 });

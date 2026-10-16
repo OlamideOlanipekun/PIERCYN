@@ -13,6 +13,8 @@ import {
   X,
   AlertCircle,
   TrendingUp,
+  Download,
+  Upload,
 } from 'lucide-react';
 
 export const ProductsView: React.FC = () => {
@@ -29,6 +31,9 @@ export const ProductsView: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<'ACTIVE' | 'DRAFT' | 'ARCHIVED'>('DRAFT');
+  const [importReport, setImportReport] = useState<string | null>(null);
 
   // Add Product Form State
   const [formName, setFormName] = useState('');
@@ -196,6 +201,67 @@ export const ProductsView: React.FC = () => {
     }
   };
 
+  const toggleProductSelection = (id: string) => {
+    setSelectedProductIds((selected) => selected.includes(id) ? selected.filter((selectedId) => selectedId !== id) : [...selected, id]);
+  };
+
+  const handleBulkStatus = async () => {
+    if (!selectedProductIds.length) return;
+    try {
+      setSaving(true);
+      const preview = await AdminApi.previewBulkProducts({ productIds: selectedProductIds, operation: 'SET_STATUS', status: bulkStatus });
+      if (!window.confirm(`Apply ${bulkStatus} to ${preview.items.length} selected product(s)?`)) return;
+      await AdminApi.bulkUpdateProducts({ productIds: selectedProductIds, operation: 'SET_STATUS', status: bulkStatus });
+      setSelectedProductIds([]);
+      await fetchProducts();
+    } catch (err: any) {
+      setError(err.message || 'Unable to update selected products.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const blob = await AdminApi.downloadProducts({
+        ids: selectedProductIds.length ? selectedProductIds : undefined,
+        category: categoryFilter,
+        status: statusFilter,
+        search: search.trim() || undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'piercyn-products.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || 'Unable to export products.');
+    }
+  };
+
+  const handleImportFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      setSaving(true);
+      const csvText = await file.text();
+      const preview = await AdminApi.previewProductImport(csvText, 'CREATE');
+      if (preview.invalidRows) {
+        setImportReport(`${preview.invalidRows} row(s) need correction. ${preview.rows.slice(0, 3).filter((row: any) => row.errors.length).map((row: any) => `Row ${row.row}: ${row.errors.join(' ')}`).join(' ')}`);
+        return;
+      }
+      setImportReport(`${preview.validRows} valid row(s) ready to import as drafts.`);
+      if (!window.confirm(`Import ${preview.validRows} product(s) as drafts?`)) return;
+      const result = await AdminApi.commitProductImport(csvText, 'CREATE', false);
+      setImportReport(`Import complete: ${result.createdOrUpdated} product(s) created or updated; ${result.failed} failed.`);
+      await fetchProducts();
+    } catch (err: any) {
+      setError(err.message || 'Unable to import CSV file.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------- */}
@@ -209,14 +275,36 @@ export const ProductsView: React.FC = () => {
           <h2 className="text-xl font-bold text-[#F2F0EB]">Garments & Collections</h2>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>ADD NEW PRODUCT</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <label className="flex items-center justify-center gap-2 px-3 py-2.5 border border-[#3a3a3a] hover:bg-white/5 text-[#F2F0EB] font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer">
+            <Upload className="w-4 h-4" /> Import CSV
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => handleImportFile(event.target.files?.[0])} />
+          </label>
+          <button onClick={handleExport} className="flex items-center justify-center gap-2 px-3 py-2.5 border border-[#3a3a3a] hover:bg-white/5 text-[#F2F0EB] font-bold text-xs uppercase tracking-widest rounded-lg">
+            <Download className="w-4 h-4" /> Export
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>ADD NEW PRODUCT</span>
+          </button>
+        </div>
       </div>
+
+      {importReport && <div className="rounded-lg border border-sky-900 bg-sky-950/30 px-4 py-3 text-xs text-sky-100">{importReport}</div>}
+
+      {selectedProductIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#504f47] bg-[#1c1b18] px-4 py-3 text-xs">
+          <span className="font-mono text-[#F2F0EB]">{selectedProductIds.length} selected</span>
+          <select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as any)} className="rounded bg-[#0A0A0A] border border-[#3a3a3a] px-2 py-1.5 text-[#F2F0EB]">
+            <option value="ACTIVE">Publish</option><option value="DRAFT">Unpublish</option><option value="ARCHIVED">Archive</option>
+          </select>
+          <button disabled={saving} onClick={handleBulkStatus} className="rounded bg-[#F2F0EB] px-3 py-1.5 font-bold text-[#0A0A0A] disabled:opacity-50">Preview & apply</button>
+          <button onClick={() => setSelectedProductIds([])} className="text-neutral-400 hover:text-white">Clear selection</button>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 2. SEARCH & CATEGORY FILTER */}
@@ -287,6 +375,7 @@ export const ProductsView: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
+                  <th className="py-3 pr-2"><input aria-label="Select all filtered products" type="checkbox" checked={products.length > 0 && selectedProductIds.length === products.length} onChange={(event) => setSelectedProductIds(event.target.checked ? products.map((product) => product.id) : [])} /></th>
                   <th className="py-3 font-normal">Garment</th>
                   <th className="py-3 font-normal">Category</th>
                   <th className="py-3 font-normal">Retail Price</th>
@@ -308,6 +397,7 @@ export const ProductsView: React.FC = () => {
 
                   return (
                     <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3.5 pr-2"><input aria-label={`Select ${p.name}`} type="checkbox" checked={selectedProductIds.includes(p.id)} onChange={() => toggleProductSelection(p.id)} /></td>
                       <td className="py-3.5">
                         <div className="flex items-center gap-3">
                           <img

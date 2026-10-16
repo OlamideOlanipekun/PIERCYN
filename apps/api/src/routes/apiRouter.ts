@@ -149,7 +149,12 @@ apiRouter.get('/categories/:slug/products', async (req: Request, res: Response) 
     if (!category) return res.status(404).json({ success: false, error: 'Category not found' });
 
     const catalog = await ProductService.getCatalog({ category: category.slug, page: 1, limit: 100 });
-    res.json({ success: true, data: { category, products: catalog.products, meta: { total: catalog.total } } });
+    const ratingSummaries = await ReviewService.batchGetRatingSummaries(catalog.products.map((product) => product.id));
+    const products = catalog.products.map((product) => ({
+      ...product,
+      ratingSummary: ratingSummaries[product.id] || { averageRating: null, totalReviews: 0 },
+    }));
+    res.json({ success: true, data: { category, products, meta: { total: catalog.total } } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

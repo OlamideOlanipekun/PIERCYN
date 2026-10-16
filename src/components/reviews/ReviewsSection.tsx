@@ -151,11 +151,13 @@ const ReviewSkeleton: React.FC = () => (
 interface ReviewsSectionProps {
   productId: string;
   productName: string;
+  onReviewSubmitted?: () => void;
 }
 
 export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   productId,
   productName,
+  onReviewSubmitted,
 }) => {
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [reviews, setReviews] = useState<PublicReview[]>([]);
@@ -228,6 +230,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     setShowForm(false);
     // Re-fetch to show updated state (review pending)
     fetchReviews(1, sort, true);
+    onReviewSubmitted?.();
   };
 
   const hasMore = page < totalPages;

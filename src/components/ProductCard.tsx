@@ -191,10 +191,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* 3. Rating Row */}
           <div className="pt-0.5">
-            {(product.ratingSummary?.averageRating ?? product.rating) ? (
+            {product.ratingSummary?.averageRating !== null && product.ratingSummary?.averageRating !== undefined ? (
               <StarRatingDisplay
-                rating={product.ratingSummary?.averageRating ?? product.rating ?? null}
-                reviewCount={product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0}
+                rating={product.ratingSummary.averageRating}
+                reviewCount={product.ratingSummary.totalReviews}
                 size="xs"
                 showCount
               />

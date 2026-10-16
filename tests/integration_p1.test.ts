@@ -37,6 +37,21 @@ describe('PIERCYN P1 Catalog & Cart Integration Tests', () => {
       });
     });
 
+    it('preserves server-provided review aggregates for product cards', () => {
+      const serverProduct = {
+        ...ProductService.getAllProducts()[0],
+        ratingSummary: { averageRating: 4.5, totalReviews: 12 },
+      };
+
+      const frontendProduct = mapServerProduct(serverProduct);
+
+      expect(frontendProduct.ratingSummary).toEqual({
+        averageRating: 4.5,
+        totalReviews: 12,
+        ratingDistribution: undefined,
+      });
+    });
+
     it('retrieves products by slug via ProductService directly', () => {
       const all = ProductService.getAllProducts();
       const target = all[0];

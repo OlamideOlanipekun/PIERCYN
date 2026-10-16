@@ -56,6 +56,17 @@ export function mapServerProduct(p: any): Product {
     ? p.totalAvailableStock
     : (typeof p.stock === 'number' ? p.stock : undefined);
 
+  const ratingSummary = p.ratingSummary &&
+    typeof p.ratingSummary.totalReviews === 'number' &&
+    p.ratingSummary.totalReviews >= 0 &&
+    (p.ratingSummary.averageRating === null || typeof p.ratingSummary.averageRating === 'number')
+    ? {
+        averageRating: p.ratingSummary.averageRating,
+        totalReviews: p.ratingSummary.totalReviews,
+        ratingDistribution: p.ratingSummary.ratingDistribution,
+      }
+    : undefined;
+
   return {
     id: p.id || '',
     name: p.name || '',
@@ -86,6 +97,7 @@ export function mapServerProduct(p: any): Product {
     availabilityType: p.availabilityType || (p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'available_to_order' : 'in_stock'),
     fulfillmentTimeline: p.fulfillmentTimeline || (p.availabilityType === 'available_to_order' || p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'Sourced on order · Dispatched in 5–7 business days' : 'Dispatched in 24–48 hours from Lagos'),
     supplierVerified: p.supplierVerified ?? true,
+    ratingSummary,
   };
 }
 

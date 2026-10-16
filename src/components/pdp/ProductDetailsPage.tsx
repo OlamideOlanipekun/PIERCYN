@@ -28,12 +28,14 @@ interface ProductDetailsPageProps {
   product: Product | null;
   onSelectPage: (page: ActivePageView) => void;
   onViewProduct: (product: Product) => void;
+  onReviewSubmitted?: () => void;
 }
 
 export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   onSelectPage,
   onViewProduct,
+  onReviewSubmitted,
 }) => {
   const {
     products,
@@ -264,12 +266,12 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 aria-label={`Jump to reviews for ${product.name}`}
               >
                 <StarRatingDisplay
-                  rating={product.ratingSummary?.averageRating ?? product.rating ?? null}
-                  reviewCount={product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0}
+                  rating={product.ratingSummary?.averageRating ?? null}
+                  reviewCount={product.ratingSummary?.totalReviews ?? 0}
                   size="sm"
                 />
                 <span className="text-[11px] font-mono text-[#7A7771] group-hover:underline">
-                  ({product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0} {(product.ratingSummary?.totalReviews ?? product.reviewCount ?? 0) === 1 ? 'review' : 'reviews'})
+                  ({product.ratingSummary?.totalReviews ?? 0} {(product.ratingSummary?.totalReviews ?? 0) === 1 ? 'review' : 'reviews'})
                 </span>
               </button>
 
@@ -563,6 +565,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
         <ReviewsSection
           productId={product.id}
           productName={product.name}
+          onReviewSubmitted={onReviewSubmitted}
         />
 
       </div>

@@ -30,6 +30,7 @@ import { NotFoundPage } from './components/NotFoundPage';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { initAffiliateTracking } from './utils/affiliateTracking';
+import { catalogService } from './services/catalogService';
 import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
 import { CartPage } from './components/CartPage';
 import { CheckoutPage } from './components/CheckoutPage';
@@ -452,6 +453,13 @@ const MainLayout: React.FC = () => {
           product={currentPdpProduct}
           onSelectPage={handleSelectPage}
           onViewProduct={handleViewProduct}
+          onReviewSubmitted={async () => {
+            await refreshProducts();
+            const updatedProduct = await catalogService.getProductBySlug(
+              currentPdpProduct?.slug || currentPdpProduct?.id || ''
+            );
+            if (updatedProduct) setCurrentPdpProduct(updatedProduct);
+          }}
         />
       ) : activePage === 'collection' ? (
         <CollectionPage slug={routeParam} products={products} loading={isLoadingProducts} error={catalogError} onRetry={refreshProducts} onViewProduct={handleViewProduct} onBackToShop={() => handleSelectPage('shop')} onNotFound={() => setActivePage('notFound')} />
