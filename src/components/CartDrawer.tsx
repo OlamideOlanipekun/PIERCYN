@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useShop } from '../context/ShopContext';
 import { formatNumericPrice } from '../utils/currency';
 import { SHIPPING_CONFIG } from '../utils/shipping';
@@ -24,6 +25,8 @@ export const CartDrawer: React.FC = () => {
     removePromoCode,
   } = useShop();
 
+  const shouldReduceMotion = useReducedMotion();
+  const motionDuration = shouldReduceMotion ? 0 : 0.28;
   const [promoCode, setPromoCode] = useState(appliedPromoCode || '');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
@@ -65,26 +68,53 @@ export const CartDrawer: React.FC = () => {
     setIsCheckoutOpen(true);
   };
 
-  if (!isCartOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Shopping Bag">
+    <AnimatePresence>
+      {isCartOpen && (
+    <motion.div
+      className="fixed inset-0 z-50 overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Shopping Bag"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: motionDuration }}
+    >
       {/* Backdrop */}
-      <div 
+      <motion.div
         onClick={() => setIsCartOpen(false)}
-        className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
+        className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: motionDuration }}
+        aria-hidden="true"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
-        <div className="w-screen max-w-full sm:max-w-md bg-[#F2F0EB] text-[#141414] shadow-2xl flex flex-col justify-between border-l border-[#E3DEC3] animate-in slide-in-from-right duration-300">
+      <motion.div
+        className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10"
+        initial={{ x: shouldReduceMotion ? 0 : 44, opacity: shouldReduceMotion ? 1 : 0.85 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: shouldReduceMotion ? 0 : 44, opacity: 0 }}
+        transition={{ duration: motionDuration, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="w-screen max-w-full sm:max-w-md bg-[#F2F0EB] text-[#141414] shadow-2xl flex flex-col justify-between border-l border-[#E3DEC3]">
           
           {/* Top Header */}
           <div className="h-14 sm:h-16 px-4 sm:px-6 border-b border-[#E3DEC3] flex items-center justify-between font-sans shrink-0">
             <div className="flex items-center gap-3">
               <span className="font-editorial text-2xl sm:text-3xl uppercase tracking-[-0.02em]">SHOPPING BAG</span>
-              <span className="text-[10px] font-sans font-bold tracking-wider bg-[#141414] text-[#F2F0EB] px-2.5 sm:px-3 py-1 rounded-full">
+              <motion.span
+                key={cartCount}
+                className="text-[10px] font-sans font-bold tracking-wider bg-[#141414] text-[#F2F0EB] px-2.5 sm:px-3 py-1 rounded-full"
+                initial={shouldReduceMotion ? false : { scale: 0.82, opacity: 0.65 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: motionDuration, ease: [0.16, 1, 0.3, 1] }}
+                aria-live="polite"
+              >
                 {cartCount} {cartCount === 1 ? 'PIECE' : 'PIECES'}
-              </span>
+              </motion.span>
             </div>
 
             <button
@@ -105,9 +135,11 @@ export const CartDrawer: React.FC = () => {
                   <span>{Math.round(progressPercent)}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-[#D5CFBF] rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#141414] rounded-full transition-all duration-500" 
-                    style={{ width: `${progressPercent}%` }}
+                  <motion.div
+                    className="h-full bg-[#141414] rounded-full"
+                    initial={false}
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.55, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
                 <span className="text-[10px] text-[#6E6B65] font-medium lowercase">
@@ -125,7 +157,14 @@ export const CartDrawer: React.FC = () => {
           {/* Bag Items List */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
             {cart.length === 0 ? (
-              <div className="py-16 sm:py-20 text-center space-y-4">
+              <motion.div
+                key="empty-cart"
+                className="py-16 sm:py-20 text-center space-y-4"
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: motionDuration }}
+              >
                 <ShoppingBag className="w-8 h-8 opacity-40 mx-auto text-[#141414]" />
                 <p className="font-editorial text-xl sm:text-2xl uppercase tracking-[-0.02em] text-[#141414]">
                   YOUR BAG IS EMPTY
@@ -139,11 +178,17 @@ export const CartDrawer: React.FC = () => {
                 >
                   START SHOPPING
                 </button>
-              </div>
+              </motion.div>
             ) : (
-              cart.map((item) => (
-                <div 
+              <AnimatePresence initial={false} mode="popLayout">
+              {cart.map((item) => (
+                <motion.div
+                  layout
                   key={`${item.product.id}-${item.selectedColor}-${item.selectedSize}`}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, transition: { duration: 0.18 } }}
+                  transition={{ duration: motionDuration, ease: [0.16, 1, 0.3, 1], layout: { duration: motionDuration } }}
                   className="flex gap-4 pb-4 border-b border-[#E3DEC3]/60 items-start"
                 >
                   <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#E7E2D6] rounded-md overflow-hidden shrink-0">
@@ -204,8 +249,9 @@ export const CartDrawer: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                </div>
-              ))
+                </motion.div>
+              ))}
+              </AnimatePresence>
             )}
           </div>
 
@@ -289,7 +335,9 @@ export const CartDrawer: React.FC = () => {
           )}
 
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { ActivePageView } from '../types';
 import { Search, ShoppingBag, Menu, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { PiercynLogo } from './PiercynLogo';
 
 
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsSearchOpen,
   } = useShop();
 
+  const shouldReduceMotion = useReducedMotion();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -152,17 +154,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* BAG BUTTON */}
-            <button
+            <motion.button
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
-              className="h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-all duration-300 uppercase cursor-pointer px-3.5 sm:px-5 rounded-full shadow-xs active:scale-95 text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 text-[#141414] bg-[#F2F0EB] hover:bg-white"
-              aria-label="Shopping Bag"
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+              className="h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-colors duration-300 uppercase cursor-pointer px-3.5 sm:px-5 rounded-full shadow-xs text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 text-[#141414] bg-[#F2F0EB] hover:bg-white"
+              aria-label={`Shopping Bag, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
             >
-              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[1.75]" />
-              <span className="font-sans font-semibold">
-                BAG ({cartCount})
+              <motion.span
+                key={cartCount}
+                className="inline-flex items-center justify-center"
+                initial={shouldReduceMotion ? false : { rotate: -10, scale: 0.82 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.32, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[1.75]" />
+              </motion.span>
+              <span className="font-sans font-semibold inline-flex items-center">
+                BAG (
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={cartCount}
+                    initial={shouldReduceMotion ? false : { y: 7, opacity: 0, scale: 0.85 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { y: -6, opacity: 0, scale: 0.85 }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+                    className="inline-block min-w-[0.6em] text-center"
+                    aria-live="polite"
+                  >
+                    {cartCount}
+                  </motion.span>
+                </AnimatePresence>
+                )
               </span>
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
