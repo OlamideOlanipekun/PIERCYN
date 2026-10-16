@@ -4,6 +4,7 @@ import { Product } from '../types';
 import { formatPrice, formatNumericPrice } from '../utils/currency';
 import { Heart, Check, Loader2, X } from 'lucide-react';
 import { StarRatingDisplay } from './reviews/StarRating';
+import { motion, useReducedMotion } from 'motion/react';
 
 export interface ProductCardProps {
   product: Product;
@@ -19,6 +20,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   className = '',
 }) => {
   const { currency, toggleWishlist, isWishlisted, addToCart } = useShop();
+  const reduceMotion = useReducedMotion();
   const [isHovered, setIsHovered] = useState(false);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [showSizeSelector, setShowSizeSelector] = useState(false);
@@ -110,8 +112,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div
+    <motion.div
       id={`product-card-${product.id}`}
+      initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.12 }}
+      transition={reduceMotion ? { duration: 0 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       onClick={() => onViewProduct(product)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
@@ -334,6 +340,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
