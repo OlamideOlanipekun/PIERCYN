@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminProduct, AdminCategory } from '../types';
 import { AdminApi } from '../api';
 import { uploadImageToSupabase } from '../utils/uploadImage';
@@ -304,6 +304,12 @@ export const ProductsView: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const masterCheckboxRef = useRef<HTMLInputElement>(null);
+
   // Add Product Form State
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -574,6 +580,55 @@ export const ProductsView: React.FC = () => {
     }
   };
 
+  // ── Bulk selection helpers ──────────────────────────────────────────────
+  const isAllSelected = selectedIds.size === products.length && products.length > 0;
+  const isIndeterminate = selectedIds.size > 0 && selectedIds.size < products.length;
+
+  // Sync indeterminate state on the master checkbox DOM node
+  useEffect(() => {
+    if (masterCheckboxRef.current) {
+      masterCheckboxRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  // Clear selection when filters or search changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [categoryFilter, statusFilter, search]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map((p) => p.id)));
+    }
+  }, [isAllSelected, products]);
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkProcessing(true);
+    setShowBulkConfirm(false);
+    try {
+      await Promise.allSettled(
+        [...selectedIds].map((id) => AdminApi.archiveProduct(id))
+      );
+      setSelectedIds(new Set());
+      await fetchProducts();
+    } catch (err: any) {
+      setError(err.message || 'Bulk archive failed.');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------- */}
@@ -635,6 +690,46 @@ export const ProductsView: React.FC = () => {
       </div>
 
       {/* ------------------------------------------------------------- */}
+      {/* 2.5 BULK ACTION TOOLBAR */}
+      {/* ------------------------------------------------------------- */}
+      {selectedIds.size > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-950/40 border border-amber-800/50 animate-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-900/60 border border-amber-700/50">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-[11px] font-mono font-bold text-amber-300 tracking-wider">
+                {selectedIds.size} SELECTED
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[11px] font-mono text-amber-500 hover:text-amber-300 underline underline-offset-2 cursor-pointer transition-colors"
+            >
+              Deselect all
+            </button>
+          </div>
+          <button
+            type="button"
+            disabled={bulkProcessing}
+            onClick={() => setShowBulkConfirm(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800/50 text-red-300 hover:text-red-100 font-mono text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {bulkProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Archive className="w-3.5 h-3.5" />
+            )}
+            <span>Archive Selected</span>
+          </button>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* 3. PRODUCTS TABLE */}
       {/* ------------------------------------------------------------- */}
       <div className="p-4 sm:p-6 rounded-2xl bg-[#141414] border border-[#262626] min-w-0">
@@ -666,14 +761,27 @@ export const ProductsView: React.FC = () => {
                 ) || 0;
                 const grossProfit = p.priceNGN - (p.costPriceNGN || 0);
                 const marginPercent = p.priceNGN > 0 ? Math.round((grossProfit / p.priceNGN) * 100) : 0;
+                const isSelected = selectedIds.has(p.id);
 
                 return (
                   <div
                     key={p.id}
-                    className="p-4 rounded-xl bg-[#181818] border border-[#262626] space-y-3"
+                    className={`p-4 rounded-xl border space-y-3 transition-colors ${
+                      isSelected
+                        ? 'bg-amber-950/20 border-amber-800/50'
+                        : 'bg-[#181818] border-[#262626]'
+                    }`}
                   >
-                    {/* Header: Image, Title, Category */}
+                    {/* Header: Checkbox + Image, Title, Category */}
                     <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id={`select-mobile-${p.id}`}
+                        checked={isSelected}
+                        onChange={() => toggleSelect(p.id)}
+                        aria-label={`Select ${p.name}`}
+                        className="mt-1 w-4 h-4 rounded border-2 border-[#3D3D3D] bg-[#0A0A0A] accent-amber-400 cursor-pointer shrink-0"
+                      />
                       <img
                         src={p.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&q=80'}
                         alt={p.name}
@@ -758,6 +866,17 @@ export const ProductsView: React.FC = () => {
               <table className="w-full text-left text-xs min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#262626] bg-[#0E0E0E] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
+                    <th className="py-3 pl-4 pr-2 w-8" aria-label="Select all products">
+                      <input
+                        ref={masterCheckboxRef}
+                        type="checkbox"
+                        id="select-all-products"
+                        checked={isAllSelected}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all products"
+                        className="w-4 h-4 rounded border-2 border-[#3D3D3D] bg-[#0A0A0A] accent-amber-400 cursor-pointer"
+                      />
+                    </th>
                     <th className="py-3 px-3 font-normal">Garment</th>
                     <th className="py-3 px-3 font-normal">Category</th>
                     <th className="py-3 px-3 font-normal">Retail Price</th>
@@ -776,9 +895,28 @@ export const ProductsView: React.FC = () => {
                   ) || 0;
                   const grossProfit = p.priceNGN - (p.costPriceNGN || 0);
                   const marginPercent = p.priceNGN > 0 ? Math.round((grossProfit / p.priceNGN) * 100) : 0;
+                  const isSelected = selectedIds.has(p.id);
 
                   return (
-                    <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                    <tr
+                      key={p.id}
+                      className={`transition-colors border-l-2 ${
+                        isSelected
+                          ? 'bg-amber-950/15 border-l-amber-600/70 hover:bg-amber-950/25'
+                          : 'border-l-transparent hover:bg-white/5'
+                      }`}
+                    >
+                      {/* Row checkbox */}
+                      <td className="pl-4 pr-2 py-3.5">
+                        <input
+                          type="checkbox"
+                          id={`select-${p.id}`}
+                          checked={isSelected}
+                          onChange={() => toggleSelect(p.id)}
+                          aria-label={`Select ${p.name}`}
+                          className="w-4 h-4 rounded border-2 border-[#3D3D3D] bg-[#0A0A0A] accent-amber-400 cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3.5">
                         <div className="flex items-center gap-3">
                           <img
@@ -865,6 +1003,52 @@ export const ProductsView: React.FC = () => {
         </div>
       )}
     </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* BULK CONFIRMATION DIALOG */}
+      {/* ------------------------------------------------------------- */}
+      {showBulkConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-confirm-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-sm bg-[#181818] border border-[#2D2D2D] rounded-2xl shadow-2xl p-6 text-[#F2F0EB] animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-full bg-red-950/60 border border-red-800/50 flex items-center justify-center shrink-0">
+                <Archive className="w-4 h-4 text-red-400" />
+              </div>
+              <h3 id="bulk-confirm-title" className="font-bold text-sm text-[#F2F0EB]">
+                Archive {selectedIds.size} Product{selectedIds.size !== 1 ? 's' : ''}?
+              </h3>
+            </div>
+            <p className="text-xs text-neutral-400 font-sans mb-5 leading-relaxed">
+              These products will be set to <span className="font-semibold text-neutral-200">ARCHIVED</span> status and
+              hidden from the storefront. You can restore them by editing each product individually.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={bulkProcessing}
+                onClick={handleBulkArchive}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-900/80 hover:bg-red-800 border border-red-700/60 text-red-100 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {bulkProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+                <span>{bulkProcessing ? 'Archiving...' : 'Confirm Archive'}</span>
+              </button>
+              <button
+                type="button"
+                disabled={bulkProcessing}
+                onClick={() => setShowBulkConfirm(false)}
+                className="flex-1 py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 4. ADD PRODUCT MODAL */}
