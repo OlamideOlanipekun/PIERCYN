@@ -40,6 +40,7 @@ import { AccountDashboard } from './components/AccountDashboard';
 import { CollectionsGrid } from './components/CollectionsGrid';
 import { LookbookSection } from './components/LookbookSection';
 import { LookbookModal } from './components/LookbookModal';
+import { ScrollReveal } from './components/ScrollReveal';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -517,35 +518,45 @@ const MainLayout: React.FC = () => {
           <HeroSection onExplore={handleExploreHero} />
 
           {/* New Arrivals Grid */}
-          <JustDroppedSection 
-            products={justDropped}
-            onViewProduct={handleViewProduct}
-            onSelectPage={handleSelectPage}
-          />
-
-          {/* Real inventory only; supplier-held designs are never represented as physical stock. */}
-          <HomepageAvailabilitySections
-            products={products}
-            onViewProduct={handleViewProduct}
-            onBrowseShop={() => handleSelectPage('shop')}
-            isLoadingProducts={isLoadingProducts}
-            catalogError={catalogError}
-          />
-
-          {/* Why PIERCYN brand statement */}
-          <WhyPiercynSection />
-
-          {/* Men's Fashion Discovery */}
-          {mensFashion.length > 0 && (
-            <MensFashionSection 
-              products={mensFashion}
+          <ScrollReveal>
+            <JustDroppedSection 
+              products={justDropped}
               onViewProduct={handleViewProduct}
               onSelectPage={handleSelectPage}
             />
+          </ScrollReveal>
+
+          {/* Real inventory only; supplier-held designs are never represented as physical stock. */}
+          <ScrollReveal delay={0.04}>
+            <HomepageAvailabilitySections
+              products={products}
+              onViewProduct={handleViewProduct}
+              onBrowseShop={() => handleSelectPage('shop')}
+              isLoadingProducts={isLoadingProducts}
+              catalogError={catalogError}
+            />
+          </ScrollReveal>
+
+          {/* Why PIERCYN brand statement */}
+          <ScrollReveal>
+            <WhyPiercynSection />
+          </ScrollReveal>
+
+          {/* Men's Fashion Discovery */}
+          {mensFashion.length > 0 && (
+            <ScrollReveal>
+              <MensFashionSection 
+                products={mensFashion}
+                onViewProduct={handleViewProduct}
+                onSelectPage={handleSelectPage}
+              />
+            </ScrollReveal>
           )}
 
           {/* Trust & Reassurance */}
-          <TrustReassuranceSection />
+          <ScrollReveal>
+            <TrustReassuranceSection />
+          </ScrollReveal>
         </>
       )}
 
