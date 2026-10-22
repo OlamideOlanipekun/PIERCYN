@@ -9,7 +9,7 @@
 // ============================================================
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
 }
 
 generator client {
@@ -171,7 +171,6 @@ model Category {
   name        String    @unique
   slug        String    @unique
   description String?
-  imageUrl    String?
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
@@ -504,36 +503,36 @@ model Order {
   paidAt         DateTime?
 
   // Manual payment review / reconciliation
-  paymentSubmittedAt     DateTime?
+  paymentSubmittedAt      DateTime?
   paymentReviewDeadlineAt DateTime?
-  needsManualReview      Boolean   @default(false)
-  manualReviewReason     String?
+  needsManualReview       Boolean   @default(false)
+  manualReviewReason      String?
 
   // Delivery Quotation Lifecycle (Manual WhatsApp workflow)
-  quoteStatus            String    @default("PENDING") // PENDING | SET | SENT | ACCEPTED | REJECTED
-  quoteVersion           Int       @default(1)
-  quoteDeliveryFeeNGN    Int?
-  quoteTotalNGN          Int?
-  quoteEstimatedTimeframe String?
-  quoteInternalNote      String?
-  quoteSetAt             DateTime?
-  quoteSetByAdmin        String?
-  quoteSentAt            DateTime?
-  quoteSentByAdmin       String?
-  quoteAcceptedAt        DateTime?
-  quoteAcceptedByAdmin   String?
-  quoteAcceptedFeeNGN    Int?
-  quoteAcceptedTotalNGN  Int?
-  quoteRejectedAt        DateTime?
-  quoteRejectedByAdmin   String?
-  quoteRejectedReason    String?
+  quoteStatus             String    @default("PENDING") // PENDING | SET | SENT | ACCEPTED | REJECTED
+  quoteVersion            Int       @default(1)
+  quoteDeliveryFeeNGN     Int?
+  quoteTotalNGN           Int?
+  quoteEstimatedTimeframe  String?
+  quoteInternalNote       String?
+  quoteSetAt              DateTime?
+  quoteSetByAdmin         String?
+  quoteSentAt             DateTime?
+  quoteSentByAdmin        String?
+  quoteAcceptedAt         DateTime?
+  quoteAcceptedByAdmin    String?
+  quoteAcceptedFeeNGN     Int?
+  quoteAcceptedTotalNGN   Int?
+  quoteRejectedAt         DateTime?
+  quoteRejectedByAdmin    String?
+  quoteRejectedReason     String?
 
   // Manual Rider Fulfilment (Internal to Admin)
-  riderName              String?
-  riderPhone             String?
-  dispatchedAt           DateTime?
-  dispatchNote           String?
-  deliveredAt            DateTime?
+  riderName               String?
+  riderPhone              String?
+  dispatchedAt            DateTime?
+  dispatchNote            String?
+  deliveredAt             DateTime?
 
   // Affiliate attribution snapshot (immutable after order creation)
   affiliateId          String?
@@ -1041,3 +1040,4 @@ model ProductReview {
   @@index([orderId])
   @@index([customerId])
 }
+
