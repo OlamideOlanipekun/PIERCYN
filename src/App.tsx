@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
-import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
 import { ENABLE_WOMENSWEAR } from './config/homepage';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
-import { JustDroppedSection } from './components/JustDroppedSection';
-import { MensFashionSection } from './components/MensFashionSection';
 import { TrustReassuranceSection } from './components/TrustReassuranceSection';
 import { ProductDetailsPage } from './components/pdp/ProductDetailsPage';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
 import { ShopPage } from './components/ShopPage';
+import { CategoryPreviewSections } from './components/CategoryPreviewSections';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -76,12 +74,6 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     initAffiliateTracking();
   }, []);
-
-  // Compute deduplicated homepage products from real backend catalog
-  const { justDropped, mensFashion } = useMemo(
-    () => getDeduplicatedHomepageProducts(products),
-    [products]
-  );
 
   // Sync state from current URL pathname
   const syncRouteFromUrl = () => {
@@ -476,7 +468,7 @@ const MainLayout: React.FC = () => {
         <ShopPage
           products={products}
           onViewProduct={handleViewProduct}
-          initialCategory={selectedCategoryFilter}
+          initialCategory={new URLSearchParams(window.location.search).get('category') || selectedCategoryFilter}
         />
       ) : activePage === 'men' ? (
         <MenCollectionPage onNavigateSection={handleNavigateSection} />
@@ -508,12 +500,11 @@ const MainLayout: React.FC = () => {
           {/* Hero */}
           <HeroSection onExplore={handleExploreHero} />
 
-          {/* New Arrivals Grid */}
+          {/* Homepage category previews — the full catalogue lives in Shop Us. */}
           <ScrollReveal>
-            <JustDroppedSection 
-              products={justDropped}
+            <CategoryPreviewSections
+              products={products}
               onViewProduct={handleViewProduct}
-              onSelectPage={handleSelectPage}
             />
           </ScrollReveal>
 
@@ -532,17 +523,6 @@ const MainLayout: React.FC = () => {
           <ScrollReveal>
             <WhyPiercynSection />
           </ScrollReveal>
-
-          {/* Men's Fashion Discovery */}
-          {mensFashion.length > 0 && (
-            <ScrollReveal>
-              <MensFashionSection 
-                products={mensFashion}
-                onViewProduct={handleViewProduct}
-                onSelectPage={handleSelectPage}
-              />
-            </ScrollReveal>
-          )}
 
           {/* Trust & Reassurance */}
           <ScrollReveal>
