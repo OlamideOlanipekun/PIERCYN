@@ -468,7 +468,7 @@ const MainLayout: React.FC = () => {
         <ShopPage
           products={products}
           onViewProduct={handleViewProduct}
-          initialCategory={selectedCategoryFilter}
+          initialCategory={new URLSearchParams(window.location.search).get('category') || selectedCategoryFilter}
         />
       ) : activePage === 'men' ? (
         <MenCollectionPage onNavigateSection={handleNavigateSection} />
