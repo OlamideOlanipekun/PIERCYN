@@ -137,11 +137,11 @@ export const CheckoutModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto font-sans" role="dialog" aria-modal="true">
-      <div className="bg-[#F2F0EB] w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl border border-[#DAD8D1] my-6 text-left animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 overflow-hidden sm:overflow-y-auto font-sans" role="dialog" aria-modal="true">
+      <div className="bg-[#F2F0EB] w-full max-w-3xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] flex flex-col rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-[#DAD8D1] my-0 sm:my-6 text-left animate-in fade-in zoom-in-95 duration-200">
         
         {/* MODAL HEADER */}
-        <div className="bg-[#141414] text-[#F2F0EB] p-4 sm:p-5 flex items-center justify-between">
+        <div className="bg-[#141414] text-[#F2F0EB] p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-[#E8E6E1]" />
             <div>
@@ -161,14 +161,14 @@ export const CheckoutModal: React.FC = () => {
         </div>
 
         {errorMessage && (
-          <div className="bg-red-500/10 border-b border-red-500/20 text-red-700 px-4 py-3 text-xs flex items-center gap-2">
+          <div className="bg-red-500/10 border-b border-red-500/20 text-red-700 px-4 py-3 text-xs flex items-center gap-2 shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* FORM BODY */}
-        <form onSubmit={handleSubmitCheckout} className="p-4 sm:p-6 space-y-6">
+        <form onSubmit={handleSubmitCheckout} className="p-4 sm:p-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* LEFT COLUMN: CUSTOMER & DELIVERY INFO */}
@@ -188,7 +188,7 @@ export const CheckoutModal: React.FC = () => {
                   placeholder="e.g. Tunde Balogun"
                   value={customer.fullName}
                   onChange={handleInputChange}
-                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                 />
               </div>
 
@@ -204,7 +204,7 @@ export const CheckoutModal: React.FC = () => {
                     placeholder="tunde@example.com"
                     value={customer.email}
                     onChange={handleInputChange}
-                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
                 <div>
@@ -218,7 +218,7 @@ export const CheckoutModal: React.FC = () => {
                     placeholder="0801 234 5678"
                     value={customer.phone}
                     onChange={handleInputChange}
-                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
               </div>
@@ -239,7 +239,7 @@ export const CheckoutModal: React.FC = () => {
                         setShippingMethod('nationwide');
                       }
                     }}
-                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   >
                     {NIGERIAN_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -259,7 +259,7 @@ export const CheckoutModal: React.FC = () => {
                     placeholder="e.g. Lekki Phase 1 / Ikeja"
                     value={customer.city}
                     onChange={handleInputChange}
-                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                    className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export const CheckoutModal: React.FC = () => {
                   placeholder="Street name, apartment, landmark"
                   value={customer.address}
                   onChange={handleInputChange}
-                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                 />
               </div>
 
@@ -289,7 +289,7 @@ export const CheckoutModal: React.FC = () => {
                   placeholder="Special instructions for the courier"
                   value={customer.orderNote}
                   onChange={handleInputChange}
-                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-2 text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
+                  className="w-full bg-[#E8E6E1]/60 border border-[#DAD8D1] rounded-lg px-3 py-3 sm:py-2 text-base sm:text-xs text-[#141414] focus:outline-hidden focus:border-[#141414]"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export const CheckoutModal: React.FC = () => {
                 <div className="space-y-2">
                   <label
                     onClick={() => setShippingMethod('lagos')}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                    className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                       shippingMethod === 'lagos'
                         ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                         : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
@@ -324,7 +324,7 @@ export const CheckoutModal: React.FC = () => {
 
                   <label
                     onClick={() => setShippingMethod('nationwide')}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                    className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                       shippingMethod === 'nationwide'
                         ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                         : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
@@ -350,7 +350,7 @@ export const CheckoutModal: React.FC = () => {
                 <div className="space-y-2">
                   <label
                     onClick={() => setPaymentMethodChoice('transfer')}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                    className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                       paymentMethodChoice === 'transfer'
                         ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                         : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
@@ -371,7 +371,7 @@ export const CheckoutModal: React.FC = () => {
                   {isLiveGateway && (
                     <label
                       onClick={() => setPaymentMethodChoice('paystack')}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                      className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                         paymentMethodChoice === 'paystack'
                           ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                           : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
