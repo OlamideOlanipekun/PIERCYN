@@ -8,7 +8,8 @@ interface ShopAllEditorialPageProps {
   onViewProduct: (product: Product) => void;
 }
 
-type CollectionKey = Product['collection'];
+type StandardCollectionKey = Product['collection'];
+type CollectionKey = StandardCollectionKey | '__other__';
 
 const COLLECTION_META: Record<CollectionKey, { title: string; eyebrow: string; description: string }> = {
   everyday: {
@@ -31,9 +32,15 @@ const COLLECTION_META: Record<CollectionKey, { title: string; eyebrow: string; d
     eyebrow: '04 / FRESH FINDS',
     description: 'New designs and limited finds from the current edit.',
   },
+  '__other__': {
+    title: 'MORE TO EXPLORE',
+    eyebrow: '05 / MORE FINDS',
+    description: 'More pieces from across the PIERCYN store.',
+  },
 };
 
-const COLLECTION_ORDER: CollectionKey[] = ['everyday', 'after-dark', 'essentials', 'the-drop'];
+const STANDARD_COLLECTIONS: StandardCollectionKey[] = ['everyday', 'after-dark', 'essentials', 'the-drop'];
+const COLLECTION_ORDER: CollectionKey[] = [...STANDARD_COLLECTIONS, '__other__'];
 
 const formatCount = (count: number) => String(count).padStart(2, '0');
 
@@ -77,13 +84,17 @@ export const ShopAllEditorialPage: React.FC<ShopAllEditorialPageProps> = ({
     .map((key) => ({
       key,
       meta: COLLECTION_META[key],
-      products: searchedProducts.filter((product) => product.collection === key),
-    }))
-    .filter((group) => group.products.length > 0), [searchedProducts]);
+      products: searchedProducts.filter((product) => key === '__other__'
+        ? !STANDARD_COLLECTIONS.includes(product.collection as StandardCollectionKey)
+        : product.collection === key),
+    })), [searchedProducts]);
 
+  // Keep the selected edit present even when search returns zero matches. This
+  // avoids showing unrelated collections while the URL still scopes to one edit.
   const selectedGroup = activeCollection
     ? groups.find((group) => group.key === activeCollection)
     : undefined;
+  const visibleGroups = activeCollection ? groups : groups.filter((group) => group.products.length > 0);
 
   const openCollection = (key: CollectionKey | null) => {
     setActiveCollection(key);
@@ -167,16 +178,16 @@ export const ShopAllEditorialPage: React.FC<ShopAllEditorialPageProps> = ({
         <div className="piercyn-container">
           <div className="flex items-center justify-between border-b border-[#DAD8D1] py-5">
             <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-[#77736B]">THE COLLECTION EDITS</span>
-            <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#77736B]">{groups.length} EDITS</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#77736B]">{visibleGroups.length} EDITS</span>
           </div>
 
-          {groups.length === 0 ? (
+          {visibleGroups.length === 0 ? (
             <div className="py-20 text-center">
               <h2 className="font-editorial text-3xl">NOTHING FOUND</h2>
               <p className="mt-3 text-sm text-[#77736B]">Try another search or clear the search field.</p>
               <button onClick={() => setSearch('')} className="mt-5 min-h-11 rounded-full bg-[#141414] px-6 text-xs font-bold uppercase tracking-widest text-[#F2F0EB]">Clear search</button>
             </div>
-          ) : groups.map((group, groupIndex) => {
+          ) : visibleGroups.map((group, groupIndex) => {
             const leadProduct = group.products[0];
             const leadImage = leadProduct.colors?.[0]?.image || leadProduct.productShotUrl || leadProduct.images?.[0] || '';
             return (
