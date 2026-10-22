@@ -191,11 +191,30 @@ export class OrderService {
       }
 
       const isPaid = newStatus === 'PAID';
+
+      // Auto-reconcile quote on payment confirmation: if the order is being
+      // marked PAID but the quote is still PENDING/SET/SENT, snapshot the
+      // agreed fee so the customer page never shows "To be confirmed" on a
+      // paid order.
+      let quoteReconciliation: Record<string, any> = {};
+      if (isPaid && existing.quoteStatus !== 'ACCEPTED') {
+        const agreedFee = existing.quoteDeliveryFeeNGN ?? existing.deliveryFeeNGN ?? 0;
+        const agreedTotal = existing.quoteTotalNGN ?? existing.totalNGN;
+        quoteReconciliation = {
+          quoteStatus: 'ACCEPTED',
+          quoteAcceptedAt: new Date(),
+          quoteAcceptedByAdmin: updatedBy,
+          quoteAcceptedFeeNGN: agreedFee,
+          quoteAcceptedTotalNGN: agreedTotal,
+        };
+      }
+
       const updatedOrder = await tx.order.update({
         where: { id: existing.id },
         data: {
           status: newStatus as any,
           ...(isPaid ? { paymentStatus: 'PAID', paidAt: new Date() } : {}),
+          ...quoteReconciliation,
         },
         include: {
           items: true,
@@ -378,6 +397,20 @@ export class OrderService {
         ? `Payment received but stock could not be fully allocated: ${shortfalls.join('; ')}. Do not fulfil until reviewed.`
         : null;
 
+      // Auto-reconcile quote status: if the order has no accepted quote yet,
+      // snapshot the agreed delivery fee at time of payment so the customer
+      // page displays authoritative figures instead of "To be confirmed".
+      const quoteReconcile: Record<string, any> = {};
+      if (order.quoteStatus !== 'ACCEPTED') {
+        const agreedFee = order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0;
+        const agreedTotal = order.quoteTotalNGN ?? order.totalNGN;
+        quoteReconcile.quoteStatus = 'ACCEPTED';
+        quoteReconcile.quoteAcceptedAt = now;
+        quoteReconcile.quoteAcceptedByAdmin = 'SYSTEM';
+        quoteReconcile.quoteAcceptedFeeNGN = agreedFee;
+        quoteReconcile.quoteAcceptedTotalNGN = agreedTotal;
+      }
+
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -387,6 +420,7 @@ export class OrderService {
           paymentSubmittedAt: order.paymentSubmittedAt ?? now,
           needsManualReview,
           manualReviewReason,
+          ...quoteReconcile,
         },
         include: { items: true },
       });

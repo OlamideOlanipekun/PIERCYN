@@ -260,6 +260,14 @@ export class OrderService {
     if (newStatus === 'PAID') {
       liveOrder.paymentStatus = 'PAID';
       liveOrder.paidAt = now;
+      // Auto-reconcile quote on payment confirmation
+      if (liveOrder.quoteStatus !== 'ACCEPTED') {
+        liveOrder.quoteStatus = 'ACCEPTED';
+        liveOrder.quoteAcceptedAt = now;
+        liveOrder.quoteAcceptedByAdmin = updatedBy;
+        liveOrder.quoteAcceptedFeeNGN = liveOrder.quoteDeliveryFeeNGN ?? liveOrder.deliveryFeeNGN ?? 0;
+        liveOrder.quoteAcceptedTotalNGN = liveOrder.quoteTotalNGN ?? liveOrder.totalNGN;
+      }
     }
     liveOrder.updatedAt = now;
 
@@ -309,6 +317,15 @@ export class OrderService {
     liveOrder.orderStatus = 'PAID';
     liveOrder.paidAt = now;
     liveOrder.updatedAt = now;
+
+    // Auto-reconcile quote status at payment time
+    if (liveOrder.quoteStatus !== 'ACCEPTED') {
+      liveOrder.quoteStatus = 'ACCEPTED';
+      liveOrder.quoteAcceptedAt = now;
+      liveOrder.quoteAcceptedByAdmin = 'SYSTEM';
+      liveOrder.quoteAcceptedFeeNGN = liveOrder.quoteDeliveryFeeNGN ?? liveOrder.deliveryFeeNGN ?? 0;
+      liveOrder.quoteAcceptedTotalNGN = liveOrder.quoteTotalNGN ?? liveOrder.totalNGN;
+    }
 
     liveOrder.timeline.push({
       status: 'PAID',

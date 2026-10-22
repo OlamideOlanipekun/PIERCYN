@@ -286,7 +286,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
         </header>
 
         {/* ── Quotation Lifecycle Callout ─────────────────────────────────── */}
-        {isQuotePending && (
+        {isQuotePending && !isPaid && (
           <section className="mt-6 rounded-2xl bg-amber-50 border border-amber-200/80 p-5 sm:p-6 text-amber-950 font-sans">
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
@@ -505,8 +505,8 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
               <div className="flex justify-between items-center text-[#55524D]">
                 <span>Delivery Fee:</span>
                 <span className="font-mono text-xs font-semibold">
-                  {isQuoteAccepted ? (
-                    `₦${(order.quoteAcceptedFeeNGN ?? order.deliveryFeeNGN ?? 0).toLocaleString()}`
+                  {isQuoteAccepted || isPaid ? (
+                    `₦${(order.quoteAcceptedFeeNGN ?? order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0).toLocaleString()}`
                   ) : isQuoteSetOrSent ? (
                     `₦${(order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0).toLocaleString()} (Quoted)`
                   ) : (
@@ -519,8 +519,8 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
               <div className="flex justify-between font-mono font-bold text-sm text-[#141414] pt-2 border-t border-[#DAD8D1]">
                 <span>TOTAL:</span>
                 <span>
-                  {isQuoteAccepted ? (
-                    `₦${(order.quoteAcceptedTotalNGN ?? order.totalNGN ?? 0).toLocaleString()}`
+                  {isQuoteAccepted || isPaid ? (
+                    `₦${(order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN ?? 0).toLocaleString()}`
                   ) : isQuoteSetOrSent ? (
                     `₦${(order.quoteTotalNGN ?? order.totalNGN ?? 0).toLocaleString()} (Pending Acceptance)`
                   ) : (
@@ -558,7 +558,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
                   <span className="block text-[10px] font-mono uppercase text-[#7A7771] font-semibold">DELIVERY QUOTE STATUS:</span>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/10 text-[#141414] font-mono text-[11px] font-bold uppercase mt-1">
                     <Package className="w-3 h-3" />
-                    {quoteStatus.replaceAll('_', ' ')}
+                    {isPaid && isQuotePending ? 'CONFIRMED' : quoteStatus.replaceAll('_', ' ')}
                   </span>
                 </div>
               </div>
