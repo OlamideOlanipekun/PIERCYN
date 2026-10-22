@@ -10,7 +10,7 @@
   "crons": [
     {
       "path": "/api/internal/cron/reservations",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ],
   "rewrites": [

@@ -92,6 +92,10 @@ export class InventoryService {
 
     const client = txPrisma || prisma;
 
+    if (!txPrisma) {
+      await InventoryService.expireReservations().catch(() => {});
+    }
+
     const execute = async (tx: any) => {
       // Atomic conditional update: the availability check and the reservation
       // happen in one statement, so two concurrent buyers cannot reserve the
