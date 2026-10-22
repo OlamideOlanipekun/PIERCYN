@@ -132,7 +132,7 @@ export class DeliveryQuoteService {
       });
       if (!order) throw new Error(`Order not found: ${identifier}`);
 
-      if (order.paymentStatus === 'PAID') {
+      if (order.paymentStatus === 'PAID' && order.quoteStatus !== 'PENDING') {
         throw new Error('Cannot change the delivery fee after payment has been confirmed.');
       }
 
@@ -339,7 +339,7 @@ export class DeliveryQuoteService {
     });
     if (!order) throw new Error(`Order not found: ${identifier}`);
 
-    if (order.quoteDeliveryFeeNGN === null && order.deliveryFeeNGN === null) {
+    if (order.quoteDeliveryFeeNGN === null || order.quoteStatus === 'PENDING') {
       return {
         url: null,
         phone: null,

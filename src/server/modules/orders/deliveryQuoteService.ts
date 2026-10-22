@@ -138,7 +138,7 @@ export class DeliveryQuoteService {
 
     const order = this.getOrder(identifier);
 
-    if (order.paymentStatus === 'PAID') {
+    if (order.paymentStatus === 'PAID' && order.quoteStatus !== 'PENDING') {
       throw new Error('Cannot change the delivery fee after payment has been confirmed.');
     }
 
@@ -279,7 +279,7 @@ export class DeliveryQuoteService {
   } {
     const order = this.getOrder(identifier);
 
-    if (!order.quoteDeliveryFeeNGN && order.quoteDeliveryFeeNGN !== 0) {
+    if ((!order.quoteDeliveryFeeNGN && order.quoteDeliveryFeeNGN !== 0) || order.quoteStatus === 'PENDING') {
       return {
         url: null,
         phone: null,

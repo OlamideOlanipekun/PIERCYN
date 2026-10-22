@@ -49,16 +49,16 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
 
   const effectiveOrderId = getEffectiveOrderId();
 
-  const loadOrder = async () => {
+  const loadOrder = async (isBackgroundPoll = false) => {
     if (!effectiveOrderId) {
-      setState('error');
+      if (!isBackgroundPoll) setState('error');
       return;
     }
 
-    setState('loading');
+    if (!isBackgroundPoll) setState('loading');
     const token = localStorage.getItem(`piercyn_order_access_${effectiveOrderId}`);
     if (!token) {
-      setState('error');
+      if (!isBackgroundPoll) setState('error');
       return;
     }
 
@@ -79,16 +79,24 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
           const initialized = await api.initializePayment(result.data.orderNumber, token);
           if (initialized.success) setPaymentInfo(initialized.data);
         }
-      } else {
+      } else if (!isBackgroundPoll) {
         setState('error');
       }
     } catch {
-      setState('error');
+      if (!isBackgroundPoll) setState('error');
     }
   };
 
   useEffect(() => {
     loadOrder();
+
+    // Auto-poll public order details every 10s so customer page dynamically updates
+    // when delivery quote is calculated, sent, or accepted by admin.
+    const pollInterval = setInterval(() => {
+      loadOrder(true);
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
   }, [effectiveOrderId]);
 
   const bank = paymentInfo?.bankTransfer;

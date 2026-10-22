@@ -406,4 +406,70 @@ describe('Manual Delivery & WhatsApp Quotation Engine', () => {
       expect(dispatched.dispatchNote).toBe('Package handed to rider at 2 PM');
     });
   });
+
+  describe('6. Stranded Order Recovery & Quote Synchronization', () => {
+    it('rejects generateWhatsAppUrl when quoteStatus is PENDING even if deliveryFeeNGN is 0', () => {
+      const product = ProductService.getAllProducts()[0];
+      const variant = product.variants[0];
+
+      const order = OrderService.createOrder({
+        customer: {
+          fullName: 'Tola Shonibare',
+          email: 'tola@piercyn.com',
+          phone: '08033334444',
+          state: 'Lagos',
+          city: 'Yaba',
+          address: 'Commercial Avenue',
+        },
+        shippingRegion: 'lagos',
+        paymentMethod: 'paystack',
+        items: [{ variantId: variant.id, quantity: 1 }],
+      });
+
+      expect(order.quoteStatus).toBe('PENDING');
+      const result = DeliveryQuoteService.generateWhatsAppUrl(order.orderNumber);
+      expect(result.error).toMatch(/Delivery fee has not been set yet/i);
+      expect(result.url).toBeNull();
+    });
+
+    it('allows reconciling stranded orders that were marked PAID while quoteStatus was PENDING', () => {
+      const product = ProductService.getAllProducts()[0];
+      const variant = product.variants[0];
+
+      const order = OrderService.createOrder({
+        customer: {
+          fullName: 'Chidi Mokeme',
+          email: 'chidi@piercyn.com',
+          phone: '08055556666',
+          state: 'Lagos',
+          city: 'Lekki',
+          address: 'Admiralty Way',
+        },
+        shippingRegion: 'lagos',
+        paymentMethod: 'transfer',
+        items: [{ variantId: variant.id, quantity: 1 }],
+      });
+
+      // Simulate order erroneously marked paid/packed while quote is still pending
+      const dbOrder = dbStore.orders.get(order.id)!;
+      dbOrder.paymentStatus = 'PAID';
+      dbOrder.orderStatus = 'PACKED';
+      expect(dbOrder.quoteStatus).toBe('PENDING');
+
+      // Admin reconciles the missing delivery fee
+      const reconciled = DeliveryQuoteService.setDeliveryQuote(
+        order.orderNumber,
+        { deliveryFeeNGN: 3500 },
+        'admin-recovery'
+      );
+      expect(reconciled.quoteStatus).toBe('SET');
+      expect(reconciled.quoteDeliveryFeeNGN).toBe(3500);
+
+      // Now acceptance can proceed
+      DeliveryQuoteService.markQuoteSent(order.orderNumber, 'admin-recovery');
+      const accepted = DeliveryQuoteService.recordAcceptance(order.orderNumber, 'admin-recovery');
+      expect(accepted.quoteStatus).toBe('ACCEPTED');
+      expect(accepted.quoteAcceptedFeeNGN).toBe(3500);
+    });
+  });
 });

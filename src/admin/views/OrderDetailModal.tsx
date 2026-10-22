@@ -93,10 +93,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         setTrackingNumber(data.shipment.trackingNumber || '');
       }
 
-      if (data.quoteDeliveryFeeNGN !== undefined) {
+      if (data.quoteDeliveryFeeNGN !== null && data.quoteDeliveryFeeNGN !== undefined) {
         setQuoteFee(String(data.quoteDeliveryFeeNGN));
-      } else if (data.deliveryFeeNGN !== undefined) {
+      } else if (data.deliveryFeeNGN !== null && data.deliveryFeeNGN !== undefined && data.deliveryFeeNGN > 0) {
         setQuoteFee(String(data.deliveryFeeNGN));
+      } else {
+        setQuoteFee('');
       }
 
       setQuoteTimeframe(data.quoteEstimatedTimeframe || '');
@@ -156,7 +158,33 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     if (!order) return;
     try {
       setError(null);
-      const data = await AdminApi.getQuoteWhatsAppMessage(order.id);
+
+      // If quote is still PENDING or the fee input has changed, save the delivery fee first
+      const parsedFee = parseFloat(quoteFee);
+      const isFeeUnsaved = order.quoteStatus === 'PENDING' || (
+        !isNaN(parsedFee) && parsedFee !== order.quoteDeliveryFeeNGN
+      );
+
+      let currentOrder = order;
+
+      if (isFeeUnsaved) {
+        if (isNaN(parsedFee) || parsedFee < 0) {
+          setError('Please enter a valid non-negative delivery fee before opening WhatsApp.');
+          return;
+        }
+
+        setQuoteUpdating(true);
+        const updated = await AdminApi.setDeliveryQuote(order.id, {
+          deliveryFeeNGN: parsedFee,
+          estimatedDeliveryTimeframe: quoteTimeframe.trim() || undefined,
+          internalNote: quoteInternalNote.trim() || undefined,
+        });
+        currentOrder = updated;
+        setOrder(updated);
+        if (onOrderUpdated) onOrderUpdated();
+      }
+
+      const data = await AdminApi.getQuoteWhatsAppMessage(currentOrder.id);
 
       // Copy text to clipboard
       await navigator.clipboard.writeText(data.message);
@@ -167,10 +195,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
 
       setQuoteSuccessMsg(
-        'WhatsApp chat opened and quotation message copied to clipboard! Remember to mark as sent once transmitted.'
+        'Delivery fee saved, WhatsApp chat opened, and quotation message copied to clipboard! Remember to mark as sent or record customer acceptance once confirmed.'
       );
     } catch (err: any) {
       setError(err.message || 'Unable to open WhatsApp for this quotation.');
+    } finally {
+      setQuoteUpdating(false);
     }
   };
 
@@ -362,17 +392,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const handleUpdateStatus = async (newStatus: string) => {
     if (!order) return;
 
-    // Guard: Prevent marking PAID if quote not accepted
-    if (newStatus === 'PAID' && order.quoteStatus !== 'ACCEPTED') {
-      if (
-        !window.confirm(
-          'Warning: The customer has not accepted a delivery quote yet (Quote status: ' +
-            order.quoteStatus +
-            '). Confirm payment anyway?'
-        )
-      ) {
-        return;
-      }
+    // Guard: Prevent advancing to PAID, PROCESSING, PACKED, SHIPPED if quote not accepted
+    if (['PAID', 'PROCESSING', 'PACKED', 'SHIPPED'].includes(newStatus) && order.quoteStatus !== 'ACCEPTED') {
+      setError(
+        `Cannot transition order to ${newStatus}. The delivery quote has not been accepted by the customer yet (Current quote status: ${order.quoteStatus}). Please set and record quote acceptance first.`
+      );
+      return;
     }
 
     try {
