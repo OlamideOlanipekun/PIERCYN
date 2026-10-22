@@ -99,7 +99,13 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
     return () => clearInterval(pollInterval);
   }, [effectiveOrderId]);
 
-  const bank = paymentInfo?.bankTransfer;
+  const bank = paymentInfo?.bankTransfer || {
+    bankName: 'Kuda Bank',
+    accountName: 'Adedeji Taiwo',
+    accountNumber: '2072114942',
+    narration: order?.orderNumber || '',
+    reviewWindowHours: 48,
+  };
 
   const handleCopyAccount = () => {
     if (!bank?.accountNumber) return;

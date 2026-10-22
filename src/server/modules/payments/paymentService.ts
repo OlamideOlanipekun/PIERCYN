@@ -23,6 +23,15 @@ export interface PaymentInitializationResult {
   authorizationUrl?: string;
   accessCode?: string;
   message?: string;
+  orderNumber?: string;
+  amountNGN?: number;
+  bankTransfer?: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    narration: string;
+    reviewWindowHours: number;
+  };
 }
 
 export interface PaymentVerificationResult {
@@ -50,10 +59,20 @@ export class DirectTransferProvider implements IPaymentProvider {
 
   async initialize(params: PaymentInitializationParams): Promise<PaymentInitializationResult> {
     const ref = `PCY-TRF-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
+    const bank = COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER;
     return {
       success: true,
       provider: 'DIRECT_TRANSFER',
       providerReference: ref,
+      orderNumber: params.orderNumber,
+      amountNGN: params.amountNGN,
+      bankTransfer: {
+        bankName: bank.BANK_NAME,
+        accountName: bank.ACCOUNT_NAME,
+        accountNumber: bank.ACCOUNT_NUMBER,
+        narration: params.orderNumber,
+        reviewWindowHours: bank.REVIEW_WINDOW_HOURS,
+      },
       message: 'Bank transfer instructions sent. Awaiting confirmation.',
     };
   }
