@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
@@ -46,6 +46,15 @@ export const ShopAllEditorialPage: React.FC<ShopAllEditorialPageProps> = ({
     return COLLECTION_ORDER.includes(requested as CollectionKey) ? requested as CollectionKey : null;
   });
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const syncCollectionFromUrl = () => {
+      const requested = new URLSearchParams(window.location.search).get('collection');
+      setActiveCollection(COLLECTION_ORDER.includes(requested as CollectionKey) ? requested as CollectionKey : null);
+    };
+    window.addEventListener('popstate', syncCollectionFromUrl);
+    return () => window.removeEventListener('popstate', syncCollectionFromUrl);
+  }, []);
 
   // The public storefront only renders published products. Products are grouped by
   // their existing admin-assigned collection field; no duplicate catalogue is kept here.
