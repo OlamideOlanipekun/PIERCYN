@@ -14,9 +14,15 @@ import {
 
 export const affiliateRouter = Router();
 
+// Flag to pause the affiliate & creator program
+export const AFFILIATE_PROGRAM_PAUSED = true;
+
 // ─── PUBLIC TRACKING ENDPOINT ─────────────────────────────────────────────
 // POST /api/affiliate/track-click
 affiliateRouter.post('/track-click', async (req: Request, res: Response) => {
+  if (AFFILIATE_PROGRAM_PAUSED) {
+    return res.json({ success: true, data: { tracked: false, paused: true } });
+  }
   try {
     const validated = TrackAffiliateClickSchema.parse(req.body);
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || undefined;
@@ -65,6 +71,12 @@ affiliateRouter.get('/resolve/:code', async (req: Request, res: Response) => {
 
 // POST /api/affiliate/apply
 affiliateRouter.post('/apply', async (req: Request, res: Response) => {
+  if (AFFILIATE_PROGRAM_PAUSED) {
+    return res.status(503).json({
+      success: false,
+      error: 'The PIERCYN Creator & Affiliate Program is temporarily paused. Applications are currently closed.',
+    });
+  }
   try {
     const validated = AffiliateApplySchema.parse(req.body);
     const result = await AffiliateService.applyForAffiliate(validated);

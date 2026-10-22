@@ -27,10 +27,14 @@ export function getOrCreateSessionId(): string {
   }
 }
 
+export const AFFILIATE_PROGRAM_ENABLED = false;
+
 /**
  * Checks if the user currently has an active, unexpired affiliate attribution.
  */
 export function getActiveAffiliateCode(): string | null {
+  if (!AFFILIATE_PROGRAM_ENABLED) return null;
+
   try {
     const code = localStorage.getItem(STORAGE_AFFILIATE_CODE);
     const tsStr = localStorage.getItem(STORAGE_AFFILIATE_TIMESTAMP);
@@ -55,6 +59,8 @@ export function getActiveAffiliateCode(): string | null {
  * Saves or refreshes the affiliate attribution code in localStorage.
  */
 export function setAffiliateCode(code: string): void {
+  if (!AFFILIATE_PROGRAM_ENABLED) return;
+
   try {
     localStorage.setItem(STORAGE_AFFILIATE_CODE, code.trim().toUpperCase());
     localStorage.setItem(STORAGE_AFFILIATE_TIMESTAMP, Date.now().toString());
@@ -68,6 +74,14 @@ export function setAffiliateCode(code: string): void {
  */
 export async function initAffiliateTracking(): Promise<void> {
   if (typeof window === 'undefined') return;
+
+  if (!AFFILIATE_PROGRAM_ENABLED) {
+    try {
+      localStorage.removeItem(STORAGE_AFFILIATE_CODE);
+      localStorage.removeItem(STORAGE_AFFILIATE_TIMESTAMP);
+    } catch {}
+    return;
+  }
 
   const url = new URL(window.location.href);
   let referralCode =

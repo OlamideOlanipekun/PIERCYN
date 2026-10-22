@@ -17,11 +17,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
   const toggleGroup = (group: FooterGroup) => setOpenGroups((current) => ({ ...current, [group]: !current[group] }));
-  const goToAffiliate = () => {
-    window.history.pushState({}, '', '/affiliate');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
   const selectPage = (page: ActivePageView) => onSelectPage?.(page);
   const footerLinkClass = 'flex min-h-10 items-center text-left text-[12px] font-medium tracking-[0.08em] text-[#141414]/70 transition-colors hover:text-[#141414] editorial-link';
   const groupHeader = (group: FooterGroup, label: string) => (
@@ -114,13 +109,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               >
                 CONTACT US
               </button>
-              <button
-                id="footer-affiliate-program"
-                onClick={() => onSelectPage && onSelectPage('affiliate')}
-                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
-              >
-                AFFILIATE PROGRAM
-              </button>
             </div>
           </div>
           <div className="min-w-0">
@@ -201,7 +189,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <button onClick={() => selectPage('shipping')} className={footerLinkClass}>SHIPPING & DELIVERY</button>
               <button onClick={() => selectPage('returns')} className={footerLinkClass}>RETURNS & EXCHANGES</button>
               <button onClick={() => selectPage('contact')} className={footerLinkClass}>CONTACT US</button>
-              <button onClick={goToAffiliate} className={footerLinkClass}>AFFILIATE PROGRAM</button>
             </nav></div>
           </section>
           <section>

@@ -223,7 +223,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               { label: 'FAQ', pageKey: 'faq' as const },
               { label: 'TRACK ORDER', pageKey: 'trackOrder' as const },
               { label: 'CONTACT', pageKey: 'contact' as const },
-              { label: 'AFFILIATE PROGRAM', pageKey: 'affiliate' as const },
             ].map((link, idx) => (
               <button
                 key={link.label}

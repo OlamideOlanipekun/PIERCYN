@@ -4,7 +4,6 @@ import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
 import { ENABLE_WOMENSWEAR } from './config/homepage';
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
-import { AffiliateAnnouncementModal } from './components/AffiliateAnnouncementModal';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
 import { JustDroppedSection } from './components/JustDroppedSection';
@@ -71,27 +70,11 @@ const MainLayout: React.FC = () => {
   const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
-  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState(false);
   const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
 
-  // Initialize affiliate click tracking once on mount
+  // Initialize affiliate click tracking (checks pause flag)
   useEffect(() => {
     initAffiliateTracking();
-  }, []);
-
-  // Show the affiliate invitation once per full storefront entry, not on every SPA route change.
-  useEffect(() => {
-    const initialPath = window.location.pathname.toLowerCase();
-    if (initialPath.startsWith('/admin') || initialPath.startsWith('/affiliate')) return;
-
-    const timeoutId = window.setTimeout(() => {
-      const currentPath = window.location.pathname.toLowerCase();
-      if (!currentPath.startsWith('/admin') && !currentPath.startsWith('/affiliate')) {
-        setIsAffiliateAnnouncementOpen(true);
-      }
-    }, 5000);
-
-    return () => window.clearTimeout(timeoutId);
   }, []);
 
   // Compute deduplicated homepage products from real backend catalog
@@ -408,21 +391,29 @@ const MainLayout: React.FC = () => {
 
   if (isAffiliateView) {
     return (
-      <React.Suspense
-        fallback={
-          <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex items-center justify-center font-mono text-xs tracking-widest uppercase">
-            Loading Creator Portal...
-          </div>
-        }
-      >
-        <AffiliateApp
-          onBackToShop={() => {
-            setIsAffiliateView(false);
-            window.history.pushState({}, '', '/');
-            document.title = 'PIERCYN — Look Good. Spend Less.';
-          }}
-        />
-      </React.Suspense>
+      <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="max-w-md w-full border border-[#2B2B2B] bg-[#141414] p-8 sm:p-10 rounded-sm">
+          <span className="font-mono text-[10px] tracking-[0.25em] text-[#C9A96E] uppercase block mb-3">
+            Program Notice
+          </span>
+          <h1 className="font-editorial italic text-2xl sm:text-3xl text-white mb-4">
+            Creator & Affiliate Program
+          </h1>
+          <p className="text-[#888888] text-xs sm:text-sm leading-relaxed mb-8">
+            The PIERCYN Creator & Affiliate Program is currently paused for upgrades. Please check back later or follow our social channels for announcements.
+          </p>
+          <button
+            onClick={() => {
+              setIsAffiliateView(false);
+              window.history.pushState({}, '', '/');
+              document.title = 'PIERCYN — Look Good. Spend Less.';
+            }}
+            className="w-full py-3 bg-[#F2F0EB] text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold hover:bg-white transition-colors"
+          >
+            Return to Store
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -579,15 +570,6 @@ const MainLayout: React.FC = () => {
       <LookbookModal />
       <AdminDrawer />
       <Toast />
-      {isAffiliateAnnouncementOpen && (
-        <AffiliateAnnouncementModal
-          onClose={() => setIsAffiliateAnnouncementOpen(false)}
-          onJoin={() => {
-            setIsAffiliateAnnouncementOpen(false);
-            window.location.assign('/affiliate');
-          }}
-        />
-      )}
     </div>
   );
 };
