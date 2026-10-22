@@ -12,7 +12,7 @@ import { MensFashionSection } from './components/MensFashionSection';
 import { TrustReassuranceSection } from './components/TrustReassuranceSection';
 import { ProductDetailsPage } from './components/pdp/ProductDetailsPage';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
-import { ShopPage } from './components/ShopPage';
+import { ShopAllEditorialPage } from './components/ShopAllEditorialPage';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -246,10 +246,9 @@ const MainLayout: React.FC = () => {
           onViewProduct={handleViewProduct}
         />
       ) : activePage === 'shop' ? (
-        <ShopPage
+        <ShopAllEditorialPage
           products={products}
           onViewProduct={handleViewProduct}
-          initialCategory={selectedCategoryFilter}
         />
       ) : activePage === 'men' ? (
         <MenCollectionPage onNavigateSection={handleNavigateSection} />
