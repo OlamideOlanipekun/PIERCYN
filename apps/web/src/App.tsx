@@ -7,12 +7,11 @@ import { Navbar } from './components/Navbar';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
-import { JustDroppedSection } from './components/JustDroppedSection';
-import { MensFashionSection } from './components/MensFashionSection';
 import { TrustReassuranceSection } from './components/TrustReassuranceSection';
 import { ProductDetailsPage } from './components/pdp/ProductDetailsPage';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
 import { ShopAllEditorialPage } from './components/ShopAllEditorialPage';
+import { CategoryPreviewSections } from './components/CategoryPreviewSections';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -263,24 +262,14 @@ const MainLayout: React.FC = () => {
           {/* Hero */}
           <HeroSection onExplore={handleExploreHero} />
 
-          {/* New Arrivals Grid */}
-          <JustDroppedSection 
-            products={justDropped}
+          {/* Dynamic category previews — the homepage is discovery, /shop is the full catalogue. */}
+          <CategoryPreviewSections
+            products={products}
             onViewProduct={handleViewProduct}
-            onSelectPage={handleSelectPage}
           />
 
           {/* Why PIERCYN brand statement */}
           <WhyPiercynSection />
-
-          {/* Men's Fashion Discovery */}
-          {mensFashion.length > 0 && (
-            <MensFashionSection 
-              products={mensFashion}
-              onViewProduct={handleViewProduct}
-              onSelectPage={handleSelectPage}
-            />
-          )}
 
           {/* Trust & Reassurance */}
           <TrustReassuranceSection />
