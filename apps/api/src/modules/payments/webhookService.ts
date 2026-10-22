@@ -17,9 +17,19 @@ export class WebhookService {
   ): Promise<WebhookProcessingResult> {
     const provider = PaymentService.getProvider();
 
-    // 1. Verify Signature
+    if (provider.providerType !== 'PAYSTACK') {
+      return {
+        received: true,
+        processed: false,
+        idempotentDuplicate: false,
+        message: 'Paystack webhooks are not enabled for the active payment provider.',
+      };
+    }
+
+    // 1. Verify Signature in every environment. A missing/invalid secret must
+    // never be treated as a valid webhook outside tests.
     const isValidSignature = provider.verifyWebhookSignature(signature, rawBody);
-    if (!isValidSignature && process.env.NODE_ENV === 'production') {
+    if (!isValidSignature) {
       return {
         received: true,
         processed: false,
@@ -81,6 +91,10 @@ export class WebhookService {
 
     if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
       return { received: true, processed: false, idempotentDuplicate: false, message: 'Order is not eligible for payment confirmation.' };
+    }
+
+    if (order.quoteStatus !== 'ACCEPTED') {
+      return { received: true, processed: false, idempotentDuplicate: false, message: 'Payment cannot be processed because delivery quote has not been accepted.' };
     }
 
     const amountKobo = Number(data.amount);

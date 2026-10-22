@@ -7,6 +7,12 @@
       "includeFiles": "build/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/internal/cron/reservations",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

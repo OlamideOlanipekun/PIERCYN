@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { ProductService } from '../modules/products/productService';
+import { z } from 'zod';
+import { requireAdmin } from '../modules/admin/adminMiddleware';
+import { CatalogUnavailableError, ProductService } from '../modules/products/productService';
 import { CartService } from '../modules/cart/cartService';
 import { CheckoutService } from '../modules/checkout/checkoutService';
 import { OrderService } from '../modules/orders/orderService';
@@ -14,6 +16,12 @@ import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
+import { prisma } from '../db/prisma';
+import {
+  createOrderAccessToken,
+  isOrderAccessTokenConfigured,
+  verifyOrderAccessToken,
+} from '../security/orderAccessToken';
 import {
   AddToCartSchema,
   UpdateCartItemSchema,
@@ -31,8 +39,14 @@ apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/', reviewRouter);
 
+const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+
 const getSessionId = (req: Request): string => {
-  return (req.headers['x-session-id'] as string) || (req.query.sessionId as string) || 'guest-session';
+  const supplied = (req.headers['x-session-id'] as string) || (req.query.sessionId as string);
+  if (typeof supplied === 'string' && SESSION_ID_PATTERN.test(supplied)) return supplied;
+  // Never share a catch-all guest session: an unidentified client gets an
+  // isolated, ephemeral session instead of another customer's cart.
+  return `anon_${crypto.randomUUID()}`;
 };
 
 const getAuthToken = (req: Request): string => {
@@ -43,38 +57,12 @@ const getAuthToken = (req: Request): string => {
   return (req.headers['x-auth-token'] as string) || '';
 };
 
-const orderAccessSecret =
-  process.env.ORDER_ACCESS_TOKEN_SECRET ||
-  process.env.JWT_SECRET ||
-  (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
-
-function createOrderAccessToken(orderId: string): string {
-  if (!orderAccessSecret) {
-    throw new Error('Order access token signing is not configured. Set ORDER_ACCESS_TOKEN_SECRET.');
-  }
-  const payload = Buffer.from(JSON.stringify({ orderId, nonce: crypto.randomBytes(24).toString('hex') })).toString('base64url');
-  const signature = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
-  return `ord_${payload}.${signature}`;
-}
+export { createOrderAccessToken, verifyOrderAccessToken } from '../security/orderAccessToken';
 
 function getAuthorizedOrderId(req: Request): string | null {
   const token = req.headers['x-order-access-token'];
-  if (typeof token !== 'string' || !token.startsWith('ord_') || !orderAccessSecret) return null;
-
-  const [payload, signature] = token.slice(4).split('.');
-  if (!payload || !signature) return null;
-
-  const expected = crypto.createHmac('sha256', orderAccessSecret).update(payload).digest('base64url');
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
-
-  try {
-    const orderId = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).orderId;
-    return typeof orderId === 'string' ? orderId : null;
-  } catch {
-    return null;
-  }
+  if (typeof token !== 'string') return null;
+  return verifyOrderAccessToken(token)?.orderId ?? null;
 }
 
 // 1. PRODUCTS & CATEGORIES
@@ -117,7 +105,8 @@ apiRouter.get('/products', async (req: Request, res: Response) => {
       total: catalog.total, page: catalog.page, limit: catalog.limit, totalPages: catalog.totalPages,
     } });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    const status = err instanceof CatalogUnavailableError ? 503 : 500;
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -130,7 +119,8 @@ apiRouter.get('/products/:slug', async (req: Request, res: Response) => {
     const ratingSummary = await ReviewService.getProductRatingSummary(product.id);
     res.json({ success: true, data: { ...product, ratingSummary } });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    const status = err instanceof CatalogUnavailableError ? 503 : 500;
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -139,7 +129,8 @@ apiRouter.get('/categories', async (_req: Request, res: Response) => {
     const categories = await ProductService.getCategories();
     res.json({ success: true, data: categories });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    const status = err instanceof CatalogUnavailableError ? 503 : 500;
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -156,7 +147,8 @@ apiRouter.get('/categories/:slug/products', async (req: Request, res: Response) 
     }));
     res.json({ success: true, data: { category, products, meta: { total: catalog.total } } });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    const status = err instanceof CatalogUnavailableError ? 503 : 500;
+    res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -238,7 +230,7 @@ apiRouter.post('/checkout/quote', async (req: Request, res: Response) => {
 
 apiRouter.post('/orders', async (req: Request, res: Response) => {
   try {
-    if (!orderAccessSecret) {
+    if (!isOrderAccessTokenConfigured()) {
       return res.status(503).json({ success: false, error: 'Guest order tracking is not configured.' });
     }
     const sessionId = getSessionId(req);
@@ -268,7 +260,7 @@ apiRouter.get('/orders/:id', async (req: Request, res: Response) => {
   if (!authorizedOrderId) {
     return res.status(404).json({ success: false, error: 'Order not found' });
   }
-  const order = await OrderService.getOrderDetail(req.params.id);
+  const order = await OrderService.getPublicOrderDetail(req.params.id);
   if (!order || order.id !== authorizedOrderId) {
     return res.status(404).json({ success: false, error: 'Order not found' });
   }
@@ -276,14 +268,25 @@ apiRouter.get('/orders/:id', async (req: Request, res: Response) => {
 });
 
 // 5. PAYMENTS & WEBHOOKS
+const PaymentReceiptSchema = z.object({
+  fileBase64: z.string().min(1),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
+});
+
 apiRouter.post('/payments/initialize', async (req: Request, res: Response) => {
   try {
-    const { orderNumber, callbackUrl } = req.body;
+    const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber.trim() : '';
     if (!orderNumber) {
       return res.status(400).json({ success: false, error: 'orderNumber is required' });
     }
 
-    const result = await PaymentService.initializePayment(orderNumber, callbackUrl);
+    const authorizedOrderId = getAuthorizedOrderId(req);
+    const order = await OrderService.getOrder(orderNumber);
+    if (!authorizedOrderId || !order || order.id !== authorizedOrderId) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const result = await PaymentService.initializePayment(order.orderNumber);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
@@ -293,11 +296,54 @@ apiRouter.post('/payments/initialize', async (req: Request, res: Response) => {
 apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
   try {
     const validated = VerifyPaymentSchema.parse(req.body);
-    const result = await PaymentService.verifyPayment(validated.reference);
+    const authorizedOrderId = getAuthorizedOrderId(req);
+    if (!authorizedOrderId) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { orderNumber: validated.reference },
+          { payments: { some: { providerReference: validated.reference } } },
+        ],
+      },
+      select: { id: true, orderNumber: true },
+    });
+    if (!order || order.id !== authorizedOrderId) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const result = await PaymentService.verifyPayment(order.orderNumber, validated.reference);
     if (!result.success) {
       return res.status(400).json({ success: false, error: 'Payment could not be verified. Please wait for provider confirmation or contact support.', data: result });
     }
     res.json({ success: true, data: result });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+apiRouter.post('/orders/:id/payment-receipt', async (req: Request, res: Response) => {
+  try {
+    const authorizedOrderId = getAuthorizedOrderId(req);
+    if (!authorizedOrderId || authorizedOrderId !== req.params.id) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const validated = PaymentReceiptSchema.parse(req.body);
+    const order = await OrderService.getOrderDetail(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const result = await PaymentService.submitPaymentReceipt(
+      order.orderNumber,
+      validated.fileBase64,
+      validated.mimeType
+    );
+    res.status(202).json({ success: true, data: result });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
@@ -316,7 +362,7 @@ apiRouter.post('/payments/webhook', async (req: Request, res: Response) => {
 });
 
 apiRouter.post('/payments/mock/complete', async (req: Request, res: Response) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_MOCK_PAYMENTS !== 'true') {
     return res.status(404).json({ success: false, error: 'Not found' });
   }
   try {
@@ -360,7 +406,35 @@ apiRouter.post('/events', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/analytics/overview', async (_req: Request, res: Response) => {
+const handleReservationCron = async (req: Request, res: Response) => {
+  const configuredSecret = process.env.CRON_SECRET || '';
+  if (!configuredSecret) {
+    return res.status(503).json({ success: false, error: 'CRON_SECRET is not configured.' });
+  }
+  const auth = req.headers['authorization'] || '';
+  const supplied = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(configuredSecret);
+  if (
+    suppliedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)
+  ) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const result = await InventoryService.expireReservations();
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('[RESERVATION_CRON]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+apiRouter.get('/internal/cron/reservations', handleReservationCron);
+apiRouter.post('/internal/cron/reservations', handleReservationCron);
+
+apiRouter.get('/analytics/overview', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const summary = await EventService.getAnalyticsSummary();
     res.json({ success: true, data: summary });

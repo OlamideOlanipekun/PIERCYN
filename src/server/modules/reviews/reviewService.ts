@@ -236,6 +236,12 @@ export class ReviewService {
    */
   public static async getProductRatingSummary(productId: string): Promise<ReviewSummary> {
     const res = await this.getProductReviews(productId, { page: 1, limit: 1 });
+    if (res.summary.totalReviews === 0) {
+      const memSummary = dbStore.getProductRatingSummary(productId);
+      if (memSummary.totalReviews > 0) {
+        return memSummary;
+      }
+    }
     return res.summary;
   }
 
@@ -273,7 +279,10 @@ export class ReviewService {
         for (const id of productIds) {
           const ratings = grouped[id] || [];
           if (ratings.length === 0) {
-            result[id] = { averageRating: null, totalReviews: 0 };
+            const memSummary = dbStore.getProductRatingSummary(id);
+            result[id] = memSummary.totalReviews > 0
+              ? { averageRating: memSummary.averageRating, totalReviews: memSummary.totalReviews }
+              : { averageRating: null, totalReviews: 0 };
           } else {
             const sum = ratings.reduce((acc, curr) => acc + curr, 0);
             result[id] = {

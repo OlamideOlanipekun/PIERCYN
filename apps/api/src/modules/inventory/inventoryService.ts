@@ -1,5 +1,11 @@
 import { prisma } from '../../db/prisma';
 
+export interface FinalizeSaleResult {
+  finalized: boolean;
+  alreadyFinalized: boolean;
+  shortfall: number;
+}
+
 export interface StockCheckResult {
   variantId: string;
   sku?: string;
@@ -77,27 +83,32 @@ export class InventoryService {
     variantId: string,
     quantity: number,
     reference: string,
-    expiresInMinutes: number = 15,
+    expiresInMinutes: number = 30,
     txPrisma?: any
   ): Promise<boolean> {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error('Reservation quantity must be a positive whole number.');
+    }
+
     const client = txPrisma || prisma;
 
     const execute = async (tx: any) => {
-      const inv = await tx.inventory.findUnique({
-        where: { variantId },
-      });
+      // Atomic conditional update: the availability check and the reservation
+      // happen in one statement, so two concurrent buyers cannot reserve the
+      // same last unit.
+      const updated = await tx.$queryRaw<
+        Array<{ id: string; stockQuantity: number; reservedQuantity: number }>
+      >`
+        UPDATE "Inventory"
+        SET "reservedQuantity" = "reservedQuantity" + ${quantity},
+            "updatedAt" = NOW()
+        WHERE "variantId" = ${variantId}
+          AND ("stockQuantity" - "reservedQuantity") >= ${quantity}
+        RETURNING "id", "stockQuantity", "reservedQuantity"
+      `;
 
-      if (!inv) return false;
-
-      const available = inv.stockQuantity - inv.reservedQuantity;
-      if (available < quantity) return false;
-
-      await tx.inventory.update({
-        where: { variantId },
-        data: {
-          reservedQuantity: inv.reservedQuantity + quantity,
-        },
-      });
+      if (!updated || updated.length === 0) return false;
+      const inv = updated[0];
 
       const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
@@ -130,37 +141,43 @@ export class InventoryService {
 
     if (txPrisma) {
       return execute(txPrisma);
-    } else {
-      return client.$transaction(execute);
     }
+    return client.$transaction(execute);
   }
 
-  public static async releaseReservation(referenceOrId: string, txPrisma?: any): Promise<boolean> {
+  public static async releaseReservation(
+    referenceOrId: string,
+    txPrisma?: any,
+    terminalStatus: 'RELEASED' | 'EXPIRED' = 'RELEASED'
+  ): Promise<boolean> {
     const client = txPrisma || prisma;
 
     const execute = async (tx: any) => {
-      const reservations = await tx.inventoryReservation.findMany({
-        where: {
-          OR: [{ id: referenceOrId }, { reference: referenceOrId }],
-          status: 'ACTIVE',
-        },
-      });
+      // Row locks make release exactly-once even under concurrent cancellation,
+      // expiry jobs and payment callbacks.
+      const reservations = await tx.$queryRaw<Array<{ id: string; variantId: string; quantity: number; reference: string }>>`
+        SELECT "id", "variantId", "quantity", "reference"
+        FROM "InventoryReservation"
+        WHERE ("id" = ${referenceOrId} OR "reference" = ${referenceOrId})
+          AND "status" = 'ACTIVE'
+        FOR UPDATE
+      `;
 
-      if (reservations.length === 0) return false;
+      if (!reservations || reservations.length === 0) return false;
 
       for (const res of reservations) {
-        const inv = await tx.inventory.findUnique({
-          where: { variantId: res.variantId },
-        });
+        const invRows = await tx.$queryRaw<
+          Array<{ id: string; stockQuantity: number; reservedQuantity: number }>
+        >`
+          UPDATE "Inventory"
+          SET "reservedQuantity" = GREATEST(0, "reservedQuantity" - ${res.quantity}),
+              "updatedAt" = NOW()
+          WHERE "variantId" = ${res.variantId}
+          RETURNING "id", "stockQuantity", "reservedQuantity"
+        `;
 
-        if (inv) {
-          await tx.inventory.update({
-            where: { variantId: res.variantId },
-            data: {
-              reservedQuantity: Math.max(0, inv.reservedQuantity - res.quantity),
-            },
-          });
-
+        if (invRows && invRows.length > 0) {
+          const inv = invRows[0];
           await tx.inventoryTransaction.create({
             data: {
               inventoryId: inv.id,
@@ -171,14 +188,14 @@ export class InventoryService {
               type: 'RELEASE',
               referenceType: 'ORDER',
               referenceId: res.reference,
-              reason: 'Reservation released/expired',
+              reason: terminalStatus === 'EXPIRED' ? 'Reservation expired' : 'Reservation released',
             },
           });
         }
 
         await tx.inventoryReservation.update({
           where: { id: res.id },
-          data: { status: 'RELEASED' },
+          data: { status: terminalStatus },
         });
       }
 
@@ -187,9 +204,8 @@ export class InventoryService {
 
     if (txPrisma) {
       return execute(txPrisma);
-    } else {
-      return client.$transaction(execute);
     }
+    return client.$transaction(execute);
   }
 
   public static async finalizeSale(
@@ -197,53 +213,72 @@ export class InventoryService {
     quantity: number,
     orderNumber: string,
     txPrisma?: any
-  ): Promise<boolean> {
+  ): Promise<FinalizeSaleResult> {
     const client = txPrisma || prisma;
 
-    const execute = async (tx: any) => {
-      const inv = await tx.inventory.findUnique({
-        where: { variantId },
-      });
+    const execute = async (tx: any): Promise<FinalizeSaleResult> => {
+      // Idempotency guard: this order item was already converted to a sale.
+      const alreadyFulfilled = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "InventoryReservation"
+        WHERE "reference" = ${orderNumber} AND "variantId" = ${variantId} AND "status" = 'FULFILLED'
+        LIMIT 1
+      `;
+      if (alreadyFulfilled && alreadyFulfilled.length > 0) {
+        return { finalized: true, alreadyFinalized: true, shortfall: 0 };
+      }
 
-      if (!inv) return false;
+      const activeReservations = await tx.$queryRaw<Array<{ id: string; quantity: number }>>`
+        SELECT "id", "quantity" FROM "InventoryReservation"
+        WHERE "reference" = ${orderNumber} AND "variantId" = ${variantId} AND "status" = 'ACTIVE'
+        FOR UPDATE
+      `;
+      const reservedQty = (activeReservations || []).reduce((sum: number, r: any) => sum + r.quantity, 0);
 
-      const activeReservations = await tx.inventoryReservation.findMany({
-        where: {
-          reference: orderNumber,
-          variantId,
-          status: 'ACTIVE',
-        },
-      });
+      // Payment arrived after expiry and stock is no longer available: never
+      // oversell. The caller flags the order for manual reconciliation.
+      if (reservedQty > 0 && reservedQty < quantity) {
+        return { finalized: false, alreadyFinalized: false, shortfall: quantity - reservedQty };
+      }
 
-      let reservedToRelease = 0;
-      for (const res of activeReservations) {
-        reservedToRelease += res.quantity;
+      const invRows = reservedQty >= quantity
+        ? await tx.$queryRaw<Array<{ id: string; stockQuantity: number; reservedQuantity: number; soldQuantity: number }>>`
+            UPDATE "Inventory"
+            SET "stockQuantity" = "stockQuantity" - ${quantity},
+                "reservedQuantity" = GREATEST(0, "reservedQuantity" - ${reservedQty}),
+                "soldQuantity" = "soldQuantity" + ${quantity},
+                "updatedAt" = NOW()
+            WHERE "variantId" = ${variantId} AND "stockQuantity" >= ${quantity}
+            RETURNING "id", "stockQuantity", "reservedQuantity", "soldQuantity"
+          `
+        : await tx.$queryRaw<Array<{ id: string; stockQuantity: number; reservedQuantity: number; soldQuantity: number }>>`
+            UPDATE "Inventory"
+            SET "stockQuantity" = "stockQuantity" - ${quantity},
+                "soldQuantity" = "soldQuantity" + ${quantity},
+                "updatedAt" = NOW()
+            WHERE "variantId" = ${variantId}
+              AND ("stockQuantity" - "reservedQuantity") >= ${quantity}
+            RETURNING "id", "stockQuantity", "reservedQuantity", "soldQuantity"
+          `;
+
+      if (!invRows || invRows.length === 0) {
+        return { finalized: false, alreadyFinalized: false, shortfall: quantity };
+      }
+
+      for (const res of activeReservations || []) {
         await tx.inventoryReservation.update({
           where: { id: res.id },
           data: { status: 'FULFILLED' },
         });
       }
 
-      const newStock = Math.max(0, inv.stockQuantity - quantity);
-      const newReserved = Math.max(0, inv.reservedQuantity - reservedToRelease);
-      const newSold = inv.soldQuantity + quantity;
-
-      await tx.inventory.update({
-        where: { variantId },
-        data: {
-          stockQuantity: newStock,
-          reservedQuantity: newReserved,
-          soldQuantity: newSold,
-        },
-      });
-
+      const inv = invRows[0];
       await tx.inventoryTransaction.create({
         data: {
           inventoryId: inv.id,
           variantId,
           quantity: -quantity,
-          previousStock: inv.stockQuantity,
-          newStock,
+          previousStock: inv.stockQuantity + quantity,
+          newStock: inv.stockQuantity,
           type: 'SALE',
           referenceType: 'ORDER',
           referenceId: orderNumber,
@@ -251,14 +286,162 @@ export class InventoryService {
         },
       });
 
-      return true;
+      return { finalized: true, alreadyFinalized: false, shortfall: 0 };
     };
 
     if (txPrisma) {
       return execute(txPrisma);
-    } else {
-      return client.$transaction(execute);
     }
+    return client.$transaction(execute);
+  }
+
+  /**
+   * Releases reservations whose payment window elapsed. Receipts submitted
+   * before expiry move the order into manual review and are never auto-released
+   * while a genuine bank payment may still exist.
+   *
+   * Safe to run repeatedly: every release is row-locked and state-checked.
+   */
+  public static async expireReservations(now: Date = new Date()): Promise<{
+    released: number;
+    expired: number;
+    flaggedForReview: number;
+  }> {
+    const candidates = await prisma.inventoryReservation.findMany({
+      where: { status: 'ACTIVE', expiresAt: { lte: now } },
+      orderBy: { expiresAt: 'asc' },
+      take: 200,
+    });
+
+    if (candidates.length === 0) {
+      return { released: 0, expired: 0, flaggedForReview: 0 };
+    }
+
+    const references = Array.from(new Set(candidates.map((r) => r.reference)));
+    const orders = await prisma.order.findMany({
+      where: { orderNumber: { in: references } },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        paymentReviewDeadlineAt: true,
+      },
+    });
+    const orderByNumber = new Map(orders.map((o) => [o.orderNumber, o]));
+
+    let released = 0;
+    let expired = 0;
+    let flaggedForReview = 0;
+
+    for (const reservation of candidates) {
+      const order = orderByNumber.get(reservation.reference);
+
+      if (order?.paymentStatus === 'PAID') continue;
+
+      const awaitingReview =
+        order?.status === 'AWAITING_PAYMENT_VERIFICATION' ||
+        order?.paymentStatus === 'AWAITING_VERIFICATION';
+
+      if (order && awaitingReview) {
+        if (order.paymentReviewDeadlineAt && order.paymentReviewDeadlineAt <= now) {
+          const updated = await prisma.order.updateMany({
+            where: { id: order.id, needsManualReview: false },
+            data: {
+              needsManualReview: true,
+              manualReviewReason:
+                'Receipt review deadline elapsed without an admin decision. Stock remains reserved pending bank reconciliation.',
+            },
+          });
+          if (updated.count > 0) {
+            await prisma.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                fromStatus: 'AWAITING_PAYMENT_VERIFICATION',
+                toStatus: 'AWAITING_PAYMENT_VERIFICATION',
+                changedBy: 'SYSTEM',
+                note: 'Payment review deadline elapsed. Order flagged for manual bank reconciliation; stock was not released automatically.',
+              },
+            });
+            flaggedForReview += 1;
+          }
+        }
+        // Keep the stock reserved while the payment may be genuine.
+        await prisma.inventoryReservation.update({
+          where: { id: reservation.id },
+          data: { expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000) },
+        });
+        continue;
+      }
+
+      const didRelease = order
+        ? await prisma.$transaction(async (tx) => {
+            const locked = await tx.$queryRaw<Array<{ id: string }>>`
+              SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE
+            `;
+            if (!locked || locked.length === 0) return false;
+
+            const fresh = await tx.order.findUnique({
+              where: { id: order.id },
+              select: { status: true, paymentStatus: true },
+            });
+            if (!fresh || fresh.paymentStatus === 'PAID') return false;
+            if (
+              fresh.status === 'AWAITING_PAYMENT_VERIFICATION' ||
+              fresh.paymentStatus === 'AWAITING_VERIFICATION'
+            ) {
+              return false;
+            }
+
+            const stillExpired = await tx.inventoryReservation.findFirst({
+              where: { id: reservation.id, status: 'ACTIVE', expiresAt: { lte: now } },
+              select: { id: true },
+            });
+            if (!stillExpired) return false;
+
+            const result = await this.releaseReservation(reservation.reference, tx, 'EXPIRED');
+            if (result && fresh.status === 'PENDING_PAYMENT') {
+              await tx.order.updateMany({
+                where: { id: order.id, status: 'PENDING_PAYMENT' },
+                data: { status: 'CANCELLED', paymentStatus: 'FAILED' },
+              });
+              await tx.orderStatusHistory.create({
+                data: {
+                  orderId: order.id,
+                  fromStatus: 'PENDING_PAYMENT',
+                  toStatus: 'CANCELLED',
+                  changedBy: 'SYSTEM',
+                  note: 'Payment window expired before a receipt was submitted. Reservation released.',
+                },
+              });
+            }
+            return result;
+          })
+        : false;
+
+      if (didRelease) released += 1;
+      expired += 1;
+    }
+
+    return { released, expired, flaggedForReview };
+  }
+
+  public static async getActiveReservationExpiry(orderNumber: string): Promise<Date | null> {
+    const reservation = await prisma.inventoryReservation.findFirst({
+      where: { reference: orderNumber, status: 'ACTIVE' },
+      orderBy: { expiresAt: 'asc' },
+      select: { expiresAt: true },
+    });
+    return reservation?.expiresAt ?? null;
+  }
+
+  public static async extendReservations(orderNumber: string, until: Date, txPrisma?: any): Promise<number> {
+    const client = txPrisma || prisma;
+    const result = await client.inventoryReservation.updateMany({
+      where: { reference: orderNumber, status: 'ACTIVE' },
+      data: { expiresAt: until },
+    });
+    return result.count;
   }
 
   public static async adjustStock(

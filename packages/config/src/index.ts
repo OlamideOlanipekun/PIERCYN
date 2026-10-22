@@ -15,7 +15,7 @@ export const COMMERCE_CONFIG = {
 
   // Checkout & Inventory Reservation
   INVENTORY: {
-    RESERVATION_TTL_MINUTES: 15, // Temporary checkout lock to prevent overselling
+    RESERVATION_TTL_MINUTES: 30, // Checkout + bank-transfer window before expiry
     LOW_STOCK_THRESHOLD: 5,
   },
 
@@ -28,12 +28,20 @@ export const COMMERCE_CONFIG = {
       WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY || '',
       BASE_URL: 'https://api.paystack.co',
     },
+    BANK_TRANSFER: {
+      BANK_NAME: 'Kuda',
+      ACCOUNT_NAME: 'Adedeji Taiwo',
+      ACCOUNT_NUMBER: '2072114942',
+      REVIEW_WINDOW_HOURS: 48,
+    },
   },
 
   // Security & Limits
   LIMITS: {
     MAX_CART_QUANTITY_PER_ITEM: 10,
     CART_EXPIRY_DAYS: 30,
+    // Vercel caps serverless request bodies at 4.5 MB once base64 overhead is included.
+    MAX_RECEIPT_BYTES: 3 * 1024 * 1024,
   },
 
   // Active Promotions (Single Source of Truth)
@@ -45,6 +53,7 @@ export const COMMERCE_CONFIG = {
 
   // Affiliate System Configuration (Single Source of Truth)
   AFFILIATE: {
+    ENABLED: false, // Paused until attribution and payout controls are production-ready
     COMMISSION_PER_PRODUCT_KOBO: 50000, // ₦500 = 50,000 kobo per qualifying delivered product
     ATTRIBUTION_WINDOW_DAYS: 30,         // Days an affiliate click is valid for attribution
     MIN_PAYOUT_KOBO: 50000,              // ₦500 minimum payout threshold (50,000 kobo)

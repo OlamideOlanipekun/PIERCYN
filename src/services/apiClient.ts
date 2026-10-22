@@ -161,20 +161,33 @@ export const api = {
   },
 
   // Payments
-  async initializePayment(orderNumber: string, callbackUrl?: string) {
+  async initializePayment(orderNumber: string, orderAccessToken: string) {
     const res = await fetch(`${API_BASE}/payments/initialize`, {
       method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ orderNumber, callbackUrl }),
+      headers: { ...getHeaders(), 'x-order-access-token': orderAccessToken },
+      body: JSON.stringify({ orderNumber }),
     });
     return parseResponse(res);
   },
 
-  async verifyPayment(reference: string) {
+  async verifyPayment(reference: string, orderAccessToken: string) {
     const res = await fetch(`${API_BASE}/payments/verify`, {
       method: 'POST',
-      headers: getHeaders(),
+      headers: { ...getHeaders(), 'x-order-access-token': orderAccessToken },
       body: JSON.stringify({ reference }),
+    });
+    return parseResponse(res);
+  },
+
+  async uploadPaymentReceipt(
+    orderId: string,
+    orderAccessToken: string,
+    payload: { fileBase64: string; mimeType: 'image/jpeg' | 'image/png' | 'application/pdf' }
+  ) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/payment-receipt`, {
+      method: 'POST',
+      headers: { ...getHeaders(), 'x-order-access-token': orderAccessToken },
+      body: JSON.stringify(payload),
     });
     return parseResponse(res);
   },

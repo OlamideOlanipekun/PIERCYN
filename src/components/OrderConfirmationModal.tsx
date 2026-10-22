@@ -64,10 +64,8 @@ export const OrderConfirmationModal: React.FC = () => {
           THANK YOU
         </h2>
 
-        <p className="text-xs text-[#141414]/80 mb-5 font-sans">
-          {isTransfer
-            ? 'Your order is reserved. Contact official support for verified transfer instructions; payment must be verified before fulfilment.'
-            : 'Your order has been received and is being prepared for dispatch.'}
+        <p className="text-xs text-[#141414]/80 mb-5 font-sans leading-relaxed">
+          Your order has been received. PIERCYN will calculate your delivery fee and contact you through WhatsApp. You will receive your final order total before proceeding with payment.
         </p>
 
         {/* ORDER REFERENCE PILL */}
@@ -85,14 +83,22 @@ export const OrderConfirmationModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Never display unverified bank account details in checkout. */}
-        {isTransfer && (
-          <div className="bg-white p-4 rounded-xl border border-[#DAD8D1] text-left text-xs mb-4">
-            <p className="font-semibold text-[#141414]">Need verified transfer instructions?</p>
-            <p className="mt-2 leading-5 text-[#5F5C56]">Contact official PIERCYN support to confirm current payment instructions before transferring. Your order remains pending until payment is verified.</p>
-            <a href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20please%20confirm%20the%20official%20bank%20transfer%20instructions%20for%20my%20order." target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-[#141414] px-4 text-[10px] font-bold uppercase tracking-wider text-white">Confirm via WhatsApp</a>
-          </div>
-        )}
+        <div className="bg-white p-4 rounded-xl border border-[#DAD8D1] text-left text-xs mb-4 space-y-2">
+          <p className="font-semibold text-[#141414] uppercase tracking-wide text-[11px] font-mono">Next Steps:</p>
+          <p className="leading-5 text-[#5F5C56]">
+            1. PIERCYN calculates your exact delivery fee based on your address.
+            <br />
+            2. You will receive your delivery quotation via WhatsApp.
+            <br />
+            3. Reply <strong>YES</strong> to accept the quotation and receive payment instructions.
+          </p>
+          <a
+            href={`/order/success/${lastCreatedOrder.id}`}
+            className="mt-2 inline-flex min-h-9 items-center rounded-full bg-[#141414] px-4 text-[10px] font-bold uppercase tracking-wider text-white"
+          >
+            View Live Order Status
+          </a>
+        </div>
 
         {/* SUMMARY BREAKDOWN */}
         <div className="space-y-2 text-left text-xs bg-[#E8E6E1]/60 p-3.5 rounded-xl border border-[#DAD8D1]/60 mb-5 font-sans">
@@ -104,16 +110,24 @@ export const OrderConfirmationModal: React.FC = () => {
             <span className="text-[#141414]/70">Delivery Address</span>
             <span className="font-semibold truncate max-w-[200px]">{lastCreatedOrder.customer.address}, {lastCreatedOrder.customer.state}</span>
           </div>
+          <div className="flex items-center justify-between border-b border-[#DAD8D1] pb-1.5">
+            <span className="text-[#141414]/70">Product Subtotal</span>
+            <span className="font-mono font-semibold">₦{(lastCreatedOrder.subtotalNGN || lastCreatedOrder.totalNGN).toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between border-b border-[#DAD8D1] pb-1.5">
+            <span className="text-[#141414]/70">Delivery Fee</span>
+            <span className="font-mono font-bold text-[11px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded">To be confirmed</span>
+          </div>
           <div className="flex items-center justify-between">
-            <span className="text-[#141414]/70">Total Order Amount</span>
-            <span className="font-mono font-bold text-sm">₦{lastCreatedOrder.totalNGN.toLocaleString()}</span>
+            <span className="text-[#141414]/70">Final Payable Total</span>
+            <span className="font-mono font-bold text-sm">To be determined</span>
           </div>
         </div>
 
         {/* ACTION BUTTONS */}
         <div className="space-y-2.5">
           <a
-            href={`https://wa.me/2348000000000?text=${whatsappMessage}`}
+            href={`https://wa.me/2349129997137?text=${whatsappMessage}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 px-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 shadow-xs"

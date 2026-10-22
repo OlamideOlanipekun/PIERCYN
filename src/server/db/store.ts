@@ -172,6 +172,9 @@ export type OrderStatusType =
   | 'REFUNDED'
   | 'EXCHANGED';
 
+// ── Delivery quotation lifecycle ──────────────────────────────────────────────
+export type QuoteStatusType = 'PENDING' | 'SET' | 'SENT' | 'ACCEPTED' | 'REJECTED';
+
 export interface DbOrderTimelineEntry {
   status: OrderStatusType;
   timestamp: string;
@@ -198,7 +201,7 @@ export interface DbOrder {
   shippingMethodKey: string;
   shippingMethodName: string;
   paymentMethod: string;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'AWAITING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED' | 'REJECTED';
   orderStatus: OrderStatusType;
   shipmentId?: string;
   paidAt?: string;
@@ -211,6 +214,47 @@ export interface DbOrder {
   affiliateLinkId?: string;
   affiliateCode?: string;         // Referral code snapshot
   affiliateAttributedAt?: string; // ISO timestamp of click attribution
+
+  // ── Delivery quotation lifecycle ─────────────────────────────────────────
+  // quoteStatus starts at PENDING and advances as admin sets/sends/customer accepts
+  quoteStatus: QuoteStatusType;
+  // The delivery fee the admin has quoted (may differ from deliveryFeeNGN until accepted)
+  quoteDeliveryFeeNGN?: number;
+  // Calculated final total shown in the quote (subtotal - discount + quoteDeliveryFeeNGN)
+  quoteTotalNGN?: number;
+  // Incremented each time the admin changes the delivery fee — prevents stale acceptance
+  quoteVersion: number;
+  // Free-text timeframe communicated to the customer ("Same day", "2–3 business days", etc.)
+  quoteEstimatedTimeframe?: string;
+  // Private note visible only to admins — NEVER sent to the customer
+  quoteInternalNote?: string;
+  // Timestamps
+  quoteSetAt?: string;
+  quoteSetByAdmin?: string;     // adminId who set the fee
+  quoteSentAt?: string;
+  quoteSentByAdmin?: string;    // adminId who marked it sent
+  quoteAcceptedAt?: string;
+  quoteAcceptedByAdmin?: string; // adminId who recorded acceptance
+  quoteAcceptedFeeNGN?: number;  // snapshot of fee the customer accepted
+  quoteAcceptedTotalNGN?: number; // snapshot of total the customer accepted
+  quoteRejectedAt?: string;
+  quoteRejectedByAdmin?: string;  // adminId who recorded rejection
+
+  // ── Manual rider fulfilment ───────────────────────────────────────────────
+  riderName?: string;
+  riderPhone?: string;
+  dispatchedAt?: string;
+  dispatchNote?: string;
+
+  // ── Bank transfer receipt (manual payment review) ─────────────────────────
+  receiptUrl?: string;
+  receiptMimeType?: string;
+  receiptUploadedAt?: string;
+  paymentVerifiedAt?: string;
+  paymentVerifiedByAdmin?: string;
+  paymentRejectedAt?: string;
+  paymentRejectedReason?: string;
+  paymentSubmittedAt?: string;
 }
 
 
@@ -240,7 +284,7 @@ export type ShipmentStatusType =
 export interface DbShipment {
   id: string;
   orderId: string;
-  courier: string; // 'KWIK', 'INTERNAL', 'GIG', etc.
+  courier: string; // 'MANUAL', 'INTERNAL', or any free-text rider name
   trackingNumber: string;
   status: ShipmentStatusType;
   deliveryFeeNGN: number;
@@ -312,7 +356,7 @@ export interface DbEvent {
 
 // Order State Machine Transitions
 export const VALID_ORDER_TRANSITIONS: Record<OrderStatusType, OrderStatusType[]> = {
-  PENDING_PAYMENT: ['PAID', 'CANCELLED', 'FAILED'],
+  PENDING_PAYMENT: ['PAID', 'PROCESSING', 'CANCELLED', 'FAILED'],
   PAID: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
   PROCESSING: ['PACKED', 'CANCELLED', 'REFUNDED'],
   PACKED: ['SHIPPED', 'CANCELLED', 'REFUNDED'],
@@ -666,6 +710,11 @@ export class CommerceDataStore {
           const deliveryFee = subtotal >= COMMERCE_CONFIG.SHIPPING.FREE_THRESHOLD_NGN ? 0 : COMMERCE_CONFIG.SHIPPING.LAGOS_FEE_NGN;
           const totalNGN = subtotal + deliveryFee;
 
+          // Quote is pre-accepted for seeded demo orders that are already paid.
+          // The pending PCY-2604 starts with PENDING so the admin flow can be demonstrated.
+          const isSeedPaid = cfg.paymentStatus === 'PAID';
+          const seedQuoteStatus = isSeedPaid ? 'ACCEPTED' as const : 'PENDING' as const;
+
           const order: DbOrder = {
             id: orderId,
             orderNumber: cfg.orderNumber,
@@ -687,6 +736,19 @@ export class CommerceDataStore {
             paymentStatus: cfg.paymentStatus,
             orderStatus: cfg.status,
             paidAt: cfg.paymentStatus === 'PAID' ? orderDate : undefined,
+            // Quote lifecycle fields
+            quoteStatus: seedQuoteStatus,
+            quoteVersion: 1,
+            quoteDeliveryFeeNGN: deliveryFee,
+            quoteTotalNGN: totalNGN,
+            quoteEstimatedTimeframe: 'Same day',
+            ...(isSeedPaid ? {
+              quoteSetAt: orderDate,
+              quoteSentAt: orderDate,
+              quoteAcceptedAt: orderDate,
+              quoteAcceptedFeeNGN: deliveryFee,
+              quoteAcceptedTotalNGN: totalNGN,
+            } : {}),
             timeline: [
               { status: 'PENDING_PAYMENT', timestamp: orderDate, note: 'Order placed by client' },
               ...(cfg.paymentStatus === 'PAID'

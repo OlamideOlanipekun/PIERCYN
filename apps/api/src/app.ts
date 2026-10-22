@@ -7,7 +7,7 @@ export const app = express();
 
 // Allowed Origins for CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
   : [
       'http://localhost:3000',
       'http://localhost:5173',
@@ -15,16 +15,20 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'https://piercyn-full-store.vercel.app',
     ];
 
+if (process.env.APP_URL && !allowedOrigins.includes(process.env.APP_URL)) {
+  allowedOrigins.push(process.env.APP_URL.replace(/\/$/, ''));
+}
+
+const isLocalDevOrigin = (origin: string) =>
+  process.env.NODE_ENV !== 'production' && /^http:\/\/localhost(:\d+)?$/.test(origin);
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (
-        allowedOrigins.includes(origin) ||
-        process.env.NODE_ENV !== 'production' ||
-        origin.endsWith('.vercel.app')
-      ) {
+      // Never trust every *.vercel.app preview deployment.
+      if (allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
@@ -37,6 +41,7 @@ app.use(
       'x-session-id',
       'x-admin-token',
       'x-auth-token',
+      'x-order-access-token',
       'x-paystack-signature',
     ],
   })
@@ -45,13 +50,14 @@ app.use(
 // Capture raw body for Paystack HMAC webhook verification
 app.use(
   express.json({
-    limit: '5mb',
+    // Receipts are limited to 3 MB binary; base64 adds ~33% overhead.
+    limit: '6mb',
     verify: (req: Request, _res: Response, buf: Buffer) => {
       (req as any).rawBody = buf.toString();
     },
   })
 );
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '6mb' }));
 
 // Health check endpoint
 app.get(['/health', '/api/health'], async (_req: Request, res: Response) => {

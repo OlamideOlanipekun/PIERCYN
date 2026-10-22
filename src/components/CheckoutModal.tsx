@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
+import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
 import { CustomerInfo, OrderItem } from '../types';
@@ -72,8 +73,7 @@ export const CheckoutModal: React.FC = () => {
     'Other Nigerian State',
   ];
 
-  const deliveryFee = getDeliveryFee(cartSubtotal, shippingMethod);
-  const totalNGN = Math.max(0, cartSubtotal + deliveryFee - (promoDiscountNGN || 0));
+  const itemsSubtotal = Math.max(0, cartSubtotal - (promoDiscountNGN || 0));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -103,7 +103,7 @@ export const CheckoutModal: React.FC = () => {
         quantity: item.quantity,
       }));
 
-      // 1. Authoritative Server-Side Order Creation (Awaited)
+      // 1. Authoritative Server-Side Order Creation (Pending Delivery Quote)
       const createdServerOrder = await createOrder({
         customer,
         shippingRegion: shippingMethod,
@@ -112,31 +112,11 @@ export const CheckoutModal: React.FC = () => {
         discountCode: appliedPromoCode || undefined,
       });
 
-      // 2. If Paystack Live Gateway is selected, trigger payment authorization with server order reference
-      if (paymentMethodChoice === 'paystack' && isLiveGateway) {
-        const paymentRes = await processCheckoutPayment({
-          orderNumber: createdServerOrder.orderNumber,
-          amountNGN: createdServerOrder.totalNGN,
-          customerEmail: customer.email,
-          customerName: customer.fullName,
-          customerPhone: customer.phone,
-        });
-
-        if (!paymentRes.success) {
-          setErrorMessage(paymentRes.message || 'Payment could not be completed. Your reservation is held; you can complete bank transfer or WhatsApp confirmation.');
-          setIsSubmitting(false);
-          setIsCheckoutOpen(false);
-          window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-          return;
-        }
-      }
-
       setIsSubmitting(false);
       setIsCheckoutOpen(false);
       window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
-      showToast('Order confirmed by PIERCYN Atelier!');
+      showToast('Order received! PIERCYN will contact you on WhatsApp with your delivery quote.');
     } catch (err: any) {
       console.error('[CHECKOUT_SUBMIT_ERROR]', err);
       const rawMsg = err?.message || '';
@@ -337,10 +317,8 @@ export const CheckoutModal: React.FC = () => {
                         <p className="text-[10px] opacity-75">{SHIPPING_CONFIG.lagosTimeframe}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
-                        ? 'FREE'
-                        : `₦${SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()}`}
+                    <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded">
+                      Fee quoted on WhatsApp
                     </span>
                   </label>
 
@@ -359,10 +337,8 @@ export const CheckoutModal: React.FC = () => {
                         <p className="text-[10px] opacity-75">{SHIPPING_CONFIG.nationwideTimeframe}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-bold">
-                      {cartSubtotal >= SHIPPING_CONFIG.freeShippingThresholdNGN
-                        ? 'FREE'
-                        : `₦${SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()}`}
+                    <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded">
+                      Fee quoted on WhatsApp
                     </span>
                   </label>
                 </div>
@@ -428,15 +404,21 @@ export const CheckoutModal: React.FC = () => {
                     <span className="font-mono">-₦{promoDiscountNGN.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[#141414]/80">
-                  <span>Delivery Fee</span>
-                  <span className="font-mono">
-                    {deliveryFee === 0 ? 'FREE' : `₦${deliveryFee.toLocaleString()}`}
+                <div className="flex justify-between items-center text-[#141414]/80">
+                  <div>
+                    <span className="block font-medium">Delivery Fee</span>
+                    <span className="text-[10px] text-[#7A7771]">Quoted via WhatsApp</span>
+                  </div>
+                  <span className="font-mono text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                    To be confirmed
                   </span>
                 </div>
-                <div className="flex justify-between text-sm font-bold text-[#141414] pt-2 border-t border-[#DAD8D1]">
-                  <span>Total Amount</span>
-                  <span className="font-mono text-base">₦{totalNGN.toLocaleString()}</span>
+                <div className="flex justify-between items-baseline text-sm font-bold text-[#141414] pt-2 border-t border-[#DAD8D1]">
+                  <div>
+                    <span className="block">Total Payable</span>
+                    <span className="text-[10px] text-[#7A7771] font-normal">Items ₦{itemsSubtotal.toLocaleString()} + Delivery</span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-[#141414]">To be determined</span>
                 </div>
               </div>
 
@@ -449,7 +431,7 @@ export const CheckoutModal: React.FC = () => {
                   {isSubmitting ? (
                     <span className="inline-block animate-pulse">PROCESSING ORDER...</span>
                   ) : (
-                    <span>CONFIRM & PLACE ORDER (₦{totalNGN.toLocaleString()})</span>
+                    <span>SUBMIT ORDER (₦{itemsSubtotal.toLocaleString()} + DELIVERY)</span>
                   )}
                 </button>
               </div>

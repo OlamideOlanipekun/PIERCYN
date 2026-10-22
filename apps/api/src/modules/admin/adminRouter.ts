@@ -3,6 +3,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AdminAuthService } from './adminAuthService';
 import { requireAdmin, AuthenticatedAdminRequest } from './adminMiddleware';
 import { OrderService } from '../orders/orderService';
+import { DeliveryQuoteService } from '../orders/deliveryQuoteService';
+import { PaymentService } from '../payments/paymentService';
 import { ProductService } from '../products/productService';
 import { InventoryService } from '../inventory/inventoryService';
 import { CustomerService } from '../customers/customerService';
@@ -50,7 +52,7 @@ export const storeSettingsState = {
   reservationTtlMinutes: COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
   paymentGatewayConfigured: Boolean(COMMERCE_CONFIG.PAYMENT.PAYSTACK.PUBLIC_KEY || process.env.PAYSTACK_SECRET_KEY),
   paymentEnvironment: process.env.NODE_ENV === 'production' ? 'LIVE' : 'TEST',
-  shippingProviders: ['KWIK Delivery (Lagos Express)', 'GIG Logistics (Nationwide)', 'DHL Express (Global)'],
+  shippingProviders: ['Manual Dispatch Rider (Lagos Doorstep)', 'Verified Interstate Courier (Nationwide)'],
 };
 
 const AdminLoginSchema = z.object({
@@ -422,6 +424,317 @@ adminRouter.get('/orders/:id', requireAdmin, async (req: Request, res: Response)
     return res.status(404).json({ success: false, error: 'Order not found' });
   }
   res.json({ success: true, data: order });
+});
+
+adminRouter.get('/orders/:orderNumber/payment-receipt', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const receipt = await PaymentService.getReceiptForAdmin(req.params.orderNumber);
+    res.json({ success: true, data: receipt });
+  } catch (err: any) {
+    res.status(404).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/orders/:orderNumber/payment/approve', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = z.object({ note: z.string().trim().max(500).optional() }).parse(req.body ?? {});
+    const result = await PaymentService.approvePayment(
+      req.params.orderNumber,
+      req.admin?.id || 'admin',
+      req.admin?.email || 'admin@piercyn.com',
+      input.note
+    );
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PAYMENT_APPROVED',
+      resource: 'ORDER',
+      resourceId: result.orderNumber,
+      previousValue: 'AWAITING_PAYMENT_VERIFICATION',
+      newValue: 'PAID',
+      note: input.note || 'Bank-transfer receipt verified and payment approved.',
+    });
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+adminRouter.post('/orders/:orderNumber/payment/reject', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const input = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body);
+    const result = await PaymentService.rejectPayment(
+      req.params.orderNumber,
+      req.admin?.id || 'admin',
+      req.admin?.email || 'admin@piercyn.com',
+      input.reason
+    );
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PAYMENT_REJECTED',
+      resource: 'ORDER',
+      resourceId: result.orderNumber,
+      previousValue: 'AWAITING_PAYMENT_VERIFICATION',
+      newValue: result.orderStatus,
+      note: `Receipt rejected: ${input.reason}`,
+    });
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    const message = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+const SetDeliveryQuoteSchema = z.object({
+  deliveryFeeNGN: z.number().int().min(0, 'Delivery fee must be a non-negative integer'),
+  estimatedDeliveryTimeframe: z.string().trim().max(200).optional(),
+  internalNote: z.string().trim().max(1000).optional(),
+});
+
+const RejectQuoteSchema = z.object({
+  reason: z.string().trim().max(500).optional(),
+});
+
+const AssignRiderSchema = z.object({
+  riderName: z.string().trim().min(1, 'Rider name is required'),
+  riderPhone: z.string().trim().min(5, 'Rider phone number is required'),
+  note: z.string().trim().max(500).optional(),
+});
+
+const DispatchOrderSchema = z.object({
+  riderName: z.string().trim().optional(),
+  riderPhone: z.string().trim().optional(),
+  dispatchNote: z.string().trim().max(500).optional(),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * POST /api/admin/orders/:id/quote
+ * Admin sets or updates the per-order delivery fee.
+ * Server validates amount and recalculates authoritative total.
+ * Every change increments quoteVersion and invalidates prior acceptance.
+ */
+adminRouter.post('/orders/:id/quote', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = SetDeliveryQuoteSchema.parse(req.body);
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const existing = await OrderService.getOrder(req.params.id);
+    const prevFee = existing?.quoteDeliveryFeeNGN ?? existing?.deliveryFeeNGN;
+
+    const updated = await DeliveryQuoteService.setDeliveryQuote(
+      req.params.id,
+      {
+        deliveryFeeNGN: validated.deliveryFeeNGN,
+        estimatedTimeframe: validated.estimatedDeliveryTimeframe,
+        internalNote: validated.internalNote,
+      },
+      adminId
+    );
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'DELIVERY_QUOTE_SET',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      oldValue: prevFee !== undefined && prevFee !== null ? `₦${prevFee.toLocaleString()}` : 'Not set',
+      newValue: `₦${validated.deliveryFeeNGN.toLocaleString()} (v${updated.quoteVersion})`,
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    const msg = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * GET /api/admin/orders/:id/quote/whatsapp
+ * Generates the personalised WhatsApp message and wa.me click-to-chat URL.
+ * Does NOT mark the quote as sent.
+ */
+adminRouter.get('/orders/:id/quote/whatsapp', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await DeliveryQuoteService.generateWhatsAppUrl(req.params.id);
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    res.json({
+      success: true,
+      data: {
+        whatsappUrl: result.url,
+        message: result.message,
+        customerPhone: result.phone,
+        quoteVersion: result.quoteVersion,
+      },
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/send
+ * Admin explicitly marks the quote as sent via WhatsApp.
+ */
+adminRouter.post('/orders/:id/quote/send', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const updated = await DeliveryQuoteService.markQuoteSent(req.params.id, adminId);
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'DELIVERY_QUOTE_SENT',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: 'SENT',
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/accept
+ * Admin records customer acceptance via WhatsApp.
+ * Snapshots agreed fee and total, and unlocks order for payment.
+ */
+adminRouter.post('/orders/:id/quote/accept', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const updated = await DeliveryQuoteService.recordAcceptance(req.params.id, adminId);
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'DELIVERY_QUOTE_ACCEPTED',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: `ACCEPTED (Fee: ₦${updated.quoteAcceptedFeeNGN?.toLocaleString()}, Total: ₦${updated.quoteAcceptedTotalNGN?.toLocaleString()})`,
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/reject
+ * Admin records customer rejection via WhatsApp.
+ */
+adminRouter.post('/orders/:id/quote/reject', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const parsed = RejectQuoteSchema.safeParse(req.body);
+    const reason = parsed.success ? parsed.data.reason : undefined;
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const updated = await DeliveryQuoteService.recordRejection(req.params.id, adminId, reason);
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'DELIVERY_QUOTE_REJECTED',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: reason ? `REJECTED: ${reason}` : 'REJECTED',
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/rider
+ * Admin assigns a manual rider to the order.
+ * Requires confirmed payment.
+ */
+adminRouter.post('/orders/:id/rider', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = AssignRiderSchema.parse(req.body);
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const updated = await DeliveryQuoteService.assignRider(
+      req.params.id,
+      { riderName: validated.riderName, riderPhone: validated.riderPhone },
+      adminId
+    );
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'RIDER_ASSIGNED',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: `${validated.riderName} (${validated.riderPhone})`,
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    const msg = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/dispatch
+ * Admin records manual dispatch with assigned rider.
+ */
+adminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const parsed = DispatchOrderSchema.safeParse(req.body);
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    if (parsed.success && parsed.data.riderName && parsed.data.riderPhone) {
+      await DeliveryQuoteService.assignRider(
+        req.params.id,
+        { riderName: parsed.data.riderName, riderPhone: parsed.data.riderPhone },
+        adminId
+      );
+    }
+
+    const updated = await DeliveryQuoteService.recordDispatch(
+      req.params.id,
+      { dispatchNote: parsed.success ? (parsed.data.dispatchNote || parsed.data.note) : undefined },
+      adminId
+    );
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'ORDER_DISPATCHED',
+      resourceType: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: updated.status,
+    });
+
+    const detailed = await OrderService.getOrderDetail(updated.id);
+    res.json({ success: true, data: detailed });
+  } catch (err: any) {
+    const msg = err instanceof z.ZodError ? err.issues[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
 });
 
 adminRouter.patch('/orders/:id/status', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {

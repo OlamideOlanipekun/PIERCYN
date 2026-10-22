@@ -12,6 +12,7 @@ import { AnalyticsService } from '../analytics/analyticsService';
 import { AuditService } from './auditService';
 import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
 import { ReviewService } from '../reviews/reviewService';
+import { DeliveryQuoteService } from '../orders/deliveryQuoteService';
 import { dbStore, DbOrder, OrderStatusType } from '../../db/store';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { z } from 'zod';
@@ -50,7 +51,7 @@ export const storeSettingsState = {
   reservationTtlMinutes: COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES,
   paymentGatewayConfigured: Boolean(COMMERCE_CONFIG.PAYMENT.PAYSTACK.PUBLIC_KEY || process.env.PAYSTACK_SECRET_KEY),
   paymentEnvironment: process.env.NODE_ENV === 'production' ? 'LIVE' : 'TEST',
-  shippingProviders: ['KWIK Delivery (Lagos Express)', 'GIG Logistics (Nationwide)', 'DHL Express (Global)'],
+  shippingProviders: ['Manual Dispatch Rider (Lagos Doorstep)', 'Verified Interstate Courier (Nationwide)'],
 };
 
 // Validation Schemas
@@ -85,6 +86,29 @@ const CreateShipmentSchema = z.object({
   recipientName: z.string().min(2),
   recipientPhone: z.string().min(7),
   itemDescription: z.string().optional(),
+});
+
+// ── Delivery Quotation Schemas ────────────────────────────────────────────────
+const SetDeliveryQuoteSchema = z.object({
+  deliveryFeeNGN: z
+    .number({ required_error: 'deliveryFeeNGN is required' })
+    .int('Delivery fee must be a whole number (NGN)')
+    .nonnegative('Delivery fee cannot be negative'),
+  estimatedTimeframe: z.string().max(200).optional(),
+  internalNote: z.string().max(1000).optional(),
+});
+
+const AssignRiderSchema = z.object({
+  riderName: z.string().min(2, 'Rider name must be at least 2 characters'),
+  riderPhone: z.string().min(7, 'Rider phone must be at least 7 characters'),
+});
+
+const DispatchSchema = z.object({
+  dispatchNote: z.string().max(500).optional(),
+});
+
+const RejectQuoteSchema = z.object({
+  reason: z.string().max(500).optional(),
 });
 
 const CreateProductSchema = z.object({
@@ -342,9 +366,10 @@ adminRouter.delete('/media', requireAdmin, async (req: AuthenticatedAdminRequest
 // -------------------------------------------------------------
 adminRouter.get('/orders', requireAdmin, (req: Request, res: Response) => {
   try {
-    const { status, email, search, startDate, endDate, limit, offset } = req.query;
+    const { status, quoteStatus, email, search, startDate, endDate, limit, offset } = req.query;
     const orders = OrderService.getAllOrders({
       status: status as any,
+      quoteStatus: quoteStatus as any,
       email: email as string,
       search: search as string,
       startDate: startDate as string,
@@ -411,6 +436,218 @@ adminRouter.post('/orders/:id/shipment', requireAdmin, async (req: Authenticated
     });
 
     res.status(201).json({ success: true, data: shipment });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// -------------------------------------------------------------
+// 2b. DELIVERY QUOTATION MANAGEMENT
+// All routes require admin authentication.
+// Business logic is in DeliveryQuoteService — router handles
+// HTTP concerns, validation, and audit logging only.
+// -------------------------------------------------------------
+
+/**
+ * POST /api/admin/orders/:id/quote
+ * Admin sets or updates the per-order delivery fee.
+ * Fee cannot be negative. Increments quoteVersion, invalidating
+ * any prior customer acceptance.
+ */
+adminRouter.post('/orders/:id/quote', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = SetDeliveryQuoteSchema.parse(req.body);
+    const adminId = req.admin?.id || 'admin';
+
+    const existing = OrderService.getOrder(req.params.id);
+    const prevFee = existing?.quoteDeliveryFeeNGN;
+
+    const updated = DeliveryQuoteService.setDeliveryQuote(
+      req.params.id,
+      {
+        deliveryFeeNGN: validated.deliveryFeeNGN,
+        estimatedTimeframe: validated.estimatedTimeframe,
+        internalNote: validated.internalNote,
+      },
+      adminId
+    );
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'DELIVERY_QUOTE_SET',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      previousValue: prevFee !== undefined ? `₦${prevFee.toLocaleString()}` : 'Not set',
+      newValue: `₦${validated.deliveryFeeNGN.toLocaleString()} (v${updated.quoteVersion})`,
+      note: `Delivery fee set for order ${updated.orderNumber}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * GET /api/admin/orders/:id/quote/whatsapp
+ * Returns the WhatsApp URL and pre-filled message for the order.
+ * Does NOT mark the quote as sent. Admin must click "Mark Sent" separately.
+ */
+adminRouter.get('/orders/:id/quote/whatsapp', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const result = DeliveryQuoteService.generateWhatsAppUrl(req.params.id);
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/send
+ * Admin explicitly marks the delivery quote as sent via WhatsApp.
+ * This is NEVER inferred automatically from the URL being opened.
+ */
+adminRouter.post('/orders/:id/quote/send', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+    const updated = DeliveryQuoteService.markQuoteSent(req.params.id, adminId);
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'DELIVERY_QUOTE_SENT',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: 'SENT',
+      note: `Delivery quotation manually marked as sent via WhatsApp for order ${updated.orderNumber}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/accept
+ * Admin records the customer's WhatsApp acceptance.
+ * Snapshots the accepted fee and total. Enables payment.
+ */
+adminRouter.post('/orders/:id/quote/accept', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+    const updated = DeliveryQuoteService.recordAcceptance(req.params.id, adminId);
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'DELIVERY_QUOTE_ACCEPTED',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: `ACCEPTED — Fee: ₦${updated.quoteAcceptedFeeNGN?.toLocaleString()}, Total: ₦${updated.quoteAcceptedTotalNGN?.toLocaleString()}`,
+      note: `Customer acceptance recorded for order ${updated.orderNumber}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/quote/reject
+ * Admin records the customer's WhatsApp rejection.
+ * Order cannot proceed to payment in this state.
+ */
+adminRouter.post('/orders/:id/quote/reject', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const parsed = RejectQuoteSchema.safeParse(req.body);
+    const adminId = req.admin?.id || 'admin';
+    const updated = DeliveryQuoteService.recordRejection(req.params.id, adminId);
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'DELIVERY_QUOTE_REJECTED',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: 'REJECTED',
+      note: parsed.success?.toString() && parsed.data?.reason
+        ? `Customer rejected quotation: ${parsed.data.reason}`
+        : `Customer rejection recorded for order ${updated.orderNumber}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/rider
+ * Admin assigns a manual rider to the order.
+ * Payment must be confirmed first.
+ */
+adminRouter.post('/orders/:id/rider', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = AssignRiderSchema.parse(req.body);
+    const adminId = req.admin?.id || 'admin';
+
+    const updated = OrderService.assignRider(
+      req.params.id,
+      { riderName: validated.riderName, riderPhone: validated.riderPhone },
+      adminId
+    );
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'RIDER_ASSIGNED',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: `${validated.riderName} (${validated.riderPhone})`,
+      note: `Rider assigned to order ${updated.orderNumber}`,
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/dispatch
+ * Admin records that the order has been dispatched with the assigned rider.
+ */
+adminRouter.post('/orders/:id/dispatch', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const parsed = DispatchSchema.safeParse(req.body);
+    const adminId = req.admin?.id || 'admin';
+
+    const updated = OrderService.recordDispatch(
+      req.params.id,
+      { dispatchNote: parsed.success ? parsed.data.dispatchNote : undefined },
+      adminId
+    );
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'ORDER_DISPATCHED',
+      resource: 'ORDER',
+      resourceId: updated.orderNumber,
+      newValue: updated.orderStatus,
+      note: `Order ${updated.orderNumber} dispatched${updated.riderName ? ` with ${updated.riderName}` : ''}`,
+    });
+
+    res.json({ success: true, data: updated });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
@@ -1102,6 +1339,10 @@ adminRouter.post('/seed-sample-orders', requireAdmin, (req: AuthenticatedAdminRe
         paymentStatus: sample.paymentStatus,
         orderStatus: sample.status,
         paidAt: sample.paymentStatus === 'PAID' ? orderDate : undefined,
+        quoteStatus: sample.paymentStatus === 'PAID' ? 'ACCEPTED' : 'PENDING',
+        quoteVersion: 1,
+        quoteDeliveryFeeNGN: deliveryFee,
+        quoteTotalNGN: totalNGN,
         timeline: [
           { status: 'PENDING_PAYMENT', timestamp: orderDate, note: 'Order placed by client' },
           ...(sample.paymentStatus === 'PAID'

@@ -67,6 +67,7 @@ enum CartStatus {
 
 enum OrderStatus {
   PENDING_PAYMENT
+  AWAITING_PAYMENT_VERIFICATION
   PAID
   PROCESSING
   PACKED
@@ -82,14 +83,18 @@ enum OrderStatus {
 
 enum OrderPaymentStatus {
   PENDING
+  AWAITING_VERIFICATION
   PAID
+  REJECTED
   FAILED
   REFUNDED
 }
 
 enum PaymentStatus {
   PENDING
+  SUBMITTED
   SUCCESS
+  REJECTED
   FAILED
   REFUNDED
 }
@@ -498,6 +503,38 @@ model Order {
 
   paidAt         DateTime?
 
+  // Manual payment review / reconciliation
+  paymentSubmittedAt     DateTime?
+  paymentReviewDeadlineAt DateTime?
+  needsManualReview      Boolean   @default(false)
+  manualReviewReason     String?
+
+  // Delivery Quotation Lifecycle (Manual WhatsApp workflow)
+  quoteStatus            String    @default("PENDING") // PENDING | SET | SENT | ACCEPTED | REJECTED
+  quoteVersion           Int       @default(1)
+  quoteDeliveryFeeNGN    Int?
+  quoteTotalNGN          Int?
+  quoteEstimatedTimeframe String?
+  quoteInternalNote      String?
+  quoteSetAt             DateTime?
+  quoteSetByAdmin        String?
+  quoteSentAt            DateTime?
+  quoteSentByAdmin       String?
+  quoteAcceptedAt        DateTime?
+  quoteAcceptedByAdmin   String?
+  quoteAcceptedFeeNGN    Int?
+  quoteAcceptedTotalNGN  Int?
+  quoteRejectedAt        DateTime?
+  quoteRejectedByAdmin   String?
+  quoteRejectedReason    String?
+
+  // Manual Rider Fulfilment (Internal to Admin)
+  riderName              String?
+  riderPhone             String?
+  dispatchedAt           DateTime?
+  dispatchNote           String?
+  deliveredAt            DateTime?
+
   // Affiliate attribution snapshot (immutable after order creation)
   affiliateId          String?
   affiliate            Affiliate?          @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
@@ -520,9 +557,12 @@ model Order {
   @@index([orderNumber])
   @@index([status])
   @@index([paymentStatus])
+  @@index([quoteStatus])
   @@index([customerEmail])
   @@index([customerId])
   @@index([createdAt])
+  @@index([paymentReviewDeadlineAt])
+  @@index([needsManualReview])
   @@index([affiliateId])
   @@index([affiliateCode])
 }
@@ -588,11 +628,23 @@ model Payment {
   paidAt            DateTime?
   rawMetadata       String?             // JSON of webhook/verification response
 
+  // Manual bank-transfer receipt review (private storage reference only)
+  receiptPath       String?
+  receiptMimeType   String?
+  receiptUploadedAt DateTime?
+  submittedAt       DateTime?
+  reviewDeadlineAt  DateTime?
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  verificationNote  String?
+  rejectionReason   String?
+
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
   @@index([orderId])
   @@index([providerReference])
+  @@index([status])
 }
 
 // ============================================================

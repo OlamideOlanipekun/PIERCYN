@@ -59,13 +59,15 @@ export class CheckoutService {
       }
     }
 
-    const deliveryFeeNGN = await ShippingService.calculateFee(shippingRegion, cart.subtotalNGN);
-    const finalTotal = Math.max(0, cart.subtotalNGN + deliveryFeeNGN - discountNGN);
+    // PIERCYN Option A: Delivery fee is calculated manually by admin and communicated via WhatsApp.
+    // At checkout, preliminary delivery fee is 0 (marked pending), and total is subtotal - discount.
+    const deliveryFeeNGN = 0;
+    const finalTotal = Math.max(0, cart.subtotalNGN - discountNGN);
 
     const shippingMethodName =
       shippingRegion === 'lagos'
-        ? 'Lagos Doorstep (24–48 Hours)'
-        : 'Nationwide Nigeria (3–5 Business Days)';
+        ? 'Lagos Delivery (Fee to be confirmed via WhatsApp)'
+        : 'Nationwide Delivery (Fee to be confirmed via WhatsApp)';
 
     const isEligible = cart.isValid && cart.items.length > 0;
 
@@ -75,6 +77,7 @@ export class CheckoutService {
       shippingMethodName,
       subtotalNGN: cart.subtotalNGN,
       deliveryFeeNGN,
+      deliveryFeePending: true,
       discountNGN,
       discountDescription: promoDescription,
       totalNGN: finalTotal,
@@ -100,7 +103,10 @@ export class CheckoutService {
 
     // Resolve and snapshot attribution before checkout. The order must never rely on
     // browser storage or a later link lookup to determine commission ownership.
-    const attribution = await AffiliateService.resolveAttribution(sessionId, input.affiliateCode);
+    // The programme is paused: no attribution is recorded while disabled.
+    const attribution = COMMERCE_CONFIG.AFFILIATE.ENABLED
+      ? await AffiliateService.resolveAttribution(sessionId, input.affiliateCode)
+      : null;
     let affiliateAttribution: {
       affiliateId: string;
       affiliateLinkId: string;
@@ -189,6 +195,8 @@ export class CheckoutService {
           paymentMethod: paymentMethodLabel,
           paymentStatus: 'PENDING',
           status: 'PENDING_PAYMENT',
+          quoteStatus: 'PENDING',
+          quoteVersion: 1,
           affiliateId: affiliateAttribution?.affiliateId || null,
           affiliateLinkId: affiliateAttribution?.affiliateLinkId || null,
           affiliateCode: affiliateAttribution?.referralCode || null,
@@ -213,7 +221,7 @@ export class CheckoutService {
               fromStatus: 'PENDING_PAYMENT',
               toStatus: 'PENDING_PAYMENT',
               changedBy: 'SYSTEM',
-              note: 'Order placed, awaiting payment authorization',
+              note: 'Order placed — awaiting delivery quotation from admin',
             },
           },
           events: {

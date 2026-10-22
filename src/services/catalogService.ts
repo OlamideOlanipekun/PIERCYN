@@ -55,15 +55,23 @@ export function mapServerProduct(p: any): Product {
   const totalStock = typeof p.totalAvailableStock === 'number'
     ? p.totalAvailableStock
     : (typeof p.stock === 'number' ? p.stock : undefined);
+  const totalReviews = typeof p.ratingSummary?.totalReviews === 'number'
+    ? p.ratingSummary.totalReviews
+    : typeof p.reviewCount === 'number'
+      ? p.reviewCount
+      : 0;
 
-  const ratingSummary = p.ratingSummary &&
-    typeof p.ratingSummary.totalReviews === 'number' &&
-    p.ratingSummary.totalReviews >= 0 &&
-    (p.ratingSummary.averageRating === null || typeof p.ratingSummary.averageRating === 'number')
+  const averageRating = typeof p.ratingSummary?.averageRating === 'number'
+    ? p.ratingSummary.averageRating
+    : typeof p.rating === 'number'
+      ? p.rating
+      : null;
+
+  const ratingSummary = (p.ratingSummary || typeof p.rating === 'number' || typeof p.reviewCount === 'number')
     ? {
-        averageRating: p.ratingSummary.averageRating,
-        totalReviews: p.ratingSummary.totalReviews,
-        ratingDistribution: p.ratingSummary.ratingDistribution,
+        averageRating,
+        totalReviews,
+        ratingDistribution: p.ratingSummary?.ratingDistribution,
       }
     : undefined;
 
@@ -97,6 +105,8 @@ export function mapServerProduct(p: any): Product {
     availabilityType: p.availabilityType || (p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'available_to_order' : 'in_stock'),
     fulfillmentTimeline: p.fulfillmentTimeline || (p.availabilityType === 'available_to_order' || p.collection === 'the-drop' || p.category === 'jackets' || p.category === 'outerwear' ? 'Sourced on order · Dispatched in 5–7 business days' : 'Dispatched in 24–48 hours from Lagos'),
     supplierVerified: p.supplierVerified ?? true,
+    rating: averageRating ?? undefined,
+    reviewCount: totalReviews,
     ratingSummary,
   };
 }
@@ -134,7 +144,7 @@ export const catalogService = {
   },
 
   async getProducts(params?: { category?: string; collection?: string }): Promise<Product[]> {
-    const res = await api.getProducts(params);
+    const res = await api.getProducts({ limit: 100, ...params });
     if (res.success && Array.isArray(res.data)) {
       return res.data.map(mapServerProduct);
     }

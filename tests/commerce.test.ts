@@ -6,6 +6,7 @@ import { CartService } from '../src/server/services/cartService';
 import { CheckoutService } from '../src/server/services/checkoutService';
 import { OrderService } from '../src/server/services/orderService';
 import { PaymentService, MockPaymentProvider } from '../src/server/services/paymentService';
+import { DeliveryQuoteService } from '../src/server/modules/orders/deliveryQuoteService';
 import { WebhookService } from '../src/server/services/webhookService';
 import { EventService } from '../src/server/services/eventService';
 import { dbStore } from '../src/server/db/store';
@@ -249,6 +250,14 @@ describe('PIERCYN V1 Commerce Engine', () => {
       });
 
       expect(order.orderStatus).toBe('PENDING_PAYMENT');
+
+      DeliveryQuoteService.setDeliveryQuote(
+        order.orderNumber,
+        { deliveryFeeNGN: order.deliveryFeeNGN },
+        'admin-test'
+      );
+      DeliveryQuoteService.markQuoteSent(order.orderNumber, 'admin-test');
+      DeliveryQuoteService.recordAcceptance(order.orderNumber, 'admin-test');
 
       const verification = await PaymentService.verifyPayment(order.orderNumber);
       expect(verification.success).toBe(true);

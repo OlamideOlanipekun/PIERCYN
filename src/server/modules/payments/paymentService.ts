@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { OrderService } from '../orders/orderService';
+import { DeliveryQuoteService } from '../orders/deliveryQuoteService';
 import { InventoryService } from '../inventory/inventoryService';
 import { prisma } from '../../db/prisma';
 
@@ -233,6 +234,9 @@ export class PaymentService {
 
     if (verification.success) {
       if (order) {
+        if (!DeliveryQuoteService.isPaymentAllowed(order)) {
+          throw new Error('Payment verification blocked: delivery quotation has not been accepted.');
+        }
         OrderService.markOrderPaid(order.orderNumber, ref);
       }
       return {
@@ -261,6 +265,10 @@ export class PaymentService {
   ): Promise<PaymentInitializationResult> {
     const order = OrderService.getOrder(orderNumber);
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
+
+    if (!DeliveryQuoteService.isPaymentAllowed(order)) {
+      throw new Error('Payment is blocked until the customer has accepted the delivery quotation.');
+    }
 
     return this.provider.initialize({
       orderNumber: order.orderNumber,

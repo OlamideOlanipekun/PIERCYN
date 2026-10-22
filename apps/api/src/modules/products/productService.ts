@@ -1,12 +1,18 @@
 import { prisma, checkDatabaseHealth } from '../../db/prisma';
 import { slugify } from '@piercyn/utils';
-import { dbStore } from '../../../../../src/server/db/store';
-import { ProductService as MemProductService } from '../../../../../src/server/modules/products/productService';
 
-// Cached availability flag — reset after 30s so transient failures recover automatically
+// Cached availability flag - reset after 30s so transient failures recover automatically.
 let _dbAvailable: boolean | null = null;
 let _dbAvailableCheckedAt = 0;
 const DB_CACHE_TTL_MS = 30_000;
+
+export class CatalogUnavailableError extends Error {
+  status = 503;
+
+  constructor() {
+    super('Catalogue is temporarily unavailable. Please try again shortly.');
+  }
+}
 
 async function isDatabaseAvailable(): Promise<boolean> {
   const now = Date.now();
@@ -17,6 +23,11 @@ async function isDatabaseAvailable(): Promise<boolean> {
   _dbAvailable = health.ok;
   _dbAvailableCheckedAt = now;
   return health.ok;
+}
+
+function markDatabaseUnavailable() {
+  _dbAvailable = false;
+  _dbAvailableCheckedAt = Date.now();
 }
 
 export interface EnrichedProductVariant {
@@ -221,8 +232,11 @@ export class ProductService {
     sort?: CatalogSort;
   }): Promise<EnrichedProduct[]> {
     const dbUp = await isDatabaseAvailable();
-    if (dbUp) {
-      try {
+    if (!dbUp) {
+      throw new CatalogUnavailableError();
+    }
+
+    try {
         const where: any = {};
 
         if (!filter?.includeInactive && !filter?.status) {
@@ -288,25 +302,12 @@ export class ProductService {
 
         return products.map((p) => this.mapPrismaProduct(p));
       } catch (err) {
-        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
-        // Mark unavailable so next request skips the DB probe for DB_CACHE_TTL_MS
-        _dbAvailable = false;
-        _dbAvailableCheckedAt = Date.now();
+        console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
+        markDatabaseUnavailable();
+        throw new CatalogUnavailableError();
       }
-    }
-
-    // In-memory fallback — uses the same seeded catalog as the Vite dev server
-    console.warn('[ProductService] Serving catalog from in-memory store (DB unavailable)');
-    const memProducts = MemProductService.getAllProducts({
-      category: filter?.category,
-      collection: filter?.collection,
-      status: filter?.status,
-      search: filter?.search,
-      includeInactive: filter?.includeInactive,
-    });
-    // Cast to EnrichedProduct — the in-memory variant shape is compatible
-    return memProducts as unknown as EnrichedProduct[];
   }
+
 
   public static async getCatalog(filter: CatalogFilter = {}): Promise<CatalogResult> {
     const page = Math.max(1, Math.floor(filter.page || 1));
@@ -343,40 +344,38 @@ export class ProductService {
     includeInactive: boolean = false
   ): Promise<EnrichedProduct | null> {
     const dbUp = await isDatabaseAvailable();
-    if (dbUp) {
-      try {
-        const where: any = {
-          OR: [{ id: slugOrId }, { slug: slugOrId }],
-        };
-
-        if (!includeInactive) {
-          where.status = 'ACTIVE';
-          where.category = { isActive: true };
-        }
-
-        const prod = await prisma.product.findFirst({
-          where,
-          include: {
-            category: true,
-            variants: {
-              include: { inventory: true },
-              orderBy: { sortOrder: 'asc' },
-            },
-          },
-        });
-
-        if (!prod) return null;
-        return this.mapPrismaProduct(prod);
-      } catch (err) {
-        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
-        _dbAvailable = false;
-        _dbAvailableCheckedAt = Date.now();
-      }
+    if (!dbUp) {
+      throw new CatalogUnavailableError();
     }
 
-    // In-memory fallback
-    const mem = MemProductService.getProductBySlugOrId(slugOrId, includeInactive);
-    return mem as unknown as EnrichedProduct | null;
+    try {
+      const where: any = {
+        OR: [{ id: slugOrId }, { slug: slugOrId }],
+      };
+
+      if (!includeInactive) {
+        where.status = 'ACTIVE';
+        where.category = { isActive: true };
+      }
+
+      const prod = await prisma.product.findFirst({
+        where,
+        include: {
+          category: true,
+          variants: {
+            include: { inventory: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      });
+
+      if (!prod) return null;
+      return this.mapPrismaProduct(prod);
+    } catch (err) {
+      console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
+      markDatabaseUnavailable();
+      throw new CatalogUnavailableError();
+    }
   }
 
   public static async getProductBySlug(slug: string): Promise<EnrichedProduct | null> {
@@ -385,8 +384,11 @@ export class ProductService {
 
   public static async getVariantByIdOrSku(identifier: string): Promise<EnrichedProductVariant | null> {
     const dbUp = await isDatabaseAvailable();
-    if (dbUp) {
-      try {
+    if (!dbUp) {
+      throw new CatalogUnavailableError();
+    }
+
+    try {
         const variant = await prisma.productVariant.findFirst({
           where: {
             OR: [{ id: identifier }, { sku: identifier }],
@@ -425,31 +427,10 @@ export class ProductService {
           updatedAt: variant.updatedAt.toISOString(),
         };
       } catch (err) {
-        console.warn('[ProductService] DB query failed, falling back to in-memory store:', (err as any)?.message);
-        _dbAvailable = false;
-        _dbAvailableCheckedAt = Date.now();
+        console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
+        markDatabaseUnavailable();
+        throw new CatalogUnavailableError();
       }
-    }
-
-    // In-memory fallback
-    const mem = MemProductService.getVariantByIdOrSku(identifier);
-    if (!mem) return null;
-    const inv = dbStore.inventory.get(identifier) ?? dbStore.inventory.get(mem.id);
-    const avail = inv ? inv.availableStock : 0;
-    return {
-      ...mem,
-      availableStock: avail,
-      isAvailable: mem.active && avail > 0,
-      priceNGN: mem.priceNGN ?? null,
-      costPriceNGN: mem.costPriceNGN ?? null,
-      priceUSD: mem.priceUSD ?? null,
-      priceGBP: mem.priceGBP ?? null,
-      priceEUR: mem.priceEUR ?? null,
-      image: mem.image ?? null,
-      altImage: mem.altImage ?? null,
-      createdAt: mem.createdAt ?? new Date().toISOString(),
-      updatedAt: mem.updatedAt ?? new Date().toISOString(),
-    } as EnrichedProductVariant;
   }
 
   public static async createProduct(input: CreateProductInput): Promise<EnrichedProduct> {
@@ -596,22 +577,19 @@ export class ProductService {
 
   public static async getCategories(): Promise<any[]> {
     const dbUp = await isDatabaseAvailable();
-    if (dbUp) {
-      try {
-        return await prisma.category.findMany({
-          where: { isActive: true },
-          orderBy: { sortOrder: 'asc' },
-        });
-      } catch (err) {
-        console.warn('[ProductService] DB getCategories failed, falling back to in-memory:', (err as any)?.message);
-        _dbAvailable = false;
-        _dbAvailableCheckedAt = Date.now();
-      }
+    if (!dbUp) {
+      throw new CatalogUnavailableError();
     }
 
-    // In-memory fallback
-    return Array.from(dbStore.categories.values())
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((c) => ({ id: c.id, name: c.name, slug: c.slug, description: c.description, imageUrl: null, sortOrder: c.sortOrder, isActive: true }));
+    try {
+      return await prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+    } catch (err) {
+      console.error('[ProductService] DB getCategories failed; refusing to serve a stale catalogue:', (err as any)?.message);
+      markDatabaseUnavailable();
+      throw new CatalogUnavailableError();
+    }
   }
 }

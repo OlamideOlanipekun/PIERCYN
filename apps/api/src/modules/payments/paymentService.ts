@@ -1,7 +1,16 @@
 import crypto from 'crypto';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { OrderService } from '../orders/orderService';
+import { InventoryService } from '../inventory/inventoryService';
 import { prisma } from '../../db/prisma';
+import {
+  createReceiptSignedUrl,
+  decodeReceiptBase64,
+  removeReceipt,
+  uploadReceipt,
+  validateReceiptBuffer,
+} from './receiptStorage';
+import { buildBankTransferInstructions } from './bankTransfer';
 
 export interface PaymentInitializationParams {
   orderNumber: string;
@@ -19,6 +28,16 @@ export interface PaymentInitializationResult {
   authorizationUrl?: string;
   accessCode?: string;
   message?: string;
+  orderNumber?: string;
+  amountNGN?: number;
+  bankTransfer?: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    narration: string;
+    reviewWindowHours: number;
+  };
+  reservationExpiresAt?: string | null;
 }
 
 export interface PaymentVerificationResult {
@@ -44,12 +63,16 @@ export class DirectTransferProvider implements IPaymentProvider {
   providerType = 'DIRECT_TRANSFER' as const;
 
   async initialize(params: PaymentInitializationParams): Promise<PaymentInitializationResult> {
-    const ref = `PCY-TRF-${Date.now().toString().slice(-8)}-${Math.floor(100 + Math.random() * 900)}`;
+    const instructions = buildBankTransferInstructions(params.orderNumber, params.amountNGN);
+    const { amountNGN, ...bankTransfer } = instructions;
     return {
       success: true,
       provider: 'DIRECT_TRANSFER',
-      providerReference: ref,
-      message: 'Bank transfer selected. Contact official support for verified instructions; payment remains pending.',
+      providerReference: `TRF-${params.orderNumber}`,
+      orderNumber: params.orderNumber,
+      amountNGN,
+      bankTransfer,
+      message: `Transfer exactly NGN ${amountNGN.toLocaleString('en-NG')} to ${bankTransfer.bankName} - ${bankTransfer.accountName} (${bankTransfer.accountNumber}) using ${params.orderNumber} as narration, then upload your receipt.`,
     };
   }
 
@@ -124,7 +147,8 @@ export class PaystackPaymentProvider implements IPaymentProvider {
             // Paystack amounts in minor units (Kobo)
             amount: params.amountNGN * 100,
             reference: params.orderNumber,
-            callback_url: params.callbackUrl || `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${params.orderNumber}`,
+            // Never trust a client-supplied callback URL.
+            callback_url: `${COMMERCE_CONFIG.APP_URL}/order-confirmation?ref=${encodeURIComponent(params.orderNumber)}`,
             metadata: {
               customer_name: params.customerName,
               customer_phone: params.customerPhone,
@@ -235,6 +259,7 @@ export class PaymentService {
     const order = await OrderService.getOrder(verified.orderNumber) || await OrderService.getOrder(orderNumberOrRef);
     if (!order || verified.orderNumber !== order.orderNumber) return failed;
     if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) return failed;
+    if (order.quoteStatus !== 'ACCEPTED') return failed;
     if (!Number.isFinite(verified.amountNGN) || verified.amountNGN !== order.totalNGN) return failed;
     if (provider.providerType === 'PAYSTACK' && verified.currency?.toUpperCase() !== 'NGN') return failed;
 
@@ -251,18 +276,381 @@ export class PaymentService {
 
   public static async initializePayment(
     orderNumber: string,
-    callbackUrl?: string
+    _callbackUrl?: string
   ): Promise<PaymentInitializationResult> {
     const order = await OrderService.getOrder(orderNumber);
     if (!order) throw new Error(`Order not found: ${orderNumber}`);
 
-    return this.provider.initialize({
+    if (order.paymentStatus === 'PAID') {
+      throw new Error('This order has already been paid.');
+    }
+    if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
+      throw new Error('This order can no longer be paid.');
+    }
+    if (order.quoteStatus !== 'ACCEPTED') {
+      throw new Error('Payment cannot be initiated until the delivery quotation has been accepted by the customer.');
+    }
+
+    if (this.provider.providerType === 'DIRECT_TRANSFER') {
+      const providerReference = `TRF-${order.orderNumber}`;
+      const now = new Date();
+      const reviewDeadline = new Date(
+        now.getTime() + COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER.REVIEW_WINDOW_HOURS * 60 * 60 * 1000
+      );
+
+      await prisma.payment.upsert({
+        where: { providerReference },
+        update: {
+          amountNGN: order.totalNGN,
+          currency: 'NGN',
+        },
+        create: {
+          orderId: order.id,
+          provider: 'DIRECT_TRANSFER',
+          providerReference,
+          amountNGN: order.totalNGN,
+          currency: 'NGN',
+          status: 'PENDING',
+          reviewDeadlineAt: reviewDeadline,
+        },
+      });
+    }
+
+    const result = await this.provider.initialize({
       orderNumber: order.orderNumber,
       amountNGN: order.totalNGN,
       customerEmail: order.customerEmail,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      callbackUrl,
     });
+
+    return {
+      ...result,
+      orderNumber: order.orderNumber,
+      amountNGN: order.totalNGN,
+      reservationExpiresAt: (await InventoryService.getActiveReservationExpiry(order.orderNumber))?.toISOString() ?? null,
+    };
+  }
+
+  public static async submitPaymentReceipt(
+    orderNumber: string,
+    fileBase64: string,
+    mimeType: string
+  ): Promise<{
+    status: string;
+    paymentStatus: string;
+    reviewDeadlineAt: string;
+    reservationExpiresAt: string | null;
+  }> {
+    const order = await prisma.order.findUnique({
+      where: { orderNumber },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        quoteStatus: true,
+        totalNGN: true,
+        paymentMethod: true,
+      },
+    });
+    if (!order) throw new Error(`Order not found: ${orderNumber}`);
+
+    if (order.paymentStatus === 'PAID' || order.status === 'PAID') {
+      throw new Error('This order has already been paid.');
+    }
+    if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
+      throw new Error('This order can no longer accept a payment receipt.');
+    }
+    if (order.quoteStatus !== 'ACCEPTED') {
+      throw new Error('Payment receipts cannot be submitted until the delivery quotation has been accepted by the customer.');
+    }
+    if (order.paymentMethod === 'PAYSTACK') {
+      throw new Error('Paystack orders are confirmed automatically and do not require a receipt.');
+    }
+
+    const buffer = decodeReceiptBase64(fileBase64);
+    const validation = validateReceiptBuffer(buffer, mimeType);
+    if (!validation.valid) throw new Error(validation.error);
+
+    const providerReference = `TRF-${order.orderNumber}`;
+    const existing = await prisma.payment.findUnique({ where: { providerReference } });
+    if (existing?.status === 'SUCCESS') {
+      throw new Error('This payment has already been approved.');
+    }
+
+    const receiptPath = await uploadReceipt(order.id, buffer, mimeType);
+    const now = new Date();
+    const reviewDeadlineAt = new Date(
+      now.getTime() + COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER.REVIEW_WINDOW_HOURS * 60 * 60 * 1000
+    );
+
+    let replacedPath: string | null = null;
+    try {
+      await prisma.$transaction(async (tx) => {
+        const locked = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE
+        `;
+        if (!locked || locked.length === 0) throw new Error('Order not found.');
+
+        // Re-check after taking the lock: the reservation cron or an admin may
+        // have cancelled the order while the receipt was being uploaded.
+        const currentOrder = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true, paymentStatus: true },
+        });
+        if (!currentOrder) throw new Error('Order not found.');
+        if (currentOrder.paymentStatus === 'PAID' || currentOrder.status === 'PAID') {
+          throw new Error('This order has already been paid.');
+        }
+        if (['CANCELLED', 'FAILED', 'REFUNDED'].includes(currentOrder.status)) {
+          throw new Error('This order can no longer accept a payment receipt.');
+        }
+
+        const current = await tx.payment.findUnique({ where: { providerReference } });
+        if (current?.status === 'SUCCESS') {
+          throw new Error('This payment has already been approved.');
+        }
+        replacedPath = current?.receiptPath || null;
+
+        await tx.payment.upsert({
+          where: { providerReference },
+          update: {
+            status: 'SUBMITTED',
+            receiptPath,
+            receiptMimeType: mimeType,
+            receiptUploadedAt: now,
+            submittedAt: now,
+            reviewDeadlineAt,
+            rejectionReason: null,
+          },
+          create: {
+            orderId: order.id,
+            provider: 'DIRECT_TRANSFER',
+            providerReference,
+            amountNGN: order.totalNGN,
+            currency: 'NGN',
+            status: 'SUBMITTED',
+            receiptPath,
+            receiptMimeType: mimeType,
+            receiptUploadedAt: now,
+            submittedAt: now,
+            reviewDeadlineAt,
+          },
+        });
+
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'AWAITING_PAYMENT_VERIFICATION',
+            paymentStatus: 'AWAITING_VERIFICATION',
+            paymentSubmittedAt: now,
+            paymentReviewDeadlineAt: reviewDeadlineAt,
+            needsManualReview: false,
+            manualReviewReason: null,
+          },
+        });
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            fromStatus: currentOrder.status,
+            toStatus: 'AWAITING_PAYMENT_VERIFICATION',
+            changedBy: 'CUSTOMER',
+            note: 'Payment receipt uploaded. Awaiting admin verification.',
+          },
+        });
+
+        await InventoryService.extendReservations(order.orderNumber, reviewDeadlineAt, tx);
+      });
+    } catch (err) {
+      await removeReceipt(receiptPath);
+      throw err;
+    }
+
+    if (replacedPath && replacedPath !== receiptPath) {
+      await removeReceipt(replacedPath);
+    }
+
+    return {
+      status: 'AWAITING_PAYMENT_VERIFICATION',
+      paymentStatus: 'AWAITING_VERIFICATION',
+      reviewDeadlineAt: reviewDeadlineAt.toISOString(),
+      reservationExpiresAt: (
+        await InventoryService.getActiveReservationExpiry(order.orderNumber)
+      )?.toISOString() ?? null,
+    };
+  }
+
+  public static async approvePayment(
+    orderNumber: string,
+    adminId: string,
+    adminEmail: string,
+    note?: string
+  ): Promise<{ orderNumber: string; paymentReference: string }> {
+    const order = await prisma.order.findUnique({
+      where: { orderNumber },
+      include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+    if (!order) throw new Error(`Order not found: ${orderNumber}`);
+    if (order.paymentStatus === 'PAID') {
+      throw new Error('This order is already marked paid.');
+    }
+    if (order.quoteStatus !== 'ACCEPTED') {
+      throw new Error('Payment cannot be approved until the delivery quotation has been confirmed and accepted.');
+    }
+    if (order.status !== 'AWAITING_PAYMENT_VERIFICATION') {
+      throw new Error('Only orders awaiting payment verification can be approved.');
+    }
+
+    const payment = order.payments[0];
+    if (!payment || !payment.receiptPath) {
+      throw new Error('No payment receipt has been submitted for this order.');
+    }
+    if (payment.status === 'REJECTED') {
+      throw new Error('This payment receipt was rejected. Ask the customer to resubmit.');
+    }
+
+    await OrderService.markOrderPaid(order.orderNumber, payment.providerReference);
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'SUCCESS',
+        verifiedBy: adminId,
+        verifiedAt: new Date(),
+        verificationNote: note || `Verified by ${adminEmail}`,
+        rejectionReason: null,
+      },
+    });
+
+    return { orderNumber: order.orderNumber, paymentReference: payment.providerReference };
+  }
+
+  public static async rejectPayment(
+    orderNumber: string,
+    adminId: string,
+    adminEmail: string,
+    reason: string
+  ): Promise<{ orderNumber: string; orderStatus: string; paymentStatus: string }> {
+    if (!reason || reason.trim().length < 5) {
+      throw new Error('A rejection reason of at least 5 characters is required.');
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Order" WHERE "orderNumber" = ${orderNumber} FOR UPDATE
+      `;
+      if (!locked || locked.length === 0) throw new Error(`Order not found: ${orderNumber}`);
+
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      });
+      if (!order) throw new Error(`Order not found: ${orderNumber}`);
+      if (order.paymentStatus === 'PAID') {
+        throw new Error('A paid order cannot have its receipt rejected.');
+      }
+      if (order.status !== 'AWAITING_PAYMENT_VERIFICATION') {
+        throw new Error('Only orders awaiting payment verification can be rejected.');
+      }
+
+      const payment = order.payments[0];
+      if (!payment?.receiptPath) throw new Error('No payment receipt has been submitted.');
+
+      const now = new Date();
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'REJECTED',
+          verifiedBy: adminId,
+          verifiedAt: now,
+          verificationNote: `Rejected by ${adminEmail}`,
+          rejectionReason: reason.trim(),
+        },
+      });
+
+      const reservation = await tx.inventoryReservation.findFirst({
+        where: { reference: order.orderNumber, status: 'ACTIVE' },
+        select: { expiresAt: true },
+      });
+      const canResubmit =
+        !!reservation && reservation.expiresAt.getTime() > now.getTime() - 30 * 60 * 1000;
+
+      if (!canResubmit) {
+        await InventoryService.releaseReservation(order.orderNumber, tx);
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'CANCELLED',
+            paymentStatus: 'FAILED',
+            paymentReviewDeadlineAt: null,
+            needsManualReview: false,
+            manualReviewReason: null,
+          },
+        });
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: 'CANCELLED',
+            changedBy: adminId,
+            note: `Receipt rejected: ${reason.trim()}. Reservation had expired, so stock was released.`,
+          },
+        });
+        return { orderStatus: 'CANCELLED', paymentStatus: 'FAILED' };
+      }
+
+      const newExpiry = new Date(now.getTime() + COMMERCE_CONFIG.INVENTORY.RESERVATION_TTL_MINUTES * 60 * 1000);
+      await InventoryService.extendReservations(order.orderNumber, newExpiry, tx);
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'PENDING_PAYMENT',
+          paymentStatus: 'REJECTED',
+          paymentReviewDeadlineAt: null,
+          needsManualReview: false,
+          manualReviewReason: null,
+        },
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'PENDING_PAYMENT',
+          changedBy: adminId,
+          note: `Receipt rejected: ${reason.trim()}. Customer may resubmit before ${newExpiry.toISOString()}.`,
+        },
+      });
+
+      return { orderStatus: 'PENDING_PAYMENT', paymentStatus: 'REJECTED' };
+    });
+
+    return { orderNumber, ...result };
+  }
+
+  public static async getReceiptForAdmin(orderNumber: string): Promise<{
+    receiptUrl: string;
+    mimeType: string | null;
+    uploadedAt: string | null;
+    paymentStatus: string;
+    rejectionReason: string | null;
+    verificationNote: string | null;
+  }> {
+    const payment = await prisma.payment.findFirst({
+      where: { order: { orderNumber }, receiptPath: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!payment?.receiptPath) throw new Error('No receipt has been submitted for this order.');
+
+    return {
+      receiptUrl: await createReceiptSignedUrl(payment.receiptPath),
+      mimeType: payment.receiptMimeType,
+      uploadedAt: payment.receiptUploadedAt?.toISOString() ?? null,
+      paymentStatus: payment.status,
+      rejectionReason: payment.rejectionReason,
+      verificationNote: payment.verificationNote,
+    };
   }
 }

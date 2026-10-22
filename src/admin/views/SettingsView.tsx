@@ -346,10 +346,10 @@ export const SettingsView: React.FC<{ onSeedSampleOrders?: () => void }> = ({
               </span>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="font-bold text-[#F2F0EB]">KWIK & GIG LOGISTICS READY</span>
+                <span className="font-bold text-[#F2F0EB]">MANUAL RIDER DISPATCH (ACTIVE)</span>
               </div>
               <p className="text-[11px] text-neutral-500 font-sans">
-                Waybill tracking and dispatch manifest enabled.
+                WhatsApp delivery quotation and manual rider coordination enabled.
               </p>
             </div>
           </div>

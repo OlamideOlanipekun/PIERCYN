@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
+import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { ActivePageView, CustomerInfo } from '../types';
 import { 
@@ -69,8 +70,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isLiveGateway = isLivePaymentConfigured();
-  const deliveryFee = getDeliveryFee(cartSubtotal, shippingMethod);
-  const totalNGN = Math.max(0, cartSubtotal + deliveryFee - (promoDiscountNGN || 0));
+  const itemsSubtotal = Math.max(0, cartSubtotal - (promoDiscountNGN || 0));
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -111,7 +111,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
         ? `${customer.orderNote || ''} [WhatsApp: ${whatsAppNumber.trim()}]`.trim()
         : customer.orderNote;
 
-      // Authoritative Server-Side Order Creation
+      // Authoritative Server-Side Order Creation (Pending Delivery Quote)
       const createdServerOrder = await createOrder({
         customer: { ...customer, orderNote: finalNote },
         shippingRegion: shippingMethod,
@@ -120,30 +120,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
         discountCode: appliedPromoCode || undefined,
       });
 
-      // If Paystack Live Gateway is selected, trigger payment authorization
-      if (paymentMethodChoice === 'paystack' && isLiveGateway) {
-        const paymentRes = await processCheckoutPayment({
-          orderNumber: createdServerOrder.orderNumber,
-          amountNGN: totalNGN,
-          customerEmail: customer.email,
-          customerName: customer.fullName,
-          customerPhone: customer.phone,
-        });
-
-        if (!paymentRes.success) {
-          setErrorMessage(
-            paymentRes.message ||
-              'Payment could not be completed. Your order reservation is held; you can complete bank transfer or WhatsApp confirmation.'
-          );
-          setIsSubmitting(false);
-          window.history.pushState({}, '', `/order-confirmation?orderId=${createdServerOrder.id}`);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-          return;
-        }
-      }
-
       setIsSubmitting(false);
-      showToast('Order confirmed by PIERCYN Atelier!');
+      showToast('Order received! PIERCYN will contact you on WhatsApp with your delivery quote.');
       window.history.pushState({}, '', `/order-confirmation?orderId=${createdServerOrder.id}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err: any) {
@@ -415,11 +393,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                         />
                         <div>
                           <strong className="block text-xs font-bold text-[#141414]">Lagos Doorstep</strong>
-                          <span className="text-[11px] text-[#6E6B65]">{SHIPPING_CONFIG.lagosTimeframe}</span>
+                          <span className="text-[11px] text-[#6E6B65]">Same-day / Next-day delivery</span>
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-xs mt-2 text-right">
-                        ₦{SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()}
+                      <span className="font-mono font-semibold text-[11px] mt-2 text-right text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded self-end">
+                        Fee quoted on WhatsApp
                       </span>
                     </label>
 
@@ -441,11 +419,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                         />
                         <div>
                           <strong className="block text-xs font-bold text-[#141414]">Nationwide Nigeria</strong>
-                          <span className="text-[11px] text-[#6E6B65]">{SHIPPING_CONFIG.nationwideTimeframe}</span>
+                          <span className="text-[11px] text-[#6E6B65]">Interstate dispatch (2–4 days)</span>
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-xs mt-2 text-right">
-                        ₦{SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()}
+                      <span className="font-mono font-semibold text-[11px] mt-2 text-right text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded self-end">
+                        Fee quoted on WhatsApp
                       </span>
                     </label>
                   </div>
@@ -592,15 +570,21 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
               )}
 
               <div className="flex justify-between items-center">
-                <span>Delivery Charge</span>
-                <span className="font-mono font-bold text-[#141414]">
-                  {deliveryFee === 0 ? 'FREE' : `₦${deliveryFee.toLocaleString()}`}
+                <div>
+                  <span className="block text-[#141414]">Delivery Charge</span>
+                  <span className="text-[10px] text-[#7A7771]">Calculated & quoted via WhatsApp</span>
+                </div>
+                <span className="font-mono text-[11px] font-semibold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                  To be confirmed
                 </span>
               </div>
 
               <div className="border-t border-[#DAD6CC] pt-3 flex justify-between items-baseline">
-                <span className="font-bold text-sm text-[#141414] uppercase tracking-wider">Total Amount</span>
-                <span className="font-mono text-2xl font-bold text-[#141414]">₦{totalNGN.toLocaleString()}</span>
+                <div>
+                  <span className="font-bold text-sm text-[#141414] uppercase tracking-wider block">Total Payable</span>
+                  <span className="text-[10px] text-[#7A7771]">Items: ₦{itemsSubtotal.toLocaleString()} + Delivery</span>
+                </div>
+                <span className="font-mono text-base font-bold text-[#141414]">To be confirmed</span>
               </div>
             </div>
 
@@ -615,7 +599,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                 <span>CREATING SECURE ORDER…</span>
               ) : (
                 <>
-                  <span>CONFIRM ORDER (₦{totalNGN.toLocaleString()})</span>
+                  <span>SUBMIT ORDER (₦{itemsSubtotal.toLocaleString()} + DELIVERY)</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

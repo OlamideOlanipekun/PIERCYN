@@ -32,6 +32,8 @@ export class CommissionService {
    * SELF-REFERRAL PROTECTION: Skips commission if customer is the affiliate.
    */
   public static async processOrderCommission(orderId: string): Promise<void> {
+    if (!COMMERCE_CONFIG.AFFILIATE.ENABLED) return;
+
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {

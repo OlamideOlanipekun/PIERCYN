@@ -14,6 +14,7 @@ export interface CheckoutQuote {
   shippingMethodName: string;
   subtotalNGN: number;
   deliveryFeeNGN: number;
+  deliveryFeePending: boolean;
   discountNGN: number;
   discountDescription?: string;
   totalNGN: number;
@@ -41,7 +42,8 @@ export interface CreateOrderInput {
 
 export class CheckoutService {
   /**
-   * Authoritatively calculate checkout quote with verified server rates and promotions
+   * Authoritatively calculate checkout quote with verified server rates and promotions.
+   * Delivery fee is to be quoted by admin via WhatsApp — subtotal alone is calculated at checkout.
    */
   public static calculateQuote(
     sessionId: string,
@@ -64,13 +66,15 @@ export class CheckoutService {
       }
     }
 
-    const deliveryFeeNGN = ShippingService.calculateFee(shippingRegion, cart.subtotalNGN);
-    const finalTotal = Math.max(0, cart.subtotalNGN + deliveryFeeNGN - discountNGN);
+    // PIERCYN V1: Delivery fee is set manually by admin and confirmed via WhatsApp.
+    // At checkout, fee is 0 (pending confirmation), final total is subtotal - discount.
+    const deliveryFeeNGN = 0;
+    const finalTotal = Math.max(0, cart.subtotalNGN - discountNGN);
 
     const shippingMethodName =
       shippingRegion === 'lagos'
-        ? 'Lagos Doorstep (24–48 Hours)'
-        : 'Nationwide Nigeria (3–5 Business Days)';
+        ? 'Lagos Delivery (Fee to be confirmed via WhatsApp)'
+        : 'Nationwide Delivery (Fee to be confirmed via WhatsApp)';
 
     const isEligible = cart.isValid && cart.items.length > 0;
 
@@ -80,6 +84,7 @@ export class CheckoutService {
       shippingMethodName,
       subtotalNGN: cart.subtotalNGN,
       deliveryFeeNGN,
+      deliveryFeePending: true,
       discountNGN,
       discountDescription: promoDescription,
       totalNGN: finalTotal,
@@ -231,11 +236,13 @@ export class CheckoutService {
       paymentMethod: paymentMethodLabel,
       paymentStatus: 'PENDING',
       orderStatus: 'PENDING_PAYMENT',
+      quoteStatus: 'PENDING',
+      quoteVersion: 0,
       timeline: [
         {
           status: 'PENDING_PAYMENT',
           timestamp: now,
-          note: 'Order created, awaiting payment authorization',
+          note: 'Order placed — awaiting delivery quotation from admin',
         },
       ],
       createdAt: now,

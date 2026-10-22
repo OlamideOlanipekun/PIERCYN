@@ -3,20 +3,23 @@ import { AdminOrder } from '../types';
 import { AdminApi } from '../api';
 import {
   Search,
-  Filter,
   Calendar,
-  ShoppingBag,
-  Clock,
-  CheckCircle2,
-  Truck,
-  AlertCircle,
   ArrowRight,
   Loader2,
   X,
+  MessageSquare,
+  Bike,
 } from 'lucide-react';
 
 interface OrdersViewProps {
   onOpenOrder: (orderId: string) => void;
+}
+
+interface StatusTabConfig {
+  id: string;
+  label: string;
+  orderStatus?: string;
+  quoteStatus?: string;
 }
 
 export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
@@ -25,17 +28,39 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [selectedTabId, setSelectedTabId] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  const statusTabs: StatusTabConfig[] = [
+    { id: 'ALL', label: 'All Orders' },
+    { id: 'AWAITING_QUOTE', label: 'Awaiting Quote', quoteStatus: 'PENDING' },
+    { id: 'QUOTE_READY', label: 'Quote Ready (SET)', quoteStatus: 'SET' },
+    { id: 'QUOTE_SENT', label: 'Quote Sent (WA)', quoteStatus: 'SENT' },
+    { id: 'QUOTE_ACCEPTED', label: 'Quote Accepted', quoteStatus: 'ACCEPTED' },
+    { id: 'QUOTE_REJECTED', label: 'Quote Declined', quoteStatus: 'REJECTED' },
+    { id: 'AWAITING_PAYMENT_VERIFICATION', label: 'Receipt Under Review', orderStatus: 'AWAITING_PAYMENT_VERIFICATION' },
+    { id: 'PAID', label: 'Paid (Fulfill)', orderStatus: 'PAID' },
+    { id: 'PROCESSING', label: 'Processing', orderStatus: 'PROCESSING' },
+    { id: 'PACKED', label: 'Packed', orderStatus: 'PACKED' },
+    { id: 'SHIPPED', label: 'Dispatched', orderStatus: 'SHIPPED' },
+    { id: 'DELIVERED', label: 'Delivered', orderStatus: 'DELIVERED' },
+    { id: 'PENDING_PAYMENT', label: 'Pending Payment', orderStatus: 'PENDING_PAYMENT' },
+    { id: 'CANCELLED', label: 'Cancelled / Expired', orderStatus: 'CANCELLED' },
+    { id: 'REFUNDED', label: 'Refunded', orderStatus: 'REFUNDED' },
+  ];
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      const activeTab = statusTabs.find((t) => t.id === selectedTabId) || statusTabs[0];
+
       const data = await AdminApi.getOrders({
-        status: statusFilter,
+        status: activeTab.orderStatus,
+        quoteStatus: activeTab.quoteStatus,
         search: search.trim() || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
@@ -50,24 +75,51 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
 
   useEffect(() => {
     fetchOrders();
-  }, [statusFilter, startDate, endDate]);
+  }, [selectedTabId, startDate, endDate]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchOrders();
   };
 
-  const statusTabs = [
-    { id: 'ALL', label: 'All Orders' },
-    { id: 'PAID', label: 'Paid (Fulfill)' },
-    { id: 'PROCESSING', label: 'Processing' },
-    { id: 'PACKED', label: 'Packed' },
-    { id: 'SHIPPED', label: 'Shipped' },
-    { id: 'DELIVERED', label: 'Delivered' },
-    { id: 'PENDING_PAYMENT', label: 'Pending Payment' },
-    { id: 'CANCELLED', label: 'Cancelled' },
-    { id: 'REFUNDED', label: 'Refunded' },
-  ];
+  const renderQuoteBadge = (quoteStatus?: string, fee?: number) => {
+    switch (quoteStatus) {
+      case 'PENDING':
+        return (
+          <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Quote Needed
+          </span>
+        );
+      case 'SET':
+        return (
+          <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-700/50">
+            <MessageSquare className="w-2.5 h-2.5" />
+            Fee Set (Send WA)
+          </span>
+        );
+      case 'SENT':
+        return (
+          <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/50">
+            Quote Sent
+          </span>
+        );
+      case 'ACCEPTED':
+        return (
+          <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+            Quote Accepted {fee ? `(₦${fee.toLocaleString()})` : ''}
+          </span>
+        );
+      case 'REJECTED':
+        return (
+          <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-red-950 text-red-300 border border-red-700/50">
+            Quote Declined
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -78,9 +130,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
         {statusTabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setStatusFilter(tab.id)}
+            onClick={() => setSelectedTabId(tab.id)}
             className={`px-3 py-2 rounded-lg whitespace-nowrap transition-colors cursor-pointer shrink-0 min-h-[36px] ${
-              statusFilter === tab.id
+              selectedTabId === tab.id
                 ? 'bg-[#F2F0EB] text-[#0A0A0A] font-bold shadow-xs'
                 : 'text-[#A3A199] hover:text-[#F2F0EB] hover:bg-white/5'
             }`}
@@ -111,7 +163,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                   setSearch('');
                   fetchOrders();
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white p-1 cursor-pointer"
                 aria-label="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
@@ -150,13 +202,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
             </div>
           </div>
 
-          {(startDate || endDate || search) && (
+          {(startDate || endDate || search || selectedTabId !== 'ALL') && (
             <button
               onClick={() => {
                 setStartDate('');
                 setEndDate('');
                 setSearch('');
-                setStatusFilter('ALL');
+                setSelectedTabId('ALL');
               }}
               className="text-neutral-400 hover:text-white text-xs underline cursor-pointer shrink-0 self-end sm:self-auto py-1"
             >
@@ -179,23 +231,19 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-6 h-6 animate-spin text-[#F2F0EB]" />
-            <span className="text-xs font-mono text-neutral-400">RETRIEVING ORDERS...</span>
+            <span className="text-xs font-mono text-neutral-400">LOADING ORDERS LEDGER...</span>
           </div>
         ) : error ? (
-          <div className="p-4 rounded-lg bg-red-950/30 border border-red-800 text-red-200 text-xs text-center">
+          <div className="p-4 rounded-xl bg-red-950/40 border border-red-800 text-red-200 text-xs text-center">
             {error}
           </div>
         ) : orders.length === 0 ? (
-          <div className="py-16 text-center space-y-2">
-            <ShoppingBag className="w-8 h-8 text-neutral-600 mx-auto" />
-            <p className="text-sm font-semibold text-[#F2F0EB]">No orders found</p>
-            <p className="text-xs text-neutral-500 font-sans">
-              No orders matched the selected status or date filters.
-            </p>
+          <div className="py-16 text-center text-neutral-500 text-xs font-mono">
+            NO ORDERS FOUND MATCHING CURRENT FILTERS
           </div>
         ) : (
           <div>
-            {/* MOBILE ORDER CARDS (< md) */}
+            {/* MOBILE CARD VIEW (< md) */}
             <div className="md:hidden space-y-3">
               {orders.map((ord) => (
                 <div
@@ -232,12 +280,25 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                     </span>
                   </div>
 
+                  {/* Quote & Rider Tags */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {renderQuoteBadge(ord.quoteStatus, ord.quoteAcceptedFeeNGN || ord.quoteDeliveryFeeNGN)}
+                    {ord.riderName && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/40">
+                        <Bike className="w-2.5 h-2.5" />
+                        {ord.riderName}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Customer Info */}
                   <div className="text-xs space-y-0.5">
                     <div className="font-semibold text-[#F2F0EB]">{ord.customerName}</div>
                     <div className="text-[11px] text-neutral-400 flex items-center justify-between">
                       <span>{ord.customerPhone}</span>
-                      <span className="truncate max-w-[150px] text-neutral-500">{ord.shippingCity}</span>
+                      <span className="truncate max-w-[150px] text-neutral-500">
+                        {ord.shippingCity}, {ord.shippingState}
+                      </span>
                     </div>
                   </div>
 
@@ -274,7 +335,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                     }}
                     className="w-full py-2.5 px-3 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors min-h-[42px]"
                   >
-                    <span>View & Manage Order</span>
+                    <span>Manage Quote & Order</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -283,15 +344,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
 
             {/* DESKTOP TABLE VIEW (>= md) */}
             <div className="hidden md:block overflow-x-auto rounded-lg border border-[#202020]">
-              <table className="w-full text-left text-xs min-w-[620px]">
+              <table className="w-full text-left text-xs min-w-[760px]">
                 <thead>
                   <tr className="border-b border-[#262626] bg-[#0E0E0E] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
                     <th className="py-3 px-3 font-normal">Order ID</th>
                     <th className="py-3 px-3 font-normal">Customer</th>
+                    <th className="py-3 px-3 font-normal">Delivery Quote</th>
                     <th className="py-3 px-3 font-normal">Items</th>
-                    <th className="py-3 px-3 font-normal">Amount</th>
+                    <th className="py-3 px-3 font-normal">Total NGN</th>
                     <th className="py-3 px-3 font-normal">Payment</th>
-                    <th className="py-3 px-3 font-normal">Status</th>
+                    <th className="py-3 px-3 font-normal">Fulfillment</th>
                     <th className="py-3 px-3 font-normal">Date</th>
                     <th className="py-3 px-3 font-normal text-right">Action</th>
                   </tr>
@@ -310,7 +372,21 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                       <td className="py-3.5 px-3">
                         <div className="font-semibold text-[#F2F0EB]">{ord.customerName}</div>
                         <div className="text-[11px] text-neutral-400">{ord.customerPhone}</div>
-                        <div className="text-[10px] text-neutral-500 truncate max-w-[150px]">{ord.customerEmail}</div>
+                        <div className="text-[10px] text-neutral-500 truncate max-w-[150px]">
+                          {ord.shippingCity}, {ord.shippingState}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <div className="space-y-1">
+                          {renderQuoteBadge(ord.quoteStatus, ord.quoteAcceptedFeeNGN || ord.quoteDeliveryFeeNGN)}
+                          {ord.riderName && (
+                            <div className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/40">
+                              <Bike className="w-2.5 h-2.5" />
+                              {ord.riderName}
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-3">
@@ -369,7 +445,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                           }}
                           className="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-mono text-[10px] cursor-pointer min-h-[30px]"
                         >
-                          DETAILS
+                          MANAGE
                         </button>
                       </td>
                     </tr>

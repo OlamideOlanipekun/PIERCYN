@@ -114,12 +114,14 @@ class AdminApiClient {
   // 2. Orders
   public async getOrders(params?: {
     status?: string;
+    quoteStatus?: string;
     search?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<AdminOrder[]> {
     const query = new URLSearchParams();
     if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+    if (params?.quoteStatus && params.quoteStatus !== 'ALL') query.set('quoteStatus', params.quoteStatus);
     if (params?.search) query.set('search', params.search);
     if (params?.startDate) query.set('startDate', params.startDate);
     if (params?.endDate) query.set('endDate', params.endDate);
@@ -143,6 +145,31 @@ class AdminApiClient {
     });
   }
 
+  public async getPaymentReceipt(orderNumber: string): Promise<{
+    receiptUrl: string;
+    mimeType: string | null;
+    uploadedAt: string | null;
+    paymentStatus: string;
+    rejectionReason: string | null;
+    verificationNote: string | null;
+  }> {
+    return this.request(`/orders/${orderNumber}/payment-receipt`);
+  }
+
+  public async approvePayment(orderNumber: string, note?: string): Promise<{ orderNumber: string; paymentReference: string }> {
+    return this.request(`/orders/${orderNumber}/payment/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  public async rejectPayment(orderNumber: string, reason: string): Promise<{ orderNumber: string; orderStatus: string; paymentStatus: string }> {
+    return this.request(`/orders/${orderNumber}/payment/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   public async createShipment(
     orderId: string,
     data: {
@@ -160,6 +187,64 @@ class AdminApiClient {
     });
   }
 
+  // ── Delivery Quotation Lifecycle ──────────────────────────────────────────
+  public async setDeliveryQuote(
+    orderId: string,
+    data: { deliveryFeeNGN: number; estimatedDeliveryTimeframe?: string; internalNote?: string }
+  ): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/quote`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getQuoteWhatsAppMessage(
+    orderId: string
+  ): Promise<{ whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number }> {
+    return this.request<{ whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number }>(
+      `/orders/${orderId}/quote/whatsapp`
+    );
+  }
+
+  public async markQuoteSent(orderId: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/quote/send`, {
+      method: 'POST',
+    });
+  }
+
+  public async markQuoteAccepted(orderId: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/quote/accept`, {
+      method: 'POST',
+    });
+  }
+
+  public async markQuoteRejected(orderId: string, reason?: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/quote/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  public async assignRider(
+    orderId: string,
+    data: { riderName: string; riderPhone: string; note?: string }
+  ): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/rider`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async dispatchOrder(
+    orderId: string,
+    data?: { riderName?: string; riderPhone?: string; note?: string }
+  ): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
+
   // 3. Products
   public async getProducts(params?: {
     category?: string;
@@ -169,6 +254,7 @@ class AdminApiClient {
     const query = new URLSearchParams();
     if (params?.category && params.category !== 'ALL') query.set('category', params.category);
     if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+    if (params?.quoteStatus && params.quoteStatus !== 'ALL') query.set('quoteStatus', params.quoteStatus);
     if (params?.search) query.set('search', params.search);
 
     const qs = query.toString() ? `?${query.toString()}` : '';

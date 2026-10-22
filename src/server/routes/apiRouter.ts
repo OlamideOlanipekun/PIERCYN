@@ -116,10 +116,16 @@ apiRouter.get('/products', async (req: Request, res: Response) => {
     // Attach rating summaries in batch
     const productIds = catalog.products.map((p) => p.id);
     const ratingSummaries = await ReviewService.batchGetRatingSummaries(productIds);
-    const enriched = catalog.products.map((p) => ({
-      ...p,
-      ratingSummary: ratingSummaries[p.id] || { averageRating: null, totalReviews: 0 },
-    }));
+    const enriched = catalog.products.map((p) => {
+      const summary = ratingSummaries[p.id] || { averageRating: null, totalReviews: 0 };
+      return {
+        ...p,
+        ratingSummary: summary,
+        rating: summary.averageRating ?? undefined,
+        reviewCount: summary.totalReviews,
+      };
+    });
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({ success: true, count: catalog.total, data: enriched, meta: {
       total: catalog.total, page: catalog.page, limit: catalog.limit, totalPages: catalog.totalPages,
     } });
@@ -135,7 +141,16 @@ apiRouter.get('/products/:slug', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
     const ratingSummary = await ReviewService.getProductRatingSummary(product.id);
-    res.json({ success: true, data: { ...product, ratingSummary } });
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.json({
+      success: true,
+      data: {
+        ...product,
+        ratingSummary,
+        rating: ratingSummary?.averageRating ?? undefined,
+        reviewCount: ratingSummary?.totalReviews ?? 0,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

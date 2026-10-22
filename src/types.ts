@@ -219,8 +219,19 @@ export interface Order {
   totalNGN: number;
   shippingMethod: string;
   paymentMethod: string;
-  paymentStatus: 'PAID' | 'PENDING' | 'FAILED';
-  orderStatus: 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  paymentStatus: 'PAID' | 'PENDING' | 'AWAITING_VERIFICATION' | 'REJECTED' | 'FAILED';
+  orderStatus:
+    | 'CONFIRMED'
+    | 'PENDING_PAYMENT'
+    | 'AWAITING_PAYMENT_VERIFICATION'
+    | 'PROCESSING'
+    | 'PACKED'
+    | 'SHIPPED'
+    | 'DELIVERED'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'FAILED'
+    | 'REFUNDED';
   createdAt: string;
   orderAccessToken?: string;
 }

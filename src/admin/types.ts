@@ -95,9 +95,10 @@ export interface AdminOrder {
   shippingMethodKey: string;
   shippingMethodName: string;
   paymentMethod: string;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'AWAITING_VERIFICATION' | 'PAID' | 'REJECTED' | 'FAILED' | 'REFUNDED';
   orderStatus:
     | 'PENDING_PAYMENT'
+    | 'AWAITING_PAYMENT_VERIFICATION'
     | 'PAID'
     | 'PROCESSING'
     | 'PACKED'
@@ -113,10 +114,47 @@ export interface AdminOrder {
   shipment?: AdminShipment;
   payments?: AdminPayment[];
   paidAt?: string;
+  paymentSubmittedAt?: string;
+  paymentReviewDeadlineAt?: string;
+  needsManualReview?: boolean;
+  manualReviewReason?: string;
   timeline: AdminOrderTimelineEntry[];
   createdAt: string;
   updatedAt: string;
   items: AdminOrderItem[];
+
+  // ── Delivery Quotation Lifecycle ──────────────────────────────────────────
+  quoteStatus: 'PENDING' | 'SET' | 'SENT' | 'ACCEPTED' | 'REJECTED';
+  quoteVersion: number;
+  quoteDeliveryFeeNGN?: number;
+  quoteTotalNGN?: number;
+  quoteEstimatedTimeframe?: string;
+  quoteInternalNote?: string;
+  quoteSetAt?: string;
+  quoteSetByAdmin?: string;
+  quoteSentAt?: string;
+  quoteSentByAdmin?: string;
+  quoteAcceptedAt?: string;
+  quoteAcceptedByAdmin?: string;
+  quoteAcceptedFeeNGN?: number;
+  quoteAcceptedTotalNGN?: number;
+  quoteRejectedAt?: string;
+  quoteRejectedByAdmin?: string;
+
+  // ── Manual Rider Fulfilment ────────────────────────────────────────────────
+  riderName?: string;
+  riderPhone?: string;
+  dispatchedAt?: string;
+  dispatchNote?: string;
+
+  // ── Bank Transfer Receipt ──────────────────────────────────────────────────
+  receiptUrl?: string;
+  receiptMimeType?: string;
+  receiptUploadedAt?: string;
+  paymentVerifiedAt?: string;
+  paymentVerifiedByAdmin?: string;
+  paymentRejectedAt?: string;
+  paymentRejectedReason?: string;
 }
 
 export interface AdminVariant {

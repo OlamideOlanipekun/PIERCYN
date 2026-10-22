@@ -3,6 +3,7 @@ import {
   DbOrder,
   DbOrderItem,
   OrderStatusType,
+  QuoteStatusType,
   VALID_ORDER_TRANSITIONS,
 } from '../../db/store';
 import { ProductService } from '../products/productService';
@@ -87,8 +88,8 @@ export class OrderService {
       });
     }
 
-    // Shipping calculation
-    const deliveryFeeNGN = ShippingService.calculateFee(input.shippingRegion as 'lagos' | 'nationwide', subtotalNGN);
+    // Delivery fee is set manually by admin via delivery quote workflow
+    const deliveryFeeNGN = 0;
 
     // Promo code validation
     let discountNGN = 0;
@@ -99,11 +100,11 @@ export class OrderService {
       } else if (code === 'STANDOUT' || code === 'VIP15') {
         discountNGN = Math.round(subtotalNGN * 0.15);
       } else if (code === 'FREESHIP') {
-        discountNGN = deliveryFeeNGN;
+        discountNGN = 0;
       }
     }
 
-    const totalNGN = Math.max(0, subtotalNGN + deliveryFeeNGN - discountNGN);
+    const totalNGN = Math.max(0, subtotalNGN - discountNGN);
     const orderNumber = `PCY-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
     const orderId = `ord-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const now = new Date().toISOString();
@@ -130,15 +131,17 @@ export class OrderService {
       totalNGN,
       currency: input.currency || 'NGN',
       shippingMethodKey: input.shippingRegion,
-      shippingMethodName: input.shippingRegion.toLowerCase() === 'lagos' ? 'Lagos Express' : 'Nationwide Courier',
+      shippingMethodName: input.shippingRegion.toLowerCase() === 'lagos' ? 'Lagos Express (Quote Pending)' : 'Nationwide Courier (Quote Pending)',
       paymentMethod: input.paymentMethod,
       paymentStatus: 'PENDING',
       orderStatus: 'PENDING_PAYMENT',
+      quoteStatus: 'PENDING',
+      quoteVersion: 0,
       timeline: [
         {
           status: 'PENDING_PAYMENT',
           timestamp: now,
-          note: 'Order placed, awaiting payment confirmation',
+          note: 'Order placed, awaiting delivery quotation',
         },
       ],
       createdAt: now,
@@ -178,6 +181,7 @@ export class OrderService {
    */
   public static getAllOrders(filter?: {
     status?: OrderStatusType;
+    quoteStatus?: QuoteStatusType;
     email?: string;
     search?: string;
     startDate?: string;
@@ -189,6 +193,9 @@ export class OrderService {
 
     if (filter?.status) {
       list = list.filter((o) => o.orderStatus === filter.status);
+    }
+    if (filter?.quoteStatus) {
+      list = list.filter((o) => o.quoteStatus === filter.quoteStatus);
     }
     if (filter?.email) {
       const e = filter.email.toLowerCase();
@@ -327,5 +334,78 @@ export class OrderService {
     if (!order) throw new Error(`Order ${orderNumber} not found`);
 
     return this.updateStatus(order.id, 'CANCELLED', reason);
+  }
+
+  /**
+   * Assign a manual rider to an order.
+   * Admin only. Does not expose private rider details to customer-facing APIs.
+   */
+  public static assignRider(
+    orderIdentifier: string,
+    data: { riderName: string; riderPhone: string },
+    adminId: string = 'ADMIN'
+  ): DbOrder {
+    const order = this.getOrder(orderIdentifier);
+    if (!order) throw new Error(`Order ${orderIdentifier} not found`);
+
+    if (!data.riderName?.trim()) {
+      throw new Error('Rider name is required');
+    }
+    if (!data.riderPhone?.trim()) {
+      throw new Error('Rider phone is required');
+    }
+
+    const liveOrder = dbStore.orders.get(order.id)!;
+    const now = new Date().toISOString();
+
+    liveOrder.riderName = data.riderName.trim();
+    liveOrder.riderPhone = data.riderPhone.trim();
+    liveOrder.updatedAt = now;
+
+    liveOrder.timeline.push({
+      status: liveOrder.orderStatus,
+      timestamp: now,
+      note: `Rider assigned: ${liveOrder.riderName} (${liveOrder.riderPhone}) by ${adminId}`,
+    });
+
+    return { ...liveOrder };
+  }
+
+  /**
+   * Record manual dispatch of an order with assigned rider.
+   */
+  public static recordDispatch(
+    orderIdentifier: string,
+    data: { dispatchNote?: string },
+    adminId: string = 'ADMIN'
+  ): DbOrder {
+    const order = this.getOrder(orderIdentifier);
+    if (!order) throw new Error(`Order ${orderIdentifier} not found`);
+
+    const liveOrder = dbStore.orders.get(order.id)!;
+    const now = new Date().toISOString();
+
+    liveOrder.dispatchedAt = now;
+    if (data.dispatchNote?.trim()) {
+      liveOrder.dispatchNote = data.dispatchNote.trim();
+    }
+    liveOrder.updatedAt = now;
+
+    // If order can transition to SHIPPED, transition it
+    const currentStatus = liveOrder.orderStatus;
+    const allowed = VALID_ORDER_TRANSITIONS[currentStatus] || [];
+    if (allowed.includes('SHIPPED')) {
+      liveOrder.orderStatus = 'SHIPPED';
+    }
+
+    liveOrder.timeline.push({
+      status: liveOrder.orderStatus,
+      timestamp: now,
+      note: `Dispatched${liveOrder.riderName ? ` with rider ${liveOrder.riderName}` : ''}${
+        data.dispatchNote ? `: ${data.dispatchNote.trim()}` : ''
+      } (recorded by ${adminId})`,
+    });
+
+    return { ...liveOrder };
   }
 }
