@@ -245,6 +245,20 @@ class AdminApiClient {
     });
   }
 
+  public async getPaymentWhatsAppMessage(
+    orderId: string
+  ): Promise<{ whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number }> {
+    return this.request<{ whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number }>(
+      `/orders/${orderId}/payment/whatsapp`
+    );
+  }
+
+  public async markPaymentInstructionsSent(orderId: string): Promise<{ orderNumber?: string; orderId?: string }> {
+    return this.request(`/orders/${orderId}/payment/whatsapp/sent`, {
+      method: 'POST',
+    });
+  }
+
   // 3. Products
   public async getProducts(params?: {
     category?: string;

@@ -15,6 +15,9 @@
  */
 
 import { prisma } from '../../db/prisma';
+import { buildWhatsAppPaymentMessage } from '../payments/bankTransfer';
+
+export { buildWhatsAppPaymentMessage };
 
 // ── Phone normalisation ────────────────────────────────────────────────────────
 
@@ -381,6 +384,96 @@ export class DeliveryQuoteService {
       quoteVersion: order.quoteVersion,
       error: null,
     };
+  }
+
+  /**
+   * Generate wa.me click-to-chat URL with pre-filled WhatsApp payment instructions.
+   * Only allowed once customer has accepted the quotation (quoteStatus === 'ACCEPTED').
+   * SECURITY:
+   * - Never includes internal notes or admin secrets
+   * - Validates and normalises phone number
+   * - Uses official Kuda bank transfer details
+   * - Does NOT mark message as sent
+   */
+  public static async generateWhatsAppPaymentUrl(identifier: string) {
+    const order = await prisma.order.findFirst({
+      where: { OR: [{ id: identifier }, { orderNumber: identifier }] },
+    });
+    if (!order) throw new Error(`Order not found: ${identifier}`);
+
+    if (order.quoteStatus !== 'ACCEPTED') {
+      return {
+        url: null,
+        phone: null,
+        message: '',
+        quoteVersion: order.quoteVersion,
+        error: 'Payment instructions cannot be generated until the delivery quotation has been accepted by the customer.',
+      };
+    }
+
+    const phone = normalisePhone(order.customerPhone);
+    if (!phone) {
+      return {
+        url: null,
+        phone: null,
+        message: '',
+        quoteVersion: order.quoteVersion,
+        error: `Unable to normalise customer phone number "${order.customerPhone}". Please verify the number.`,
+      };
+    }
+
+    const customerName = `${order.customerFirstName} ${order.customerLastName}`.trim();
+    const deliveryFee = order.quoteAcceptedFeeNGN ?? order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0;
+    const total = order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN;
+
+    const message = buildWhatsAppPaymentMessage({
+      orderNumber: order.orderNumber,
+      customerName,
+      subtotalNGN: order.subtotalNGN,
+      discountNGN: order.discountNGN,
+      deliveryFeeNGN: deliveryFee,
+      totalNGN: total,
+    });
+
+    const encoded = encodeURIComponent(message);
+    const url = `https://wa.me/${phone.replace('+', '')}?text=${encoded}`;
+
+    return {
+      url,
+      phone,
+      message,
+      quoteVersion: order.quoteVersion,
+      error: null,
+    };
+  }
+
+  /**
+   * Explicitly marks payment instructions as sent via WhatsApp.
+   * Does NOT mark payment as confirmed or order as paid.
+   */
+  public static async markPaymentInstructionsSent(identifier: string, adminId: string) {
+    return prisma.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { OR: [{ id: identifier }, { orderNumber: identifier }] },
+      });
+      if (!order) throw new Error(`Order not found: ${identifier}`);
+
+      if (order.quoteStatus !== 'ACCEPTED') {
+        throw new Error(`Quote must be in ACCEPTED status before sending payment instructions. Current status: ${order.quoteStatus}.`);
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: order.status,
+          changedBy: adminId,
+          note: `Kuda bank transfer payment instructions sent via WhatsApp by ${adminId}`,
+        },
+      });
+
+      return order;
+    });
   }
 
   /**

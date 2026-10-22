@@ -590,6 +590,59 @@ adminRouter.post('/orders/:id/quote/reject', requireAdmin, (req: AuthenticatedAd
 });
 
 /**
+ * GET /api/admin/orders/:id/payment/whatsapp
+ * Generate the Kuda bank-transfer payment instructions WhatsApp URL.
+ * Only allowed once the customer has accepted the delivery quotation.
+ * Does NOT mark payment as sent or order as paid.
+ */
+adminRouter.get('/orders/:id/payment/whatsapp', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const result = DeliveryQuoteService.generateWhatsAppPaymentUrl(req.params.id);
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    res.json({
+      success: true,
+      data: {
+        whatsappUrl: result.url,
+        message: result.message,
+        customerPhone: result.phone,
+        quoteVersion: result.quoteVersion,
+      },
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/payment/whatsapp/sent
+ * Admin explicitly records that Kuda payment instructions were sent via WhatsApp.
+ * Does NOT mark payment as confirmed or order as paid.
+ */
+adminRouter.post('/orders/:id/payment/whatsapp/sent', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+
+    DeliveryQuoteService.markPaymentInstructionsSent(req.params.id, adminId);
+
+    AuditService.log({
+      adminId,
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'PAYMENT_INSTRUCTIONS_SENT',
+      resource: 'ORDER',
+      resourceId: req.params.id,
+      newValue: 'Kuda bank transfer payment instructions sent via WhatsApp',
+      note: `Payment instructions sent for order ${req.params.id}`,
+    });
+
+    res.json({ success: true, data: { orderId: req.params.id } });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/admin/orders/:id/rider
  * Admin assigns a manual rider to the order.
  * Payment must be confirmed first.

@@ -29,9 +29,9 @@ export const COMMERCE_CONFIG = {
       BASE_URL: 'https://api.paystack.co',
     },
     BANK_TRANSFER: {
-      BANK_NAME: 'Kuda',
-      ACCOUNT_NAME: 'Adedeji Taiwo',
-      ACCOUNT_NUMBER: '2072114942',
+      BANK_NAME: process.env.BANK_NAME || 'Kuda',
+      ACCOUNT_NAME: process.env.BANK_ACCOUNT_NAME || 'Adedeji Taiwo',
+      ACCOUNT_NUMBER: process.env.BANK_ACCOUNT_NUMBER || '2072114942',
       REVIEW_WINDOW_HOURS: 48,
     },
   },

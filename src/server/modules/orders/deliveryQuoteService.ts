@@ -13,6 +13,9 @@
  */
 
 import { dbStore, DbOrder, QuoteStatusType } from '../../db/store';
+import { buildWhatsAppPaymentMessage } from '../payments/bankTransfer';
+
+export { buildWhatsAppPaymentMessage };
 
 // ── Phone normalisation ────────────────────────────────────────────────────────
 
@@ -300,6 +303,92 @@ export class DeliveryQuoteService {
     const url = `https://wa.me/${phone.replace('+', '')}?text=${encoded}`;
 
     return { url, phone, message, error: null };
+  }
+
+  // ── generateWhatsAppPaymentUrl ─────────────────────────────────────────────
+
+  /**
+   * Generates wa.me click-to-chat URL with pre-filled WhatsApp payment instructions.
+   * Only allowed when customer has accepted the quotation (quoteStatus === 'ACCEPTED').
+   * SECURITY:
+   * - Never includes internal notes or admin secrets
+   * - Validates and normalises phone number
+   * - Uses official Kuda bank transfer details
+   * - Does NOT mark message as sent
+   */
+  public static generateWhatsAppPaymentUrl(identifier: string): {
+    url: string | null;
+    phone: string | null;
+    message: string;
+    quoteVersion?: number;
+    error: string | null;
+  } {
+    const order = this.getOrder(identifier);
+
+    if (order.quoteStatus !== 'ACCEPTED') {
+      return {
+        url: null,
+        phone: null,
+        message: '',
+        quoteVersion: order.quoteVersion,
+        error: 'Payment instructions cannot be generated until the delivery quotation has been accepted by the customer.',
+      };
+    }
+
+    const phone = normalisePhone(order.customerPhone);
+    if (!phone) {
+      return {
+        url: null,
+        phone: null,
+        message: '',
+        quoteVersion: order.quoteVersion,
+        error: `Unable to normalise customer phone number: "${order.customerPhone}". Please verify the number is correct.`,
+      };
+    }
+
+    const customerName = `${order.customerFirstName} ${order.customerLastName}`.trim();
+    const deliveryFee = order.quoteAcceptedFeeNGN ?? order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0;
+    const total = order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN;
+
+    const message = buildWhatsAppPaymentMessage({
+      orderNumber: order.orderNumber,
+      customerName,
+      subtotalNGN: order.subtotalNGN,
+      discountNGN: order.discountNGN,
+      deliveryFeeNGN: deliveryFee,
+      totalNGN: total,
+    });
+
+    const encoded = encodeURIComponent(message);
+    const url = `https://wa.me/${phone.replace('+', '')}?text=${encoded}`;
+
+    return { url, phone, message, quoteVersion: order.quoteVersion, error: null };
+  }
+
+  // ── markPaymentInstructionsSent ────────────────────────────────────────────
+
+  /**
+   * Explicitly marks payment instructions as sent via WhatsApp.
+   * Does NOT mark payment as confirmed or order as paid.
+   */
+  public static markPaymentInstructionsSent(identifier: string, adminId: string): DbOrder {
+    const order = this.getOrder(identifier);
+
+    if (order.quoteStatus !== 'ACCEPTED') {
+      throw new Error(`Quote must be in ACCEPTED status before sending payment instructions. Current status: ${order.quoteStatus}.`);
+    }
+
+    const now = new Date().toISOString();
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      fromStatus: order.status,
+      toStatus: order.status,
+      changedBy: adminId,
+      timestamp: now,
+      note: `Kuda bank transfer payment instructions sent via WhatsApp by ${adminId}`,
+    });
+    order.updatedAt = now;
+    return { ...order };
   }
 
   // ── assignRider ────────────────────────────────────────────────────────────

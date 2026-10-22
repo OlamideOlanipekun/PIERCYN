@@ -663,6 +663,59 @@ adminRouter.post('/orders/:id/quote/reject', requireAdmin, async (req: Authentic
 });
 
 /**
+ * GET /api/admin/orders/:id/payment/whatsapp
+ * Generate the Kuda bank-transfer payment instructions WhatsApp URL.
+ * Only allowed once the customer has accepted the delivery quotation.
+ * Does NOT mark payment as sent or order as paid.
+ */
+adminRouter.get('/orders/:id/payment/whatsapp', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await DeliveryQuoteService.generateWhatsAppPaymentUrl(req.params.id);
+    if (result.error) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+    res.json({
+      success: true,
+      data: {
+        whatsappUrl: result.url,
+        message: result.message,
+        customerPhone: result.phone,
+        quoteVersion: result.quoteVersion,
+      },
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/payment/whatsapp/sent
+ * Admin explicitly records that Kuda payment instructions were sent via WhatsApp.
+ * Does NOT mark payment as confirmed or order as paid.
+ */
+adminRouter.post('/orders/:id/payment/whatsapp/sent', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const adminId = req.admin?.id || 'admin';
+    const adminEmail = req.admin?.email || 'admin@piercyn.com';
+
+    const order = await DeliveryQuoteService.markPaymentInstructionsSent(req.params.id, adminId);
+
+    await AuditService.log({
+      adminId,
+      adminEmail,
+      action: 'PAYMENT_INSTRUCTIONS_SENT',
+      resourceType: 'ORDER',
+      resourceId: order.orderNumber,
+      newValue: 'Kuda bank transfer payment instructions sent via WhatsApp',
+    });
+
+    res.json({ success: true, data: { orderNumber: order.orderNumber } });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/admin/orders/:id/rider
  * Admin assigns a manual rider to the order.
  * Requires confirmed payment.

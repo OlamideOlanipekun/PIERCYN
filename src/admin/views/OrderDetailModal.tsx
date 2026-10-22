@@ -65,6 +65,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [quoteSuccessMsg, setQuoteSuccessMsg] = useState<string | null>(null);
   const [copiedQuoteMsg, setCopiedQuoteMsg] = useState(false);
 
+  // Payment instructions WhatsApp state
+  const [copiedPaymentMsg, setCopiedPaymentMsg] = useState(false);
+  const [paymentInstrSending, setPaymentInstrSending] = useState(false);
+
   // Reject Quote Dialog
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -167,6 +171,43 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       );
     } catch (err: any) {
       setError(err.message || 'Unable to open WhatsApp for this quotation.');
+    }
+  };
+
+  const handleOpenPaymentWhatsApp = async () => {
+    if (!order) return;
+    try {
+      setError(null);
+      const data = await AdminApi.getPaymentWhatsAppMessage(order.id);
+
+      // Copy Kuda payment instructions to clipboard
+      await navigator.clipboard.writeText(data.message);
+      setCopiedPaymentMsg(true);
+      setTimeout(() => setCopiedPaymentMsg(false), 4000);
+
+      // Open WhatsApp chat in a new tab — does NOT mark as sent
+      window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
+
+      setQuoteSuccessMsg(
+        'Kuda payment instructions copied to clipboard & WhatsApp opened! Remember to click "Mark Payment Instructions Sent" once transmitted.'
+      );
+    } catch (err: any) {
+      setError(err.message || 'Unable to generate Kuda payment instructions.');
+    }
+  };
+
+  const handleMarkPaymentInstructionsSent = async () => {
+    if (!order) return;
+    try {
+      setPaymentInstrSending(true);
+      setError(null);
+      await AdminApi.markPaymentInstructionsSent(order.id);
+      setQuoteSuccessMsg('Kuda bank transfer payment instructions marked as sent to customer.');
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setError(err.message || 'Failed to mark payment instructions as sent.');
+    } finally {
+      setPaymentInstrSending(false);
     }
   };
 
@@ -815,6 +856,48 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       >
                         Confirm Rejection
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Kuda Payment Instructions (after quote accepted) ──── */}
+                {isQuoteAccepted && !isPaidOrBeyond && (
+                  <div className="pt-3 border-t border-white/10">
+                    <div className="p-3.5 rounded-xl bg-gradient-to-br from-purple-950/40 to-indigo-950/30 border border-purple-700/40 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-purple-300" />
+                        <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-200">
+                          Step 2 — Send Kuda Bank Transfer Instructions
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-purple-200/70 leading-relaxed">
+                        Customer has accepted the delivery quote. Send the official Kuda bank-transfer payment instructions via WhatsApp.
+                      </p>
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-purple-700/30 font-mono text-[11px] text-purple-100 space-y-0.5">
+                        <div><span className="text-purple-400">Bank:</span> Kuda</div>
+                        <div><span className="text-purple-400">Account Name:</span> Adedeji Taiwo</div>
+                        <div><span className="text-purple-400">Account No:</span> 2072114942</div>
+                        <div><span className="text-purple-400">Total Payable:</span> <strong className="text-white">₦{(order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN ?? 0).toLocaleString()}</strong></div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleOpenPaymentWhatsApp}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-colors min-h-[38px]"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>{copiedPaymentMsg ? 'Kuda Instructions Copied! Opening WA...' : 'Send Kuda Payment Instructions via WhatsApp'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleMarkPaymentInstructionsSent}
+                          disabled={paymentInstrSending}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-purple-600/50 bg-purple-950/50 hover:bg-purple-900/40 px-3 py-2 text-xs font-mono uppercase tracking-wider text-purple-200 cursor-pointer disabled:opacity-50 min-h-[38px]"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{paymentInstrSending ? 'Recording...' : 'Mark Payment Instructions Sent'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
