@@ -145,8 +145,11 @@ export const NewArrivalsPage: React.FC<NewArrivalsPageProps> = ({ onSelectPage }
     return () => clearTimeout(t);
   }, []);
 
-  // Filter products to "new" from live catalog
-  const allNewProducts = products.filter((p) => p.isNewDrop === true);
+  // Only published catalogue entries with an explicit new-drop flag appear here.
+  // Draft/archived products must never leak into the customer-facing New Arrivals page.
+  const allNewProducts = products.filter(
+    (p) => p.isNewDrop === true && p.status !== 'draft' && p.status !== 'archived',
+  );
 
   // Category filter
   const categoryFiltered = activeCategory === 'ALL'
@@ -157,7 +160,10 @@ export const NewArrivalsPage: React.FC<NewArrivalsPageProps> = ({ onSelectPage }
   const sorted = [...categoryFiltered].sort((a, b) => {
     if (sortKey === 'PRICE_ASC') return a.priceNGN - b.priceNGN;
     if (sortKey === 'PRICE_DESC') return b.priceNGN - a.priceNGN;
-    // FEATURED/NEWEST: bestseller first, then featured tag
+    if (sortKey === 'NEWEST') {
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    }
+    // FEATURED: bestseller first, then retain the catalogue's existing order.
     if (a.isBestSeller && !b.isBestSeller) return -1;
     if (!a.isBestSeller && b.isBestSeller) return 1;
     return 0;

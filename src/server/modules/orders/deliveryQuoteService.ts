@@ -381,9 +381,9 @@ export class DeliveryQuoteService {
     const now = new Date().toISOString();
     order.timeline = order.timeline || [];
     order.timeline.push({
-      action: 'PAYMENT_INSTRUCTIONS_SENT',
+      status: order.orderStatus,
       timestamp: now,
-      note: `Kuda bank transfer payment instructions sent via WhatsApp by ${adminId}`,
+      note: `Payment instructions sent via WhatsApp by admin ${adminId}`,
     });
     order.updatedAt = now;
     return { ...order };
