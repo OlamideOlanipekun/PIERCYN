@@ -355,8 +355,9 @@ export class OrderService {
           data: {
             orderId: order.id,
             customerId: order.customerId,
-            eventType: 'PAYMENT_RECEIVED_AFTER_CANCELLATION',
+            eventType: 'PURCHASE_COMPLETED',
             metadata: JSON.stringify({
+              event: 'PAYMENT_RECEIVED_AFTER_CANCELLATION',
               orderNumber: order.orderNumber,
               totalNGN: order.totalNGN,
               providerReference,

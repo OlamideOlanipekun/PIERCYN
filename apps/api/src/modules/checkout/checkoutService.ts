@@ -13,6 +13,7 @@ export interface CheckoutQuote {
   shippingMethodName: string;
   subtotalNGN: number;
   deliveryFeeNGN: number;
+  deliveryFeePending?: boolean;
   discountNGN: number;
   discountDescription?: string;
   totalNGN: number;

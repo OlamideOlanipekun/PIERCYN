@@ -867,7 +867,7 @@ adminRouter.post('/categories', requireAdmin, async (req: AuthenticatedAdminRequ
   try {
     const input = CreateCategorySchema.parse(req.body);
     const slug = (input.slug || input.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, imageUrl: input.imageUrl || null, sortOrder: input.sortOrder ?? 0, isActive: true } });
+    const category = await prisma.category.create({ data: { name: input.name, slug, description: input.description, sortOrder: input.sortOrder ?? 0, isActive: true } });
     await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'CATEGORY_CREATED', resource: 'PRODUCT', resourceId: category.id, newValue: category.name, note: 'Product category created' });
     res.status(201).json({ success: true, data: category });
   } catch (err: any) {

@@ -91,9 +91,9 @@ const CreateShipmentSchema = z.object({
 // ── Delivery Quotation Schemas ────────────────────────────────────────────────
 const SetDeliveryQuoteSchema = z.object({
   deliveryFeeNGN: z
-    .number({ required_error: 'deliveryFeeNGN is required' })
+    .number()
     .int('Delivery fee must be a whole number (NGN)')
-    .nonnegative('Delivery fee cannot be negative'),
+    .min(0, 'Delivery fee cannot be negative'),
   estimatedTimeframe: z.string().max(200).optional(),
   internalNote: z.string().max(1000).optional(),
 });

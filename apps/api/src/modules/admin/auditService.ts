@@ -4,9 +4,11 @@ export interface AuditLogEntry {
   adminId?: string;
   adminEmail?: string;
   action: string;
-  resource: string;
+  resource?: string;
+  resourceType?: string;
   resourceId: string;
   previousValue?: string;
+  oldValue?: string;
   newValue?: string;
   note?: string;
   ipAddress?: string;
@@ -19,9 +21,9 @@ export class AuditService {
         data: {
           adminId: entry.adminId?.startsWith('admin_') ? undefined : entry.adminId,
           action: entry.action,
-          resourceType: entry.resource,
+          resourceType: entry.resourceType || entry.resource || '',
           resourceId: entry.resourceId,
-          oldValue: entry.previousValue,
+          oldValue: entry.oldValue ?? entry.previousValue,
           newValue: entry.newValue,
           ipAddress: entry.ipAddress,
         },

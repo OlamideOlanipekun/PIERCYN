@@ -268,7 +268,6 @@ class AdminApiClient {
     const query = new URLSearchParams();
     if (params?.category && params.category !== 'ALL') query.set('category', params.category);
     if (params?.status && params.status !== 'ALL') query.set('status', params.status);
-    if (params?.quoteStatus && params.quoteStatus !== 'ALL') query.set('quoteStatus', params.quoteStatus);
     if (params?.search) query.set('search', params.search);
 
     const qs = query.toString() ? `?${query.toString()}` : '';

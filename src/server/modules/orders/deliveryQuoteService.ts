@@ -346,7 +346,7 @@ export class DeliveryQuoteService {
       };
     }
 
-    const customerName = `${order.customerFirstName} ${order.customerLastName}`.trim();
+    const customerName = (order.customerName || '').trim();
     const deliveryFee = order.quoteAcceptedFeeNGN ?? order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0;
     const total = order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN;
 
@@ -379,11 +379,9 @@ export class DeliveryQuoteService {
     }
 
     const now = new Date().toISOString();
-    order.statusHistory = order.statusHistory || [];
-    order.statusHistory.push({
-      fromStatus: order.status,
-      toStatus: order.status,
-      changedBy: adminId,
+    order.timeline = order.timeline || [];
+    order.timeline.push({
+      action: 'PAYMENT_INSTRUCTIONS_SENT',
       timestamp: now,
       note: `Kuda bank transfer payment instructions sent via WhatsApp by ${adminId}`,
     });
