@@ -16,6 +16,7 @@ import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
+import { NotificationWorker } from '../modules/notifications';
 import { prisma } from '../db/prisma';
 import {
   createOrderAccessToken,
@@ -433,6 +434,37 @@ const handleReservationCron = async (req: Request, res: Response) => {
 
 apiRouter.get('/internal/cron/reservations', handleReservationCron);
 apiRouter.post('/internal/cron/reservations', handleReservationCron);
+
+const handleNotificationCron = async (req: Request, res: Response) => {
+  const configuredSecret = process.env.CRON_SECRET || '';
+  if (!configuredSecret) {
+    return res.status(503).json({ success: false, error: 'CRON_SECRET is not configured.' });
+  }
+  const auth = req.headers['authorization'] || '';
+  const supplied = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(configuredSecret);
+  if (
+    suppliedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)
+  ) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const batchSize = parseInt(req.query.batchSize as string, 10) || 10;
+    const result = await NotificationWorker.processNotifications(batchSize);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('[NOTIFICATION_CRON_ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+apiRouter.get('/internal/cron/notifications', handleNotificationCron);
+apiRouter.post('/internal/cron/notifications', handleNotificationCron);
+apiRouter.get('/cron/process-notifications', handleNotificationCron);
+apiRouter.post('/cron/process-notifications', handleNotificationCron);
 
 apiRouter.get('/analytics/overview', requireAdmin, async (_req: Request, res: Response) => {
   try {

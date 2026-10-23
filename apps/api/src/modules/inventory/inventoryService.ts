@@ -1,4 +1,8 @@
 import { prisma } from '../../db/prisma';
+import {
+  NotificationQueueService,
+  triggerNotificationProcessingAsync,
+} from '../notifications';
 
 export interface FinalizeSaleResult {
   finalized: boolean;
@@ -276,7 +280,7 @@ export class InventoryService {
       }
 
       const inv = invRows[0];
-      await tx.inventoryTransaction.create({
+      const invTx = await tx.inventoryTransaction.create({
         data: {
           inventoryId: inv.id,
           variantId,
@@ -289,6 +293,24 @@ export class InventoryService {
           reason: `Sale finalized for order ${orderNumber}`,
         },
       });
+
+      // Queue PRODUCT_OUT_OF_STOCK if inventory transitioned from positive to 0
+      if (inv.stockQuantity === 0 && (inv.stockQuantity + quantity) > 0) {
+        const variant = await tx.productVariant.findUnique({
+          where: { id: variantId },
+          include: { product: true },
+        });
+        if (variant) {
+          await NotificationQueueService.queueOutOfStock(
+            variant,
+            invTx.id,
+            orderNumber,
+            `Sold out on finalized order ${orderNumber}`,
+            variant.product?.name,
+            tx
+          );
+        }
+      }
 
       return { finalized: true, alreadyFinalized: false, shortfall: 0 };
     };
@@ -460,7 +482,7 @@ export class InventoryService {
       throw new Error('Inventory quantity must be a positive whole number.');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const inv = await tx.inventory.findUnique({
         where: { variantId },
       });
@@ -506,7 +528,7 @@ export class InventoryService {
         type === 'RETURN' ? 'RETURN' :
         type === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'RESTOCK';
 
-      await tx.inventoryTransaction.create({
+      const invTx = await tx.inventoryTransaction.create({
         data: {
           inventoryId: inv.id,
           variantId,
@@ -521,8 +543,32 @@ export class InventoryService {
         },
       });
 
+      // Queue PRODUCT_OUT_OF_STOCK if inventory transitioned from positive to 0
+      if (newStock === 0 && inv.stockQuantity > 0) {
+        const variant = await tx.productVariant.findUnique({
+          where: { id: variantId },
+          include: { product: true },
+        });
+        if (variant) {
+          await NotificationQueueService.queueOutOfStock(
+            variant,
+            invTx.id,
+            reference,
+            reason || `Stock manually adjusted to 0 (${type})`,
+            variant.product?.name,
+            tx
+          );
+        }
+      }
+
       return true;
     });
+
+    if (result) {
+      triggerNotificationProcessingAsync();
+    }
+
+    return result;
   }
 
   public static async getAllInventory(filter?: {

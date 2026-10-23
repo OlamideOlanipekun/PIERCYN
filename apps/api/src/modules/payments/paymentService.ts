@@ -11,6 +11,10 @@ import {
   validateReceiptBuffer,
 } from './receiptStorage';
 import { buildBankTransferInstructions } from './bankTransfer';
+import {
+  NotificationQueueService,
+  triggerNotificationProcessingAsync,
+} from '../notifications';
 
 export interface PaymentInitializationParams {
   orderNumber: string;
@@ -462,6 +466,34 @@ export class PaymentService {
         });
 
         await InventoryService.extendReservations(order.orderNumber, reviewDeadlineAt, tx);
+
+        // Atomically queue RECEIPT_UPLOADED notification job
+        const fullOrder = await tx.order.findUnique({
+          where: { id: order.id },
+          select: {
+            id: true,
+            orderNumber: true,
+            customerFirstName: true,
+            customerLastName: true,
+            customerEmail: true,
+            customerPhone: true,
+            totalNGN: true,
+          },
+        });
+        if (fullOrder) {
+          await NotificationQueueService.queueReceiptUploaded(
+            fullOrder,
+            {
+              id: providerReference,
+              providerReference,
+              receiptPath,
+              receiptMimeType: mimeType,
+              receiptUploadedAt: now,
+              reviewDeadlineAt,
+            },
+            tx
+          );
+        }
       });
     } catch (err) {
       await removeReceipt(receiptPath);
@@ -471,6 +503,9 @@ export class PaymentService {
     if (replacedPath && replacedPath !== receiptPath) {
       await removeReceipt(replacedPath);
     }
+
+    // Opportunistically dispatch pending notifications
+    triggerNotificationProcessingAsync();
 
     return {
       status: 'AWAITING_PAYMENT_VERIFICATION',

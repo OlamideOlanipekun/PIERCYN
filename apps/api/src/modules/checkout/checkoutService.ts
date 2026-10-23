@@ -6,6 +6,10 @@ import { CustomerService } from '../customers/customerService';
 import { AffiliateService } from '../affiliate/affiliateService';
 import { prisma } from '../../db/prisma';
 import { generateOrderNumber } from '@piercyn/utils';
+import {
+  NotificationQueueService,
+  triggerNotificationProcessingAsync,
+} from '../notifications';
 
 export interface CheckoutQuote {
   cart: CalculatedCart;
@@ -251,11 +255,21 @@ export class CheckoutService {
         });
       }
 
+      // Atomically queue ORDER_CREATED notification job in the same transaction
+      await NotificationQueueService.queueOrderCreated(
+        order,
+        order.items,
+        tx
+      );
+
       return order;
     }, { isolationLevel: 'Serializable' });
 
     // Clear session cart
     await CartService.clearCart(sessionId);
+
+    // Opportunistically dispatch pending notifications without blocking response
+    triggerNotificationProcessingAsync();
 
     return createdOrder;
   }

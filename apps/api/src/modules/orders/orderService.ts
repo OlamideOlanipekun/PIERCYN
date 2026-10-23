@@ -2,6 +2,10 @@ import { prisma } from '../../db/prisma';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { InventoryService } from '../inventory/inventoryService';
 import { CommissionService } from '../affiliate/commissionService';
+import {
+  NotificationQueueService,
+  triggerNotificationProcessingAsync,
+} from '../notifications';
 
 export const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
   PENDING_PAYMENT: ['AWAITING_PAYMENT_VERIFICATION', 'PAID', 'CANCELLED', 'FAILED'],
@@ -476,8 +480,30 @@ export class OrderService {
         },
       });
 
+      // Atomically queue PAYMENT_VERIFIED notification job
+      const verificationSource = providerReference.startsWith('TRF-')
+        ? 'ADMIN_APPROVAL'
+        : providerReference.startsWith('MOCK-')
+        ? 'MOCK'
+        : 'PAYSTACK_VERIFY';
+
+      await NotificationQueueService.queuePaymentVerified(
+        updatedOrder,
+        {
+          providerReference,
+          amountNGN: updatedOrder.totalNGN,
+          verifiedAt: now,
+        },
+        verificationSource,
+        null,
+        tx
+      );
+
       return updatedOrder;
     });
+
+    // Opportunistically dispatch pending notifications
+    triggerNotificationProcessingAsync();
 
     if (!COMMERCE_CONFIG.AFFILIATE.ENABLED) {
       return orderRes;
