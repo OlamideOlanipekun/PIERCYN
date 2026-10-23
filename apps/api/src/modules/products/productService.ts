@@ -198,6 +198,10 @@ export class ProductService {
     });
 
     variants.sort((a, b) => a.sortOrder - b.sortOrder);
+    const hasSellableStock = variants.some((variant) => variant.active && variant.availableStock > 0);
+    const isSoldOut = variants.length > 0
+      ? !hasSellableStock
+      : Boolean(prod.isSoldOut) || totalStock === 0;
 
     return {
       id: prod.id,
@@ -226,7 +230,7 @@ export class ProductService {
       tag: prod.tag,
       isNewDrop: Boolean(prod.isNewDrop),
       isBestSeller: Boolean(prod.isBestSeller),
-      isSoldOut: Boolean(prod.isSoldOut) || totalStock === 0,
+      isSoldOut,
       isLimited: Boolean(prod.isLimited),
       sortOrder: prod.sortOrder ?? 0,
       variants,
