@@ -166,7 +166,7 @@ export const TrackOrderPage: React.FC<TrackOrderPageProps> = ({ onSelectPage }) 
                 <div className="space-y-3">
                   <p>{errorMessage}</p>
                   <a
-                    href={`https://wa.me/2348000000000?text=${whatsappTrackingMessage}`}
+                    href={`https://wa.me/2348076431059?text=${whatsappTrackingMessage}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-800 text-white font-bold uppercase tracking-wider text-[11px] hover:bg-emerald-900 transition-colors"

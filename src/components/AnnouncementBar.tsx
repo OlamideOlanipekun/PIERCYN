@@ -39,7 +39,7 @@ export const AnnouncementBar: React.FC = () => {
           </span>
           <span className="text-white/25 hidden sm:inline">•</span>
           <a
-            href="https://wa.me/2348000000000"
+            href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help."
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline text-[#A48B71] hover:text-[#F2F0EB] transition-colors underline underline-offset-2"

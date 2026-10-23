@@ -130,7 +130,7 @@ export const OrderConfirmationModal: React.FC = () => {
         {/* ACTION BUTTONS */}
         <div className="space-y-2.5">
           <a
-            href={`https://wa.me/2348000000000?text=${whatsappMessage}`}
+            href={`https://wa.me/2348076431059?text=${whatsappMessage}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3 px-4 bg-[#25D366] text-white text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#20bd5a] transition-all flex items-center justify-center gap-2 shadow-xs"

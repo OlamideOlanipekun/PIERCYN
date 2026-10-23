@@ -104,7 +104,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onSelectPage }) => {
                 Connect directly with our stylists and operations team. Typical response time is under 15 minutes during operating hours.
               </p>
               <a
-                href={`https://wa.me/2348000000000?text=${whatsappGeneralMessage}`}
+                href={`https://wa.me/2348076431059?text=${whatsappGeneralMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors"

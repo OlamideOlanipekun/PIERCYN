@@ -127,7 +127,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection, onSelectPage 
               </a>
               <a 
                 id="footer-whatsapp"
-                href="https://wa.me/2348000000000" 
+                href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help." 
                 target="_blank" 
                 rel="noreferrer"
                 className="min-h-[36px] flex items-center gap-2 text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link"

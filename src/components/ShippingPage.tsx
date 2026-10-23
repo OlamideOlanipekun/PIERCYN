@@ -174,7 +174,7 @@ export const ShippingPage: React.FC<ShippingPageProps> = ({ onSelectPage }) => {
             <p className="text-xs text-white/70 mt-1">Our Lagos dispatch desk is active Monday to Saturday, 9 AM – 7 PM WAT.</p>
           </div>
           <a
-            href="https://wa.me/2348000000000?text=Hello%20PIERCYN%20Dispatch!%20I%20have%20a%20question%20about%20shipping%20and%20delivery."
+            href="https://wa.me/2348076431059?text=Hello%20PIERCYN%20Dispatch!%20I%20have%20a%20question%20about%20shipping%20and%20delivery."
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#20bd5a] transition-colors shrink-0 shadow-sm"

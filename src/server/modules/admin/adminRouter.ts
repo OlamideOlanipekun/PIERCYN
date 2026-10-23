@@ -42,7 +42,7 @@ export const storeSettingsState = {
   tagline: 'Look Good. Spend Less.',
   atelierAddress: '14 Admiralty Way, Lekki Phase 1, Lagos, Nigeria',
   supportEmail: 'director@piercyn.com',
-  supportPhone: '+2348000000000',
+  supportPhone: '+2348076431059',
   currency: 'NGN (₦)',
   freeShippingThresholdNGN: COMMERCE_CONFIG.SHIPPING.FREE_THRESHOLD_NGN,
   lagosDeliveryFeeNGN: COMMERCE_CONFIG.SHIPPING.LAGOS_FEE_NGN,
@@ -155,7 +155,7 @@ const CreateProductSchema = z.object({
 const InventoryAdjustmentSchema = z.object({
   variantId: z.string().min(1),
   quantity: z.number().int(),
-  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN']),
+  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'RESTOCK', 'SET_EXACT']),
   reference: z.string().min(1),
   reason: z.string().optional(),
 });

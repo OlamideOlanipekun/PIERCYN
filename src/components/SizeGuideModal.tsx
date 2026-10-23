@@ -36,7 +36,7 @@ export const SizeGuideModal: React.FC = () => {
           <div className="mt-6 rounded-xl bg-[#E8E6E1] p-5">
             <h3 className="font-semibold">Need exact measurements?</h3>
             <p className="mt-2 text-sm leading-6 text-[#5F5C56]">Send support the product name and your preferred fit before ordering. We will confirm the measurements available for that item rather than guess.</p>
-            <a href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20please%20help%20me%20confirm%20the%20sizing%20for%20a%20product." target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#141414] px-5 text-xs font-bold uppercase tracking-wider text-white"><MessageCircle className="h-4 w-4" /> Ask about sizing</a>
+            <a href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20please%20help%20me%20confirm%20the%20sizing%20for%20a%20product." target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#141414] px-5 text-xs font-bold uppercase tracking-wider text-white"><MessageCircle className="h-4 w-4" /> Ask about sizing</a>
           </div>
         </div>
       </div>

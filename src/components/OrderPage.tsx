@@ -194,7 +194,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
               Continue Shopping
             </button>
             <a
-              href="https://wa.me/2349129997137?text=Hello%20PIERCYN!%20I'd%20like%20to%20inquire%20about%20my%20recent%20order."
+              href="https://wa.me/2348076431059?text=Hello%20PIERCYN!%20I'd%20like%20to%20inquire%20about%20my%20recent%20order."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-[#141414] px-6 py-3 text-xs font-bold uppercase tracking-wider hover:bg-[#141414] hover:text-[#F2F0EB] transition-colors"
@@ -589,7 +589,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
           </button>
 
           <a
-            href={`https://wa.me/2349129997137?text=${whatsappMessage}`}
+            href={`https://wa.me/2348076431059?text=${whatsappMessage}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#141414] px-7 text-xs font-bold uppercase tracking-wider hover:bg-[#141414] hover:text-[#F2F0EB] transition-colors"

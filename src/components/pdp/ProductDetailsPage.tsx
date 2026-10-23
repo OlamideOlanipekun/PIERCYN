@@ -430,7 +430,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             {/* WHATSAPP CONSULTATION LINK */}
             <div className="pt-1">
               <a
-                href={`https://wa.me/2348000000000?text=${whatsappInquiryMessage}`}
+                href={`https://wa.me/2348076431059?text=${whatsappInquiryMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-sans font-medium text-[#141414] hover:text-emerald-800 transition-colors"

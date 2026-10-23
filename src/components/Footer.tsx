@@ -116,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             <nav className="flex flex-col items-start gap-1">
               <a id="footer-instagram" href="https://instagram.com/piercyn" target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><Instagram className="h-3.5 w-3.5 shrink-0" /> INSTAGRAM <span className="text-[10px]">↗</span></a>
               <a id="footer-tiktok" href="https://tiktok.com/@piercyn" target="_blank" rel="noopener noreferrer" className={footerLinkClass}>TIKTOK <span className="ml-2 text-[10px]">↗</span></a>
-              <a id="footer-whatsapp" href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help." target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><MessageCircle className="h-3.5 w-3.5 shrink-0" /> WHATSAPP <span className="text-[10px]">↗</span></a>
+              <a id="footer-whatsapp" href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help." target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><MessageCircle className="h-3.5 w-3.5 shrink-0" /> WHATSAPP <span className="text-[10px]">↗</span></a>
             </nav>
           </div>
 
@@ -196,7 +196,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
             <div id="footer-mobile-follow" hidden={!openGroups.follow} className="py-2"><nav className="flex flex-col">
               <a href="https://instagram.com/piercyn" target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><Instagram className="h-3.5 w-3.5" /> INSTAGRAM ↗</a>
               <a href="https://tiktok.com/@piercyn" target="_blank" rel="noopener noreferrer" className={footerLinkClass}>TIKTOK ↗</a>
-              <a href="https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help." target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><MessageCircle className="h-3.5 w-3.5" /> WHATSAPP ↗</a>
+              <a href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help." target="_blank" rel="noopener noreferrer" className={`${footerLinkClass} gap-2`}><MessageCircle className="h-3.5 w-3.5" /> WHATSAPP ↗</a>
             </nav></div>
           </section>
           <section>

@@ -197,7 +197,7 @@ export const ReturnsPage: React.FC<ReturnsPageProps> = ({ onSelectPage }) => {
           </div>
 
           <a
-            href={`https://wa.me/2348000000000?text=${whatsappReturnMessage}`}
+            href={`https://wa.me/2348076431059?text=${whatsappReturnMessage}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#F2F0EB] text-[#141414] text-xs font-bold uppercase tracking-wider hover:bg-white transition-all shrink-0 cursor-pointer"

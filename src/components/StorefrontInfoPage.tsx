@@ -22,7 +22,7 @@ interface StorefrontInfoPageProps {
   onOpenCheckout: () => void;
 }
 
-const SUPPORT_URL = 'https://wa.me/2349129997137?text=Hello%20PIERCYN%2C%20I%20need%20help.';
+const SUPPORT_URL = 'https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help.';
 
 const copy: Record<Exclude<StorefrontPageKey, 'search' | 'cart' | 'checkout' | 'order-confirmation'>, { eyebrow: string; title: string; intro: string; sections: { title: string; body: string }[] }> = {
   shipping: {

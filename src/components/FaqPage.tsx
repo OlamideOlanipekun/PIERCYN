@@ -184,7 +184,7 @@ export const FaqPage: React.FC<FaqPageProps> = ({ onSelectPage }) => {
             <p className="text-xs text-white/70 mt-1">Our live Lagos concierge is available via WhatsApp to answer any specific query.</p>
           </div>
           <a
-            href="https://wa.me/2348000000000?text=Hello%20PIERCYN!%20I%20have%20a%20question%20not%20covered%20in%20your%20FAQ."
+            href="https://wa.me/2348076431059?text=Hello%20PIERCYN!%20I%20have%20a%20question%20not%20covered%20in%20your%20FAQ."
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-full bg-[#F2F0EB] text-[#141414] text-xs font-bold uppercase tracking-wider hover:bg-white transition-all shrink-0 inline-flex items-center gap-2"

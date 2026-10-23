@@ -257,7 +257,7 @@ export const SizeGuidePage: React.FC<SizeGuidePageProps> = ({ onSelectPage }) =>
               Send your height, weight, and normal tee size to our WhatsApp concierge. We’ll recommend the exact size for your frame.
             </p>
             <a
-              href="https://wa.me/2348000000000?text=Hello%20PIERCYN!%20Could%20you%20advise%20on%20sizing%20for%20my%20frame?"
+              href="https://wa.me/2348076431059?text=Hello%20PIERCYN!%20Could%20you%20advise%20on%20sizing%20for%20my%20frame?"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 font-bold uppercase tracking-wider text-[#141414] hover:underline"
