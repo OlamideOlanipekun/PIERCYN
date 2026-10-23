@@ -47,6 +47,13 @@ export interface EnrichedProductVariant {
   active: boolean;
   sortOrder: number;
   availableStock: number;
+  stock: {
+    availableStock: number;
+    reservedStock: number;
+    soldStock: number;
+    damagedStock: number;
+    returnedStock: number;
+  };
   isAvailable: boolean;
   createdAt: string;
   updatedAt: string;
