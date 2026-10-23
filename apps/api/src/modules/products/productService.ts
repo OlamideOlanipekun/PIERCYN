@@ -440,6 +440,13 @@ export class ProductService {
           active: variant.isActive,
           sortOrder: variant.sortOrder,
           availableStock: available,
+          stock: {
+            availableStock: available,
+            reservedStock: reservedQty,
+            soldStock: variant.inventory?.soldQuantity ?? 0,
+            damagedStock: variant.inventory?.damagedQuantity ?? 0,
+            returnedStock: variant.inventory?.returnedQuantity ?? 0,
+          },
           isAvailable: variant.isActive && available > 0,
           createdAt: variant.createdAt.toISOString(),
           updatedAt: variant.updatedAt.toISOString(),
