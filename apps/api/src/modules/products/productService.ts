@@ -65,6 +65,7 @@ export interface EnrichedProduct {
   priceEUR: number;
   categoryId: string;
   categoryName?: string;
+  categorySlug?: string;
   collection: string;
   status: string;
   images: string[];
@@ -195,6 +196,7 @@ export class ProductService {
       priceEUR: prod.priceEUR ?? 0,
       categoryId: prod.categoryId,
       categoryName: prod.category ? prod.category.name : undefined,
+      categorySlug: prod.category ? prod.category.slug : undefined,
       collection: prod.collection || 'essentials',
       status: prod.status || 'ACTIVE',
       images: prod.images || [],

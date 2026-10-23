@@ -176,7 +176,8 @@ export type OrderStatusType =
 export type QuoteStatusType = 'PENDING' | 'SET' | 'SENT' | 'ACCEPTED' | 'REJECTED';
 
 export interface DbOrderTimelineEntry {
-  status: OrderStatusType;
+  status?: OrderStatusType;
+  action?: string;
   timestamp: string;
   note?: string;
 }

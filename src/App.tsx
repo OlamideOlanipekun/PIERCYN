@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { getDeduplicatedHomepageProducts } from './utils/homepageProducts';
-import { ENABLE_WOMENSWEAR } from './config/homepage';
+
 import { Product, LookbookLook, ActivePageView } from './types';
 import { Navbar } from './components/Navbar';
 import { MenCollectionPage } from './components/men/MenCollectionPage';
 import { HeroSection } from './components/HeroSection';
 import { JustDroppedSection } from './components/JustDroppedSection';
-import { MensFashionSection } from './components/MensFashionSection';
 import { TrustReassuranceSection } from './components/TrustReassuranceSection';
 import { ProductDetailsPage } from './components/pdp/ProductDetailsPage';
 import { NewArrivalsPage } from './components/NewArrivalsPage';
 import { ShopPage } from './components/ShopPage';
+import { HomepageCategoryPreviews } from './components/HomepageCategoryPreviews';
 import { AboutPage } from './components/AboutPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -30,7 +30,7 @@ import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { initAffiliateTracking } from './utils/affiliateTracking';
 import { catalogService } from './services/catalogService';
-import { StorefrontInfoPage, HomepageAvailabilitySections, StorefrontPageKey } from './components/StorefrontInfoPage';
+import { StorefrontInfoPage, StorefrontPageKey } from './components/StorefrontInfoPage';
 import { CartPage } from './components/CartPage';
 import { CheckoutPage } from './components/CheckoutPage';
 import { WomenCollectionPage } from './components/women/WomenCollectionPage';
@@ -43,7 +43,6 @@ import { ScrollReveal } from './components/ScrollReveal';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
-const AffiliateApp = React.lazy(() => import('./affiliate/AffiliateApp').then((m) => ({ default: m.AffiliateApp })));
 
 
 // V1: Simple "Why PIERCYN" brand section for homepage
@@ -78,7 +77,7 @@ const MainLayout: React.FC = () => {
   }, []);
 
   // Compute deduplicated homepage products from real backend catalog
-  const { justDropped, mensFashion } = useMemo(
+  const { justDropped } = useMemo(
     () => getDeduplicatedHomepageProducts(products),
     [products]
   );
@@ -142,6 +141,11 @@ const MainLayout: React.FC = () => {
     } else if (rawPath === '/shop') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
+      // Honour ?category= query param set by VIEW ALL links from the homepage
+      const categoryParam = new URLSearchParams(window.location.search).get('category');
+      if (categoryParam) {
+        setSelectedCategoryFilter(categoryParam);
+      }
       document.title = 'PIERCYN — Shop All';
     } else if (rawPath === '/men') {
       setActivePage('men');
@@ -369,6 +373,19 @@ const MainLayout: React.FC = () => {
     setSelectedCategoryFilter(cat);
   };
 
+  /**
+   * Called by VIEW ALL buttons on the homepage category previews.
+   * Navigates to /shop?category=<slug> and passes the filter through.
+   */
+  const handleViewAllCategory = (categorySlug: string) => {
+    setSelectedCategoryFilter(categorySlug);
+    const url = `/shop?category=${encodeURIComponent(categorySlug)}`;
+    window.history.pushState({ page: 'shop', category: categorySlug }, '', url);
+    syncRouteFromUrl();
+    document.title = 'PIERCYN — Shop All';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (isAdminView) {
     return (
       <React.Suspense
@@ -503,12 +520,12 @@ const MainLayout: React.FC = () => {
         <AboutPage onSelectPage={handleSelectPage} />
       ) : (
         <>
-          {/* HOMEPAGE — V1: Hero → New Arrivals → Why PIERCYN → Shop Men → Trust */}
+          {/* HOMEPAGE — Hero → Dynamic Category Previews → Why PIERCYN → Trust */}
 
           {/* Hero */}
           <HeroSection onExplore={handleExploreHero} />
 
-          {/* New Arrivals Grid */}
+          {/* New Arrivals — keeps the editorial "Just Dropped" energy */}
           <ScrollReveal>
             <JustDroppedSection 
               products={justDropped}
@@ -517,32 +534,19 @@ const MainLayout: React.FC = () => {
             />
           </ScrollReveal>
 
-          {/* Real inventory only; supplier-held designs are never represented as physical stock. */}
-          <ScrollReveal delay={0.04}>
-            <HomepageAvailabilitySections
-              products={products}
-              onViewProduct={handleViewProduct}
-              onBrowseShop={() => handleSelectPage('shop')}
-              isLoadingProducts={isLoadingProducts}
-              catalogError={catalogError}
-            />
-          </ScrollReveal>
+          {/* Dynamic category preview rows (one per active category with products) */}
+          <HomepageCategoryPreviews
+            products={products}
+            isLoadingProducts={isLoadingProducts}
+            catalogError={catalogError}
+            onViewProduct={handleViewProduct}
+            onViewAllCategory={handleViewAllCategory}
+          />
 
           {/* Why PIERCYN brand statement */}
           <ScrollReveal>
             <WhyPiercynSection />
           </ScrollReveal>
-
-          {/* Men's Fashion Discovery */}
-          {mensFashion.length > 0 && (
-            <ScrollReveal>
-              <MensFashionSection 
-                products={mensFashion}
-                onViewProduct={handleViewProduct}
-                onSelectPage={handleSelectPage}
-              />
-            </ScrollReveal>
-          )}
 
           {/* Trust & Reassurance */}
           <ScrollReveal>

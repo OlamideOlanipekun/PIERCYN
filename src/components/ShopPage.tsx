@@ -19,7 +19,11 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 }) => {
   const { addToCart, toggleWishlist, isWishlisted, isLoadingProducts, catalogError, refreshProducts } = useShop();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'all');
+  // Resolve the initial category from the prop, falling back to the URL query param
+  const urlCategoryParam = new URLSearchParams(window.location.search).get('category');
+  const resolvedInitialCategory = initialCategory || urlCategoryParam || 'all';
+  const [selectedCategory, setSelectedCategory] = useState<string>(resolvedInitialCategory);
+
   const [selectedAvailability, setSelectedAvailability] = useState<'all' | 'in_stock' | 'available_to_order'>('all');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [minPrice, setMinPrice] = useState<number>(0);
@@ -96,12 +100,39 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       catalogService.getCatalog(request).then((result) => {
         if (!cancelled) { setFilteredProducts(result.products); setResultTotal(result.total); }
       }).catch((error) => {
-        if (!cancelled) { setFilteredProducts([]); setResultTotal(0); setCatalogLoadError(error instanceof Error ? error.message : 'Unable to load products.'); }
+        if (!cancelled) {
+          if (products && products.length > 0) {
+            let matched = products;
+            if (request.category && request.category !== 'all') {
+              const catLower = request.category.toLowerCase();
+              matched = matched.filter((p) => {
+                const pCat = (p.category || (p as any).categorySlug || '').toLowerCase();
+                return pCat === catLower ||
+                  (catLower === 'tees' && (pCat === 't-shirts' || pCat === 'tops')) ||
+                  (catLower === 'hoodies' && pCat === 'sweatshirts') ||
+                  (catLower === 'trousers' && (pCat === 'jeans' || pCat === 'cargos')) ||
+                  (catLower === 'outerwear' && pCat === 'jackets');
+              });
+            }
+            if (request.search) {
+              const s = request.search.toLowerCase();
+              matched = matched.filter(
+                (p) => p.name.toLowerCase().includes(s) || p.description.toLowerCase().includes(s)
+              );
+            }
+            setFilteredProducts(matched);
+            setResultTotal(matched.length);
+          } else {
+            setFilteredProducts([]);
+            setResultTotal(0);
+            setCatalogLoadError(error instanceof Error ? error.message : 'Unable to load products.');
+          }
+        }
       }).finally(() => { if (!cancelled) setIsLoadingCatalog(false); });
       return () => { cancelled = true; };
     }, searchQuery ? 250 : 0);
     return () => window.clearTimeout(timeout);
-  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery]);
+  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery, products]);
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -139,6 +170,30 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             <h1 className="font-editorial italic text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-[#141414]">
               THE STOREFRONT
             </h1>
+            {selectedCategory !== 'all' && (
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="text-[11px] font-mono tracking-widest text-[#7A7771] uppercase">Category:</span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-mono uppercase tracking-wider">
+                  <span>
+                    {categories.find((c) => c.value.toLowerCase() === selectedCategory.toLowerCase())?.label ||
+                      selectedCategory.toUpperCase()}
+                  </span>
+                  <button
+                    onClick={() => setSelectedCategory('all')}
+                    className="hover:opacity-70 transition-opacity ml-1 cursor-pointer"
+                    aria-label="Clear category filter"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className="text-xs font-mono text-[#7A7771] hover:text-[#141414] underline ml-2 cursor-pointer transition-colors"
+                >
+                  View all pieces
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs font-mono text-[#141414]/70">
