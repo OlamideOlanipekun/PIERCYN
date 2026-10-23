@@ -1184,6 +1184,175 @@ export const ProductsView: React.FC = () => {
       )}
 
       {/* ------------------------------------------------------------- */}
+      {/* STOCK ADJUSTMENT MODAL */}
+      {/* ------------------------------------------------------------- */}
+      {stockAdjustProduct && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stock-adjust-title"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm font-sans"
+        >
+          <div className="w-full max-w-md bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#242424] pb-4 mb-5">
+              <div>
+                <h3 id="stock-adjust-title" className="font-bold text-sm text-[#F2F0EB] flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-400" />
+                  <span>ADJUST STOCK</span>
+                </h3>
+                <p className="text-[11px] font-mono text-neutral-500 mt-0.5">{stockAdjustProduct.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStockAdjustProduct(null)}
+                className="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleStockAdjustmentSubmit} className="space-y-4 text-xs">
+              {/* Variant selector — show when product has multiple variants */}
+              {(stockAdjustProduct.variants?.length || 0) > 1 && (
+                <div>
+                  <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                    Variant / Design
+                  </label>
+                  <select
+                    value={stockAdjustVariantId}
+                    onChange={(e) => {
+                      setStockAdjustVariantId(e.target.value);
+                      const v = stockAdjustProduct.variants.find((v) => v.id === e.target.value);
+                      setStockAdjustQuantity(v?.stock?.availableStock ?? 0);
+                    }}
+                    className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                  >
+                    {stockAdjustProduct.variants.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.sku} — {v.colour}{v.size ? ` / ${v.size}` : ''} (avail: {v.stock?.availableStock ?? 0})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Adjustment type */}
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-2">
+                  Adjustment Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { key: 'SET_EXACT', label: 'Set Exact', desc: 'Set stock to this number' },
+                    { key: 'PURCHASE', label: 'Add Stock', desc: 'Restock / receive new units' },
+                    { key: 'DAMAGE',   label: 'Remove Stock', desc: 'Damaged / written off' },
+                  ] as const).map(({ key, label, desc }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setStockAdjustType(key)}
+                      className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                        stockAdjustType === key
+                          ? key === 'DAMAGE'
+                            ? 'bg-rose-950/60 border-rose-700/60 text-rose-200'
+                            : key === 'PURCHASE'
+                            ? 'bg-emerald-950/60 border-emerald-700/60 text-emerald-200'
+                            : 'bg-amber-950/60 border-amber-700/60 text-amber-200'
+                          : 'bg-white/5 border-[#2D2D2D] text-neutral-400 hover:border-neutral-500'
+                      }`}
+                    >
+                      <span className="block font-mono font-bold text-[10px] uppercase">{label}</span>
+                      <span className="block text-[9px] mt-0.5 opacity-70">{desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                  {stockAdjustType === 'SET_EXACT' ? 'New Stock Quantity' : stockAdjustType === 'PURCHASE' ? 'Units to Add' : 'Units to Remove'}
+                </label>
+                <input
+                  type="number"
+                  min={stockAdjustType === 'SET_EXACT' ? 0 : 1}
+                  step={1}
+                  value={stockAdjustQuantity}
+                  onChange={(e) => setStockAdjustQuantity(Number(e.target.value))}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2.5 text-[#F2F0EB] outline-hidden font-mono font-bold text-lg"
+                  required
+                />
+              </div>
+
+              {/* Reference */}
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                  Reference / Batch ID
+                </label>
+                <input
+                  type="text"
+                  value={stockAdjustReference}
+                  onChange={(e) => setStockAdjustReference(e.target.value)}
+                  placeholder="e.g. AUDIT-001, BATCH-2025-10"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-[11px]"
+                />
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
+                  Reason / Note
+                </label>
+                <input
+                  type="text"
+                  value={stockAdjustReason}
+                  onChange={(e) => setStockAdjustReason(e.target.value)}
+                  placeholder="Physical count, new delivery, quality damage…"
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono text-[11px]"
+                />
+              </div>
+
+              {/* Error banner */}
+              {error && (
+                <div className="p-3 rounded-lg bg-red-950/30 border border-red-800/50 text-red-300 text-[11px] font-mono">
+                  {error}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2 border-t border-[#242424]">
+                <button
+                  type="button"
+                  onClick={() => { setStockAdjustProduct(null); setError(null); }}
+                  className="flex-1 py-2.5 px-4 rounded-lg bg-white/8 hover:bg-white/15 text-neutral-300 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={stockAdjustSubmitting}
+                  className={`flex-1 py-2.5 px-4 rounded-lg font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${
+                    stockAdjustType === 'DAMAGE'
+                      ? 'bg-rose-700 hover:bg-rose-600 text-white'
+                      : stockAdjustType === 'PURCHASE'
+                      ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                      : 'bg-amber-500 hover:bg-amber-400 text-black'
+                  }`}
+                >
+                  {stockAdjustSubmitting ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Check className="w-3.5 h-3.5" /> Apply Adjustment</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* 4. ADD PRODUCT MODAL */}
       {/* ------------------------------------------------------------- */}
       {isAddModalOpen && (
