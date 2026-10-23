@@ -215,7 +215,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProducts(serverProducts);
     } catch (err: any) {
       console.error('[CATALOG_LOAD_ERROR]', err);
-      setCatalogError('Unable to load latest pieces. Please refresh.');
+      setCatalogError(err instanceof Error ? err.message : 'Unable to load latest pieces. Please refresh.');
     } finally {
       setIsLoadingProducts(false);
     }

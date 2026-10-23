@@ -148,7 +148,7 @@ export const catalogService = {
     if (res.success && Array.isArray(res.data)) {
       return res.data.map(mapServerProduct);
     }
-    return [];
+    throw new Error(res.error || 'Unable to load the product catalog.');
   },
 
   async getCatalog(query: CatalogQuery): Promise<CatalogPage> {
