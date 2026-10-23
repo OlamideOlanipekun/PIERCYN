@@ -190,35 +190,6 @@ export const QuickViewModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Select Size with 44px touch targets */}
-              <div>
-                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] font-semibold mb-1.5">
-                  <span>SELECT SIZE:</span>
-                  <button
-                    onClick={() => setIsSizeGuideOpen(true)}
-                    className="min-h-[44px] flex items-center gap-1 text-[#6E6B65] hover:text-[#141414] cursor-pointer underline font-medium"
-                  >
-                    <Ruler className="w-3 h-3" />
-                    <span>SIZE GUIDE</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {quickViewProduct.sizes.map((sz) => (
-                    <button
-                      key={sz}
-                      onClick={() => setSelectedSize(sz)}
-                      className={`flex-1 min-h-[44px] py-2 text-[11px] sm:text-[12px] font-sans uppercase tracking-wider rounded-full border transition-all cursor-pointer flex items-center justify-center ${
-                        selectedSize === sz
-                          ? 'border-[#141414] bg-[#141414] text-[#F2F0EB] font-bold'
-                          : 'border-[#D5CFBF] text-[#141414] hover:border-[#141414] bg-white/40 font-semibold'
-                      }`}
-                    >
-                      {sz}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
 
               {/* Add to Bag Action with 48px height Pill Button */}
@@ -228,7 +199,7 @@ export const QuickViewModal: React.FC = () => {
                   className="flex-1 h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] uppercase tracking-[0.16em] font-semibold hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <Plus className="w-4 h-4 shrink-0" />
-                  <span>ADD TO BAG ({selectedSize})</span>
+                  <span>ADD TO BAG</span>
                 </button>
 
                 <button
