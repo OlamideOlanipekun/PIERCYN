@@ -175,6 +175,15 @@ export class ProductService {
         active: v.isActive ?? true,
         sortOrder: v.sortOrder ?? 0,
         availableStock: available,
+        // Keep the nested stock shape consumed by the admin Products dashboard.
+        // The storefront also uses the flat availableStock field above.
+        stock: {
+          availableStock: available,
+          reservedStock: reservedQty,
+          soldStock: v.inventory?.soldQuantity ?? 0,
+          damagedStock: v.inventory?.damagedQuantity ?? 0,
+          returnedStock: v.inventory?.returnedQuantity ?? 0,
+        },
         isAvailable: (v.isActive ?? true) && available > 0,
         createdAt: v.createdAt ? new Date(v.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: v.updatedAt ? new Date(v.updatedAt).toISOString() : new Date().toISOString(),
