@@ -77,21 +77,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
     if (product.isSoldOut || isAdding) return;
 
-    const availableSizes = product.sizes || [];
-    if (availableSizes.length > 1) {
-      onViewProduct(product);
+    const sellableVariants = (product.variants || []).filter(
+      (variant) => variant.active !== false && (variant.availableStock === undefined || variant.availableStock > 0)
+    );
+    if (sellableVariants.length > 0) {
+      const selectedColorVariant = sellableVariants.find(
+        (variant) => variant.colour.toLowerCase() === (activeColor?.name || '').toLowerCase()
+      );
+      const variant = selectedColorVariant || sellableVariants[0];
+      const variantColorIdx = colors.findIndex(
+        (color) => color.name.toLowerCase() === variant.colour.toLowerCase()
+      );
+      if (variantColorIdx >= 0 && variantColorIdx !== selectedColorIdx) {
+        setSelectedColorIdx(variantColorIdx);
+      }
+      void performAddToCart(variant.size, variant.colour, variant.id);
       return;
     }
 
-    const singleSize = availableSizes[0] || 'M';
-    performAddToCart(singleSize);
+    const firstSize = product.sizes?.[0] || 'M';
+    void performAddToCart(firstSize, activeColor?.name);
   };
 
   // Perform Add to Cart with size
-  const performAddToCart = async (sizeToUse: string) => {
+  const performAddToCart = async (sizeToUse: string, colorName?: string, variantId?: string) => {
     setIsAdding(true);
     try {
-      const success = await addToCart(product, activeColor?.name, sizeToUse, 1);
+      const success = await addToCart(product, colorName || activeColor?.name, sizeToUse, 1, variantId);
       if (success) {
         setJustAdded(true);
         setTimeout(() => {
@@ -295,8 +307,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </>
               ) : product.isSoldOut ? (
                 <span>Sold Out</span>
-              ) : (product.sizes || []).length > 1 ? (
-                <span>Choose Options</span>
               ) : (
                 <span>+ Add to Cart</span>
               )}
