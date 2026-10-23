@@ -1540,3 +1540,144 @@ adminRouter.post('/reviews/:reviewId/moderate', requireAdmin, async (req: Authen
     res.status(400).json({ success: false, error: err.message || 'Moderation action failed.' });
   }
 });
+
+// -------------------------------------------------------------
+// INVENTORY ENDPOINTS
+// -------------------------------------------------------------
+adminRouter.get('/inventory', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { lowStockOnly, outOfStockOnly, search } = req.query;
+    const inventory = InventoryService.getAllInventory({
+      lowStockOnly: lowStockOnly === 'true',
+      outOfStockOnly: outOfStockOnly === 'true',
+      search: search as string,
+    });
+    res.json({ success: true, count: inventory.length, data: inventory });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+const InMemInventoryAdjustmentSchema = z.object({
+  variantId: z.string().min(1),
+  quantity: z.number().int(),
+  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'RESTOCK', 'SET_EXACT']),
+  reference: z.string().min(1),
+  reason: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.type === 'ADJUSTMENT' || data.type === 'SET_EXACT') {
+      return data.quantity >= 0;
+    }
+    return data.quantity > 0;
+  },
+  { message: 'Quantity must be non-negative for set/adjust, and positive for restock/damage/return.' }
+);
+
+adminRouter.post('/inventory/adjust', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = InMemInventoryAdjustmentSchema.parse(req.body);
+    const inv = InventoryService.getVariantStock(validated.variantId);
+    const prevAvailable = inv ? inv.availableStock : 0;
+
+    const success = InventoryService.adjustStock(
+      validated.variantId,
+      validated.quantity,
+      validated.type,
+      validated.reference,
+      validated.reason,
+      req.admin?.id
+    );
+
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Inventory record not found.' });
+    }
+
+    const newInv = InventoryService.getVariantStock(validated.variantId);
+    const newAvailable = newInv ? newInv.availableStock : prevAvailable;
+
+    AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: validated.type === 'PURCHASE' ? 'STOCK_RESTOCKED' : 'STOCK_ADJUSTED',
+      resource: 'INVENTORY',
+      resourceId: validated.variantId,
+      previousValue: `${prevAvailable} available`,
+      newValue: `${newAvailable} available (${validated.quantity > 0 ? '+' : ''}${validated.quantity} ${validated.type})`,
+      note: validated.reason || `Reference: ${validated.reference}`,
+    });
+
+    res.json({ success, message: 'Inventory adjusted successfully' });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.get('/inventory/history', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const { variantId, limit } = req.query;
+    const ledger = InventoryService.getLedger(
+      variantId as string,
+      limit ? parseInt(limit as string, 10) : 100
+    );
+    res.json({ success: true, count: ledger.length, data: ledger });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/inventory/bulk-preview', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const validated = z.object({
+      items: z.array(
+        z.object({
+          variantId: z.string().min(1),
+          quantity: z.number().int(),
+          type: z.enum(['PURCHASE', 'DAMAGE', 'ADJUSTMENT', 'SET_EXACT', 'RESTOCK', 'RETURN']),
+          reference: z.string().optional(),
+          reason: z.string().optional(),
+        })
+      ).min(1).max(200),
+    }).parse(req.body);
+
+    const preview = InventoryService.bulkAdjustStockPreview(validated.items);
+    res.json({ success: true, data: preview });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.post('/inventory/bulk-adjust', requireAdmin, (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = z.object({
+      items: z.array(
+        z.object({
+          variantId: z.string().min(1),
+          quantity: z.number().int(),
+          type: z.enum(['PURCHASE', 'DAMAGE', 'ADJUSTMENT', 'SET_EXACT', 'RESTOCK', 'RETURN']),
+          reference: z.string().optional(),
+          reason: z.string().optional(),
+        })
+      ).min(1).max(200),
+    }).parse(req.body);
+
+    const result = InventoryService.bulkAdjustStock(validated.items, req.admin?.id);
+
+    AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'STOCK_BULK_ADJUSTED',
+      resource: 'INVENTORY',
+      resourceId: `bulk-${Date.now()}`,
+      newValue: `Updated ${result.updatedCount} variant stock records`,
+      note: `Bulk adjustment on ${result.updatedCount} items`,
+    });
+
+    res.json({ success: true, message: `Successfully updated ${result.updatedCount} items`, data: result });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});

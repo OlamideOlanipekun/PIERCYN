@@ -359,13 +359,63 @@ class AdminApiClient {
   public async adjustInventory(data: {
     variantId: string;
     quantity: number;
-    type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'DAMAGE' | 'RETURN';
+    type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'DAMAGE' | 'RETURN' | 'RESTOCK' | 'SET_EXACT';
     reference: string;
     reason?: string;
   }): Promise<{ success: boolean; message: string }> {
     return this.request('/inventory/adjust', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  public async bulkAdjustInventoryPreview(items: Array<{
+    variantId: string;
+    quantity: number;
+    type: 'PURCHASE' | 'DAMAGE' | 'ADJUSTMENT' | 'SET_EXACT' | 'RESTOCK' | 'RETURN';
+    reference?: string;
+    reason?: string;
+  }>): Promise<{
+    allValid: boolean;
+    items: Array<{
+      variantId: string;
+      sku: string;
+      productName: string;
+      previousStockQuantity: number;
+      previousAvailableStock: number;
+      adjustmentQuantity: number;
+      type: string;
+      resultingStockQuantity: number;
+      resultingAvailableStock: number;
+      valid: boolean;
+      error?: string;
+    }>;
+    totalAdjustments: number;
+  }> {
+    return this.request('/inventory/bulk-preview', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  public async bulkAdjustInventory(items: Array<{
+    variantId: string;
+    quantity: number;
+    type: 'PURCHASE' | 'DAMAGE' | 'ADJUSTMENT' | 'SET_EXACT' | 'RESTOCK' | 'RETURN';
+    reference?: string;
+    reason?: string;
+  }>): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      success: boolean;
+      updatedCount: number;
+      items: Array<{ variantId: string; newStock: number; availableStock: number }>;
+    };
+  }> {
+    return this.request('/inventory/bulk-adjust', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
     });
   }
 

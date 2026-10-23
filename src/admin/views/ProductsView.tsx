@@ -16,6 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
+  Sliders,
+  Check,
 } from 'lucide-react';
 
 // ─── Image Upload Zone ─────────────────────────────────────────────────────
@@ -332,6 +334,64 @@ export const ProductsView: React.FC = () => {
   const [formIsNewDrop, setFormIsNewDrop] = useState(false);
   const [formIsBestSeller, setFormIsBestSeller] = useState(false);
   const [formIsLimited, setFormIsLimited] = useState(false);
+  const [formInitialStock, setFormInitialStock] = useState<number>(1);
+  const [formIsSingleUnit, setFormIsSingleUnit] = useState<boolean>(false);
+
+  // Quick Stock Adjustment Modal State
+  const [stockAdjustProduct, setStockAdjustProduct] = useState<AdminProduct | null>(null);
+  const [stockAdjustVariantId, setStockAdjustVariantId] = useState<string>('');
+  const [stockAdjustType, setStockAdjustType] = useState<'SET_EXACT' | 'PURCHASE' | 'DAMAGE'>('SET_EXACT');
+  const [stockAdjustQuantity, setStockAdjustQuantity] = useState<number>(1);
+  const [stockAdjustReference, setStockAdjustReference] = useState<string>('');
+  const [stockAdjustReason, setStockAdjustReason] = useState<string>('');
+  const [stockAdjustSubmitting, setStockAdjustSubmitting] = useState<boolean>(false);
+
+  const openStockAdjustModal = (product: AdminProduct) => {
+    setStockAdjustProduct(product);
+    const firstVariant = product.variants?.[0];
+    setStockAdjustVariantId(firstVariant?.id || '');
+    setStockAdjustType('SET_EXACT');
+    setStockAdjustQuantity(firstVariant?.stock?.availableStock ?? 0);
+    setStockAdjustReference(`AUDIT-${Date.now().toString().slice(-6)}`);
+    setStockAdjustReason('Physical stock audit count');
+  };
+
+  const handleStockAdjustmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stockAdjustProduct) return;
+    const targetVariantId = stockAdjustVariantId || stockAdjustProduct.variants[0]?.id;
+    if (!targetVariantId) {
+      setError('No variant found to adjust.');
+      return;
+    }
+    const qty = Number(stockAdjustQuantity);
+    if (!Number.isInteger(qty) || qty < 0) {
+      setError('Stock quantity must be a non-negative whole integer.');
+      return;
+    }
+    if ((stockAdjustType === 'PURCHASE' || stockAdjustType === 'DAMAGE') && qty <= 0) {
+      setError('Quantity to add or remove must be at least 1.');
+      return;
+    }
+
+    try {
+      setStockAdjustSubmitting(true);
+      setError(null);
+      await AdminApi.adjustInventory({
+        variantId: targetVariantId,
+        quantity: qty,
+        type: stockAdjustType,
+        reference: stockAdjustReference.trim() || `PROD-ADJ-${Date.now()}`,
+        reason: stockAdjustReason.trim() || `Admin stock adjustment from Products view`,
+      });
+      setStockAdjustProduct(null);
+      await fetchProducts();
+    } catch (err: any) {
+      setError(err.message || 'Failed to adjust stock.');
+    } finally {
+      setStockAdjustSubmitting(false);
+    }
+  };
 
   // Image slot state (for both add & edit)
   const [addImageSlots, setAddImageSlots] = useState<ImageSlot[]>([]);
@@ -396,35 +456,50 @@ export const ProductsView: React.FC = () => {
         return;
       }
 
-      const defaultVariants = [
-        {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-BLK-M`,
-          size: 'M',
-          colour: 'Onyx Black',
-          colourHex: '#121212',
-          priceNGN: formPriceNGN,
-          costPriceNGN: formCostPriceNGN,
-          initialStock: 15,
-        },
-        {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-BLK-L`,
-          size: 'L',
-          colour: 'Onyx Black',
-          colourHex: '#121212',
-          priceNGN: formPriceNGN,
-          costPriceNGN: formCostPriceNGN,
-          initialStock: 15,
-        },
-        {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-WHT-M`,
-          size: 'M',
-          colour: 'Bone White',
-          colourHex: '#F2F0EB',
-          priceNGN: formPriceNGN,
-          costPriceNGN: formCostPriceNGN,
-          initialStock: 10,
-        },
-      ];
+      const cleanSlug = formName.replace(/[^a-zA-Z0-9]+/g, '-').toUpperCase().slice(0, 10);
+      const initStock = Math.max(0, Number(formInitialStock) || 0);
+
+      const defaultVariants = formIsSingleUnit
+        ? [
+            {
+              sku: `PCY-${cleanSlug}-01`,
+              size: 'ONE_SIZE',
+              colour: 'Original Piece',
+              colourHex: '#121212',
+              priceNGN: formPriceNGN,
+              costPriceNGN: formCostPriceNGN,
+              initialStock: initStock,
+            },
+          ]
+        : [
+            {
+              sku: `PCY-${cleanSlug}-BLK-M`,
+              size: 'M',
+              colour: 'Onyx Black',
+              colourHex: '#121212',
+              priceNGN: formPriceNGN,
+              costPriceNGN: formCostPriceNGN,
+              initialStock: initStock,
+            },
+            {
+              sku: `PCY-${cleanSlug}-BLK-L`,
+              size: 'L',
+              colour: 'Onyx Black',
+              colourHex: '#121212',
+              priceNGN: formPriceNGN,
+              costPriceNGN: formCostPriceNGN,
+              initialStock: initStock,
+            },
+            {
+              sku: `PCY-${cleanSlug}-WHT-M`,
+              size: 'M',
+              colour: 'Bone White',
+              colourHex: '#F2F0EB',
+              priceNGN: formPriceNGN,
+              costPriceNGN: formCostPriceNGN,
+              initialStock: initStock,
+            },
+          ];
 
       await AdminApi.createProduct({
         name: formName,
@@ -744,21 +819,32 @@ export const ProductsView: React.FC = () => {
           </div>
         ) : products.length === 0 ? (
           <div className="py-16 text-center space-y-2">
-            <Package className="w-8 h-8 text-neutral-600 mx-auto" />
-            <p className="text-sm font-semibold text-[#F2F0EB]">No products found</p>
-            <p className="text-xs text-neutral-500 font-sans">
-              Create your first atelier product to begin.
-            </p>
+            <Package className="w-10 h-10 mx-auto text-neutral-600" />
+            <p className="text-sm text-neutral-400 font-mono">No products found.</p>
+            <p className="text-xs text-neutral-600">Try adjusting your filters or add a new product.</p>
           </div>
         ) : (
-          <div>
+          <>
             {/* MOBILE PRODUCT CARDS (< md) */}
             <div className="md:hidden space-y-3">
               {products.map((p) => {
-                const totalStock = p.variants?.reduce(
+                const totalAvailable = p.variants?.reduce(
                   (sum, v) => sum + (v.stock?.availableStock || 0),
                   0
                 ) || 0;
+                const totalReserved = p.variants?.reduce(
+                  (sum, v) => sum + (v.stock?.reservedStock || 0),
+                  0
+                ) || 0;
+                const totalSold = p.variants?.reduce(
+                  (sum, v) => sum + (v.stock?.soldStock || 0),
+                  0
+                ) || 0;
+                const currentPhysicalStock = totalAvailable + totalReserved;
+                const primarySku = p.variants?.[0]?.sku || p.slug;
+                const stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'SOLD_OUT' =
+                  totalAvailable === 0 ? 'SOLD_OUT' : totalAvailable <= 5 ? 'LOW_STOCK' : 'IN_STOCK';
+
                 const grossProfit = p.priceNGN - (p.costPriceNGN || 0);
                 const marginPercent = p.priceNGN > 0 ? Math.round((grossProfit / p.priceNGN) * 100) : 0;
                 const isSelected = selectedIds.has(p.id);
@@ -772,7 +858,7 @@ export const ProductsView: React.FC = () => {
                         : 'bg-[#181818] border-[#262626]'
                     }`}
                   >
-                    {/* Header: Checkbox + Image, Title, Category */}
+                    {/* Header: Checkbox + Image, Title, SKU, Status */}
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
@@ -793,10 +879,10 @@ export const ProductsView: React.FC = () => {
                             {p.name}
                           </h3>
                         </div>
-                        <span className="text-[10px] font-mono text-neutral-400 uppercase block mt-1">
-                          {p.categoryId.replace('cat-', '')} • {p.slug}
+                        <span className="text-[10px] font-mono text-neutral-400 block mt-1">
+                          SKU: <strong className="text-neutral-200">{primarySku}</strong>
                         </span>
-                        <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <button
                             onClick={() => handleToggleStatus(p)}
                             className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ${
@@ -809,50 +895,72 @@ export const ProductsView: React.FC = () => {
                           >
                             {p.status}
                           </button>
-                          <span className="text-[10px] font-mono text-neutral-400">
-                            {totalStock} in stock ({p.variants?.length || 0} vars)
+
+                          <span
+                            className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded ${
+                              stockStatus === 'IN_STOCK'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                                : stockStatus === 'LOW_STOCK'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                                : 'bg-rose-950 text-rose-300 border border-rose-800/40'
+                            }`}
+                          >
+                            {stockStatus.replace('_', ' ')}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Financial Metrics */}
-                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                    {/* Stock & Inventory Breakdown */}
+                    <div className="grid grid-cols-4 gap-1.5 p-2 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
                       <div>
-                        <span className="text-[9px] text-neutral-500 uppercase block">Retail</span>
-                        <span className="font-bold text-[#F2F0EB]">₦{(p.priceNGN || 0).toLocaleString()}</span>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Total Stock</span>
+                        <span className="font-bold text-[#F2F0EB]">{currentPhysicalStock}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-neutral-500 uppercase block">COGS</span>
-                        <span className="text-neutral-400">₦{(p.costPriceNGN || 0).toLocaleString()}</span>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Available</span>
+                        <span className={`font-bold ${totalAvailable === 0 ? 'text-rose-400' : totalAvailable <= 5 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {totalAvailable}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-neutral-500 uppercase block">Margin</span>
-                        <span className="font-bold text-emerald-400">{marginPercent}%</span>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Sold</span>
+                        <span className="text-neutral-300 font-semibold">{totalSold}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-neutral-500 uppercase block">Price</span>
+                        <span className="text-[#F2F0EB] font-bold">₦{(p.priceNGN || 0).toLocaleString()}</span>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-1">
                       <button
+                        onClick={() => openStockAdjustModal(p)}
+                        className="flex-1 py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[38px]"
+                      >
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>Adjust Stock</span>
+                      </button>
+
+                      <button
                         onClick={() => {
                           setEditingProduct(p);
                           setEditImageSlots(gallerySlotsForProduct(p));
                         }}
-                        className="flex-1 py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[42px]"
+                        className="py-2 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[38px]"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit Product</span>
+                        <span>Edit</span>
                       </button>
 
                       {p.status !== 'ARCHIVED' && (
                         <button
                           onClick={() => handleArchive(p.id)}
-                          className="py-2.5 px-3 rounded-lg bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 text-red-300 font-mono text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-colors min-h-[42px] shrink-0"
+                          className="py-2 px-2.5 rounded-lg bg-red-950/30 hover:bg-red-950/60 border border-red-900/40 text-red-300 font-mono text-xs font-bold uppercase flex items-center justify-center cursor-pointer transition-colors min-h-[38px] shrink-0"
                           title="Archive"
                         >
                           <Archive className="w-3.5 h-3.5" />
-                          <span>Archive</span>
                         </button>
                       )}
                     </div>
@@ -863,7 +971,7 @@ export const ProductsView: React.FC = () => {
 
             {/* DESKTOP TABLE VIEW (>= md) */}
             <div className="hidden md:block overflow-x-auto rounded-lg border border-[#202020]">
-              <table className="w-full text-left text-xs min-w-[700px]">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead>
                   <tr className="border-b border-[#262626] bg-[#0E0E0E] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
                     <th className="py-3 pl-4 pr-2 w-8" aria-label="Select all products">
@@ -877,24 +985,35 @@ export const ProductsView: React.FC = () => {
                         className="w-4 h-4 rounded border-2 border-[#3D3D3D] bg-[#0A0A0A] accent-amber-400 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3 px-3 font-normal">Garment</th>
-                    <th className="py-3 px-3 font-normal">Category</th>
+                    <th className="py-3 px-3 font-normal">Garment / Design</th>
+                    <th className="py-3 px-3 font-normal">Design SKU</th>
+                    <th className="py-3 px-3 font-normal">Current Stock</th>
+                    <th className="py-3 px-3 font-normal">Available Units</th>
+                    <th className="py-3 px-3 font-normal">Units Sold</th>
+                    <th className="py-3 px-3 font-normal">Stock Status</th>
                     <th className="py-3 px-3 font-normal">Retail Price</th>
-                    <th className="py-3 px-3 font-normal">Unit Cost</th>
-                    <th className="py-3 px-3 font-normal">Margin %</th>
-                    <th className="py-3 px-3 font-normal">Variants / Stock</th>
-                    <th className="py-3 px-3 font-normal">Status</th>
-                    <th className="py-3 px-3 font-normal text-right">Actions</th>
+                    <th className="py-3 px-3 font-normal text-right">Stock Controls &amp; Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#202020]">
                 {products.map((p) => {
-                  const totalStock = p.variants?.reduce(
+                  const totalAvailable = p.variants?.reduce(
                     (sum, v) => sum + (v.stock?.availableStock || 0),
                     0
                   ) || 0;
-                  const grossProfit = p.priceNGN - (p.costPriceNGN || 0);
-                  const marginPercent = p.priceNGN > 0 ? Math.round((grossProfit / p.priceNGN) * 100) : 0;
+                  const totalReserved = p.variants?.reduce(
+                    (sum, v) => sum + (v.stock?.reservedStock || 0),
+                    0
+                  ) || 0;
+                  const totalSold = p.variants?.reduce(
+                    (sum, v) => sum + (v.stock?.soldStock || 0),
+                    0
+                  ) || 0;
+                  const currentPhysicalStock = totalAvailable + totalReserved;
+                  const primarySku = p.variants?.[0]?.sku || p.slug;
+                  const stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'SOLD_OUT' =
+                    totalAvailable === 0 ? 'SOLD_OUT' : totalAvailable <= 5 ? 'LOW_STOCK' : 'IN_STOCK';
+
                   const isSelected = selectedIds.has(p.id);
 
                   return (
@@ -926,59 +1045,73 @@ export const ProductsView: React.FC = () => {
                           />
                           <div>
                             <span className="font-semibold text-[#F2F0EB] block">{p.name}</span>
-                            <span className="text-[10px] font-mono text-neutral-500 truncate max-w-[160px] block">
-                              {p.slug}
+                            <span className="text-[10px] font-mono text-neutral-500 uppercase block">
+                              {p.categoryId.replace('cat-', '')}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3.5 font-mono text-neutral-300 uppercase">
-                        {p.categoryId.replace('cat-', '')}
+                      <td className="py-3.5 font-mono text-neutral-300 font-bold">
+                        {primarySku}
+                        {(p.variants?.length || 0) > 1 && (
+                          <span className="text-[10px] font-normal text-neutral-500 block">
+                            +{p.variants.length - 1} more variants
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 font-mono">
+                        <span className="font-bold text-[#F2F0EB] text-sm">{currentPhysicalStock}</span>
+                        <span className="text-[10px] text-neutral-500 block">total units</span>
+                      </td>
+
+                      <td className="py-3.5 font-mono">
+                        <span className={`font-bold text-sm ${totalAvailable === 0 ? 'text-rose-400' : totalAvailable <= 5 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {totalAvailable}
+                        </span>
+                        <span className="text-[10px] text-neutral-500 block">for sale</span>
+                      </td>
+
+                      <td className="py-3.5 font-mono text-neutral-300">
+                        <span className="font-semibold text-sm">{totalSold}</span>
+                        <span className="text-[10px] text-neutral-500 block">units sold</span>
+                      </td>
+
+                      <td className="py-3.5">
+                        <span
+                          className={`text-[9px] font-mono uppercase font-bold px-2.5 py-1 rounded inline-block ${
+                            stockStatus === 'IN_STOCK'
+                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
+                              : stockStatus === 'LOW_STOCK'
+                              ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                              : 'bg-rose-950 text-rose-300 border border-rose-800/40'
+                          }`}
+                        >
+                          {stockStatus.replace('_', ' ')}
+                        </span>
                       </td>
 
                       <td className="py-3.5 font-mono font-bold text-[#F2F0EB]">
                         ₦{(p.priceNGN || 0).toLocaleString()}
                       </td>
 
-                      <td className="py-3.5 font-mono text-neutral-400">
-                        ₦{(p.costPriceNGN || 0).toLocaleString()}
-                      </td>
-
-                      <td className="py-3.5 font-mono text-emerald-400 font-semibold">
-                        {marginPercent}%
-                      </td>
-
-                      <td className="py-3.5 font-mono">
-                        <span className="font-bold text-[#F2F0EB]">{totalStock} units</span>
-                        <span className="text-[10px] text-neutral-500 block">
-                          ({p.variants?.length || 0} variants)
-                        </span>
-                      </td>
-
-                      <td className="py-3.5">
+                      <td className="py-3.5 text-right space-x-1.5 whitespace-nowrap">
                         <button
-                          onClick={() => handleToggleStatus(p)}
-                          title="Click to toggle status"
-                          className={`text-[9px] font-mono uppercase font-bold px-2.5 py-0.5 rounded cursor-pointer transition-colors ${
-                            p.status === 'ACTIVE'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40 hover:bg-emerald-900/60'
-                              : p.status === 'DRAFT'
-                              ? 'bg-amber-950 text-amber-300 border border-amber-800/40 hover:bg-amber-900/60'
-                              : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700'
-                          }`}
+                          onClick={() => openStockAdjustModal(p)}
+                          className="px-2.5 py-1.5 rounded bg-amber-400/15 hover:bg-amber-400/30 text-amber-300 border border-amber-500/30 font-mono text-[10px] font-bold uppercase transition-colors inline-flex items-center gap-1 cursor-pointer"
+                          title="Adjust Stock"
                         >
-                          {p.status}
+                          <Sliders className="w-3 h-3" />
+                          <span>Adjust Stock</span>
                         </button>
-                      </td>
 
-                      <td className="py-3.5 text-right space-x-1">
                         <button
                           onClick={() => {
                             setEditingProduct(p);
                             setEditImageSlots(gallerySlotsForProduct(p));
                           }}
-                          className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                          className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer inline-flex items-center"
                           title="Edit Product"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -987,7 +1120,7 @@ export const ProductsView: React.FC = () => {
                         {p.status !== 'ARCHIVED' && (
                           <button
                             onClick={() => handleArchive(p.id)}
-                            className="p-1.5 rounded hover:bg-red-950/40 text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                            className="p-1.5 rounded hover:bg-red-950/40 text-neutral-500 hover:text-red-400 transition-colors cursor-pointer inline-flex items-center"
                             title="Archive Product"
                           >
                             <Archive className="w-3.5 h-3.5" />
@@ -997,12 +1130,12 @@ export const ProductsView: React.FC = () => {
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ------------------------------------------------------------- */}
       {/* BULK CONFIRMATION DIALOG */}

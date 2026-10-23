@@ -236,8 +236,8 @@ export class OrderService {
         },
       });
 
-      if (newStatus === 'CANCELLED') {
-        await InventoryService.releaseReservation(existing.orderNumber, tx);
+      if (newStatus === 'CANCELLED' || newStatus === 'REFUNDED') {
+        await InventoryService.restoreOrderStock(existing.orderNumber, tx);
       }
 
       return updatedOrder;

@@ -277,6 +277,10 @@ export class OrderService {
       note: note || `Status transitioned to ${newStatus} by ${updatedBy}`,
     });
 
+    if (newStatus === 'CANCELLED' || newStatus === 'REFUNDED') {
+      InventoryService.restoreOrderStock(liveOrder.orderNumber);
+    }
+
     return { ...liveOrder };
   }
 

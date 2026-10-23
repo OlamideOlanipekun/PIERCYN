@@ -220,11 +220,6 @@ export const QuickViewModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Delivery info banner */}
-              <div className="flex items-center gap-2 text-[11px] text-[#6E6B65] font-sans bg-[#EAE5D9]/60 px-3 py-2 rounded-lg">
-                <Truck className="w-3.5 h-3.5 shrink-0 text-[#141414]" />
-                <span>Lagos delivery in {SHIPPING_CONFIG.lagosTimeframe}. Nationwide: {SHIPPING_CONFIG.nationwideTimeframe}.</span>
-              </div>
 
               {/* Add to Bag Action with 48px height Pill Button */}
               <div className="flex items-center gap-3 pt-1">

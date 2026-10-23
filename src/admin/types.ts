@@ -222,12 +222,14 @@ export interface AdminInventoryItem {
   category: string;
   unitPriceNGN: number;
   costPriceNGN: number;
+  stockQuantity?: number;
   availableStock: number;
   reservedStock: number;
   soldStock: number;
   damagedStock: number;
   returnedStock: number;
-  status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  reorderLevel?: number;
+  status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'SOLD_OUT';
   updatedAt: string;
 }
 
@@ -238,9 +240,12 @@ export interface AdminInventoryLedgerEntry {
   sku?: string;
   productName?: string;
   quantity: number;
-  type: 'PURCHASE' | 'SALE' | 'RESERVATION' | 'RELEASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE';
+  previousStock?: number;
+  newStock?: number;
+  type: 'PURCHASE' | 'SALE' | 'RESERVATION' | 'RELEASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE' | 'RESTOCK';
   reference: string;
   reason?: string;
+  adminId?: string;
   createdAt: string;
 }
 

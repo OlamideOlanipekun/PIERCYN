@@ -223,10 +223,30 @@ const UpdateCategorySchema = z.object({
 
 const InventoryAdjustmentSchema = z.object({
   variantId: z.string().min(1),
-  quantity: z.number().int().positive(),
-  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN']),
+  quantity: z.number().int(),
+  type: z.enum(['PURCHASE', 'SALE', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'RESTOCK', 'SET_EXACT']),
   reference: z.string().min(1),
   reason: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.type === 'ADJUSTMENT' || data.type === 'SET_EXACT') {
+      return data.quantity >= 0;
+    }
+    return data.quantity > 0;
+  },
+  { message: 'Quantity must be non-negative for set/adjust, and positive for restock/damage/return.' }
+);
+
+const BulkInventoryAdjustmentSchema = z.object({
+  items: z.array(
+    z.object({
+      variantId: z.string().min(1),
+      quantity: z.number().int(),
+      type: z.enum(['PURCHASE', 'DAMAGE', 'ADJUSTMENT', 'SET_EXACT', 'RESTOCK', 'RETURN']),
+      reference: z.string().optional(),
+      reason: z.string().optional(),
+    })
+  ).min(1).max(200),
 });
 
 // 1. AUTH
@@ -1290,6 +1310,39 @@ adminRouter.get('/inventory/history', requireAdmin, async (req: Request, res: Re
     res.json({ success: true, count: ledger.length, data: ledger });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/inventory/bulk-preview', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const validated = BulkInventoryAdjustmentSchema.parse(req.body);
+    const preview = await InventoryService.bulkAdjustStockPreview(validated.items);
+    res.json({ success: true, data: preview });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.post('/inventory/bulk-adjust', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = BulkInventoryAdjustmentSchema.parse(req.body);
+    const result = await InventoryService.bulkAdjustStock(validated.items, req.admin?.id);
+
+    await AuditService.log({
+      adminId: req.admin?.id || 'admin',
+      adminEmail: req.admin?.email || 'admin@piercyn.com',
+      action: 'STOCK_BULK_ADJUSTED',
+      resource: 'INVENTORY',
+      resourceId: `bulk-${Date.now()}`,
+      newValue: `Updated ${result.updatedCount} variant stock records`,
+      note: `Bulk adjustment on ${result.updatedCount} items`,
+    });
+
+    res.json({ success: true, message: `Successfully updated ${result.updatedCount} items`, data: result });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(400).json({ success: false, error: msg });
   }
 });
 

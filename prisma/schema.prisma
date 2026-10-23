@@ -317,6 +317,7 @@ model Inventory {
   transactions     InventoryTransaction[]
 
   @@index([variantId])
+  @@index([stockQuantity, reservedQuantity])
 }
 
 // ============================================================

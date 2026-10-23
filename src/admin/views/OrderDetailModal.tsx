@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AdminOrder } from '../types';
 import { AdminApi } from '../api';
 import {
@@ -25,6 +25,104 @@ import {
   Bike,
   Sparkles,
 } from 'lucide-react';
+
+/**
+ * Robust clipboard copy utility with fallback to document.execCommand('copy')
+ * for environments without clipboard permissions, non-HTTPS, or iframes.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn('navigator.clipboard.writeText failed, using fallback:', err);
+    }
+  }
+
+  // Fallback using temporary textarea
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('Fallback execCommand copy failed:', err);
+    return false;
+  }
+}
+
+/**
+ * Normalise customer phone number to international E.164 standard.
+ */
+function normaliseClientPhone(raw: string): string | null {
+  if (!raw) return null;
+  const stripped = raw.replace(/[\s\-().]/g, '');
+
+  if (stripped.startsWith('+')) {
+    const digits = stripped.slice(1).replace(/\D/g, '');
+    if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
+    return null;
+  }
+
+  if (/^0[7-9][0-1]\d{8}$/.test(stripped)) {
+    return `+234${stripped.slice(1)}`;
+  }
+
+  if (/^234[7-9][0-1]\d{8}$/.test(stripped)) {
+    return `+${stripped}`;
+  }
+
+  return null;
+}
+
+/**
+ * Format quotation using official PIERCYN quotation template
+ */
+function formatQuotationMessage(params: {
+  orderNumber: string;
+  customerName: string;
+  subtotalNGN: number;
+  discountNGN: number;
+  deliveryFeeNGN: number;
+  totalNGN: number;
+  deliveryCity: string;
+  deliveryState: string;
+  estimatedTimeframe?: string | null;
+}): string {
+  const name = (params.customerName || '').split(' ')[0]?.trim() || 'Valued Customer';
+  const deliveryFee = params.deliveryFeeNGN ?? 0;
+  const total = params.totalNGN;
+  const location = [params.deliveryCity, params.deliveryState].filter(Boolean).join(', ') || 'Nigeria';
+  const timeframe = params.estimatedTimeframe || 'To be confirmed';
+
+  return (
+    `Hello ${name} 👋\n\n` +
+    `Thank you for shopping with PIERCYN!\n\n` +
+    `Your delivery quotation is ready.\n\n` +
+    `*Order:* ${params.orderNumber}\n\n` +
+    `Products: ₦${Number(params.subtotalNGN || 0).toLocaleString('en-NG')}\n` +
+    `Discount: ₦${Number(params.discountNGN || 0).toLocaleString('en-NG')}\n` +
+    `Delivery fee: ₦${Number(deliveryFee || 0).toLocaleString('en-NG')}\n\n` +
+    `*Total payable: ₦${Number(total || 0).toLocaleString('en-NG')}*\n\n` +
+    `Delivery location: ${location}\n` +
+    `Estimated delivery: ${timeframe}\n\n` +
+    `Please review the delivery fee and confirm whether you accept it.\n\n` +
+    `Reply *YES* to accept or *NO* to reject.\n\n` +
+    `If you have any questions, please reply to this message.\n\n` +
+    `Thank you for choosing PIERCYN!`
+  );
+}
 
 interface OrderDetailModalProps {
   orderId: string | null;
@@ -65,6 +163,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [quoteSuccessMsg, setQuoteSuccessMsg] = useState<string | null>(null);
   const [copiedQuoteMsg, setCopiedQuoteMsg] = useState(false);
 
+  // Quote Action Feedback & Ref
+  const quoteFeeInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessingQuote, setIsProcessingQuote] = useState(false);
+  const [quoteFeedback, setQuoteFeedback] = useState<{
+    type: 'success' | 'clipboard_failure' | 'whatsapp_failure' | 'validation_error';
+    message: string;
+    quotationText?: string;
+    whatsappUrl?: string;
+  } | null>(null);
+
   // Payment instructions WhatsApp state
   const [copiedPaymentMsg, setCopiedPaymentMsg] = useState(false);
   const [paymentInstrSending, setPaymentInstrSending] = useState(false);
@@ -85,6 +193,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     try {
       setLoading(true);
       setError(null);
+      setQuoteFeedback(null);
       const data = await AdminApi.getOrder(orderId);
       setOrder(data);
 
@@ -127,7 +236,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
     const parsedFee = parseFloat(quoteFee);
     if (isNaN(parsedFee) || parsedFee < 0) {
-      setError('Delivery fee must be a valid non-negative amount in NGN.');
+      setQuoteFeedback({
+        type: 'validation_error',
+        message: 'Delivery fee must be a valid non-negative amount in NGN.',
+      });
+      quoteFeeInputRef.current?.focus();
       return;
     }
 
@@ -135,6 +248,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setQuoteUpdating(true);
       setError(null);
       setQuoteSuccessMsg(null);
+      setQuoteFeedback(null);
 
       const updated = await AdminApi.setDeliveryQuote(order.id, {
         deliveryFeeNGN: parsedFee,
@@ -154,26 +268,73 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     }
   };
 
+  const handleManualCopy = async (text: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopiedQuoteMsg(true);
+      setTimeout(() => setCopiedQuoteMsg(false), 4000);
+      setQuoteFeedback((prev) =>
+        prev
+          ? {
+              ...prev,
+              message: 'Quotation copied to clipboard!',
+            }
+          : null
+      );
+    } else {
+      alert('Unable to copy automatically. Please click inside the box, select all text and copy with Ctrl+C / Cmd+C.');
+    }
+  };
+
   const handleOpenWhatsApp = async () => {
     if (!order) return;
-    try {
-      setError(null);
+    setQuoteFeedback(null);
+    setError(null);
 
-      // If quote is still PENDING or the fee input has changed, save the delivery fee first
-      const parsedFee = parseFloat(quoteFee);
-      const isFeeUnsaved = order.quoteStatus === 'PENDING' || (
-        !isNaN(parsedFee) && parsedFee !== order.quoteDeliveryFeeNGN
-      );
+    // 1. Validate Delivery Fee before doing any window or network actions
+    const parsedFee = parseFloat(quoteFee);
+    if (isNaN(parsedFee) || parsedFee < 0) {
+      setQuoteFeedback({
+        type: 'validation_error',
+        message: 'Please enter a valid non-negative delivery fee before copying quotation or opening WhatsApp.',
+      });
+      quoteFeeInputRef.current?.focus();
+      return;
+    }
+
+    // 2. Validate Customer Phone
+    const normPhone = normaliseClientPhone(order.customerPhone);
+    if (!normPhone) {
+      setQuoteFeedback({
+        type: 'validation_error',
+        message: `Customer phone number "${order.customerPhone || 'N/A'}" is invalid or missing. Quotation cannot be directed to WhatsApp.`,
+      });
+      return;
+    }
+
+    // 3. Initiate WhatsApp window synchronously from this user gesture to prevent browser popup blocking
+    let popupWindow: Window | null = null;
+    try {
+      popupWindow = window.open('about:blank', '_blank');
+    } catch (popupErr) {
+      console.warn('Synchronous window.open failed:', popupErr);
+    }
+
+    setIsProcessingQuote(true);
+    setQuoteUpdating(true);
+
+    try {
+      // 4. Save delivery quote if unconfirmed or modified
+      const isFeeUnsaved =
+        order.quoteStatus === 'PENDING' ||
+        order.quoteDeliveryFeeNGN === undefined ||
+        order.quoteDeliveryFeeNGN === null ||
+        parsedFee !== order.quoteDeliveryFeeNGN ||
+        (quoteTimeframe.trim() && quoteTimeframe.trim() !== (order.quoteEstimatedTimeframe || ''));
 
       let currentOrder = order;
 
       if (isFeeUnsaved) {
-        if (isNaN(parsedFee) || parsedFee < 0) {
-          setError('Please enter a valid non-negative delivery fee before opening WhatsApp.');
-          return;
-        }
-
-        setQuoteUpdating(true);
         const updated = await AdminApi.setDeliveryQuote(order.id, {
           deliveryFeeNGN: parsedFee,
           estimatedDeliveryTimeframe: quoteTimeframe.trim() || undefined,
@@ -184,22 +345,92 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         if (onOrderUpdated) onOrderUpdated();
       }
 
-      const data = await AdminApi.getQuoteWhatsAppMessage(currentOrder.id);
+      // 5. Retrieve canonical WhatsApp message payload from API (with fallback if API fails)
+      let data: { whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number };
+      try {
+        data = await AdminApi.getQuoteWhatsAppMessage(currentOrder.id);
+      } catch (apiErr: any) {
+        const calculatedTotal = currentOrder.subtotalNGN + parsedFee - currentOrder.discountNGN;
+        const msg = formatQuotationMessage({
+          orderNumber: currentOrder.orderNumber,
+          customerName: currentOrder.customerName,
+          subtotalNGN: currentOrder.subtotalNGN,
+          discountNGN: currentOrder.discountNGN,
+          deliveryFeeNGN: parsedFee,
+          totalNGN: currentOrder.quoteTotalNGN || calculatedTotal,
+          deliveryCity: currentOrder.shippingCity,
+          deliveryState: currentOrder.shippingState,
+          estimatedTimeframe: quoteTimeframe.trim() || currentOrder.quoteEstimatedTimeframe,
+        });
+        const url = `https://wa.me/${normPhone.replace('+', '')}?text=${encodeURIComponent(msg)}`;
+        data = {
+          whatsappUrl: url,
+          message: msg,
+          customerPhone: normPhone,
+          quoteVersion: currentOrder.quoteVersion || 1,
+        };
+      }
 
-      // Copy text to clipboard
-      await navigator.clipboard.writeText(data.message);
-      setCopiedQuoteMsg(true);
-      setTimeout(() => setCopiedQuoteMsg(false), 4000);
+      // 6. Perform clipboard copy
+      const copySuccess = await copyToClipboard(data.message);
 
-      // Open WhatsApp chat in a new tab
-      window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
+      // 7. Direct the pre-opened popup to the WhatsApp URL
+      let popupSucceeded = false;
+      if (popupWindow && !popupWindow.closed) {
+        try {
+          popupWindow.location.href = data.whatsappUrl;
+          popupSucceeded = true;
+        } catch (navErr) {
+          console.warn('Failed to set popup location:', navErr);
+        }
+      }
 
-      setQuoteSuccessMsg(
-        'Delivery fee saved, WhatsApp chat opened, and quotation message copied to clipboard! Remember to mark as sent or record customer acceptance once confirmed.'
-      );
+      // 8. Handle feedback outcomes according to actual operation results
+      if (copySuccess && popupSucceeded) {
+        setCopiedQuoteMsg(true);
+        setTimeout(() => setCopiedQuoteMsg(false), 4000);
+        setQuoteFeedback({
+          type: 'success',
+          message: 'Quotation copied. Opening WhatsApp…',
+          quotationText: data.message,
+          whatsappUrl: data.whatsappUrl,
+        });
+      } else if (copySuccess && !popupSucceeded) {
+        setCopiedQuoteMsg(true);
+        setTimeout(() => setCopiedQuoteMsg(false), 4000);
+        setQuoteFeedback({
+          type: 'whatsapp_failure',
+          message: 'Quotation copied to clipboard, but the browser blocked opening WhatsApp automatically.',
+          quotationText: data.message,
+          whatsappUrl: data.whatsappUrl,
+        });
+      } else if (!copySuccess && popupSucceeded) {
+        setQuoteFeedback({
+          type: 'clipboard_failure',
+          message: 'WhatsApp opened, but clipboard access was denied. You can manually copy the quotation below.',
+          quotationText: data.message,
+          whatsappUrl: data.whatsappUrl,
+        });
+      } else {
+        setQuoteFeedback({
+          type: 'clipboard_failure',
+          message: 'Clipboard copying failed and WhatsApp window was blocked. Use the controls below to copy and open WhatsApp.',
+          quotationText: data.message,
+          whatsappUrl: data.whatsappUrl,
+        });
+      }
     } catch (err: any) {
-      setError(err.message || 'Unable to open WhatsApp for this quotation.');
+      if (popupWindow && !popupWindow.closed) {
+        try {
+          popupWindow.close();
+        } catch {}
+      }
+      setQuoteFeedback({
+        type: 'validation_error',
+        message: err.message || 'Unable to open WhatsApp for this quotation.',
+      });
     } finally {
+      setIsProcessingQuote(false);
       setQuoteUpdating(false);
     }
   };
@@ -734,11 +965,17 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         Delivery Fee (NGN ₦) *
                       </label>
                       <input
+                        ref={quoteFeeInputRef}
                         type="number"
                         min="0"
                         step="100"
                         value={quoteFee}
-                        onChange={(e) => setQuoteFee(e.target.value)}
+                        onChange={(e) => {
+                          setQuoteFee(e.target.value);
+                          if (quoteFeedback?.type === 'validation_error') {
+                            setQuoteFeedback(null);
+                          }
+                        }}
                         placeholder="e.g. 3500"
                         required
                         className="w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 font-mono text-xs text-[#F2F0EB] focus:outline-hidden focus:border-amber-500"
@@ -790,10 +1027,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                     <button
                       type="submit"
-                      disabled={quoteUpdating}
+                      disabled={quoteUpdating || isProcessingQuote}
                       className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-black font-mono font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors disabled:opacity-50 min-h-[38px] flex items-center gap-1.5"
                     >
-                      {quoteUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      {quoteUpdating && !isProcessingQuote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                       <span>Save Delivery Fee</span>
                     </button>
                   </div>
@@ -804,12 +1041,24 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Primary WhatsApp Contact Button */}
                     <button
+                      id="open-whatsapp-copy-quotation-btn"
                       type="button"
                       onClick={handleOpenWhatsApp}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-colors min-h-[38px]"
+                      disabled={isProcessingQuote || quoteUpdating}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer transition-colors min-h-[38px] disabled:opacity-50 disabled:cursor-not-allowed select-none relative z-10"
                     >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>{copiedQuoteMsg ? 'Quotation Copied! Opening WA...' : 'Open WhatsApp & Copy Quotation'}</span>
+                      {isProcessingQuote ? (
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      ) : (
+                        <MessageSquare className="w-4 h-4 shrink-0" />
+                      )}
+                      <span>
+                        {isProcessingQuote
+                          ? 'Opening WA & Copying...'
+                          : copiedQuoteMsg
+                          ? 'Quotation Copied! Opening WA...'
+                          : 'Open WhatsApp & Copy Quotation'}
+                      </span>
                     </button>
 
                     {/* Mark Sent button */}
@@ -817,7 +1066,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={handleMarkQuoteSent}
-                        disabled={quoteUpdating}
+                        disabled={quoteUpdating || isProcessingQuote}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-mono uppercase tracking-wider text-[#F2F0EB] cursor-pointer min-h-[38px]"
                       >
                         <Send className="w-3.5 h-3.5" />
@@ -831,7 +1080,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={handleAcceptQuote}
-                        disabled={quoteUpdating || order.quoteStatus === 'PENDING'}
+                        disabled={quoteUpdating || isProcessingQuote || order.quoteStatus === 'PENDING'}
                         className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 hover:bg-emerald-900/60 px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer disabled:opacity-40 min-h-[38px]"
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -843,7 +1092,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowRejectPrompt(true)}
-                        disabled={quoteUpdating || order.quoteStatus === 'PENDING'}
+                        disabled={quoteUpdating || isProcessingQuote || order.quoteStatus === 'PENDING'}
                         className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-950/60 text-red-300 border border-red-800 hover:bg-red-900/60 px-3 py-2 text-xs font-mono uppercase tracking-wider cursor-pointer disabled:opacity-40 min-h-[38px]"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -852,6 +1101,111 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* Quotation Feedback & Recovery Hub */}
+                {quoteFeedback && (
+                  <div className="mt-3 pt-3 border-t border-white/10 animate-in fade-in duration-150">
+                    {quoteFeedback.type === 'success' && (
+                      <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/60 text-emerald-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="font-semibold">{quoteFeedback.message}</span>
+                        </div>
+                        {quoteFeedback.whatsappUrl && (
+                          <a
+                            href={quoteFeedback.whatsappUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-mono text-emerald-300 hover:text-white hover:underline text-[11px] shrink-0"
+                          >
+                            <span>Open WhatsApp Again</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {quoteFeedback.type === 'validation_error' && (
+                      <div className="p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-200 text-xs flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                          <span>{quoteFeedback.message}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setQuoteFeedback(null)}
+                          className="text-red-400 hover:text-red-200 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {(quoteFeedback.type === 'whatsapp_failure' || quoteFeedback.type === 'clipboard_failure') && (
+                      <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-700/60 text-amber-200 text-xs space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">{quoteFeedback.message}</p>
+                            <p className="text-[11px] text-amber-300/80 mt-0.5">
+                              {quoteFeedback.type === 'whatsapp_failure'
+                                ? 'Your browser blocked opening a new tab. Click below to open WhatsApp directly.'
+                                : 'Clipboard access was blocked by browser security. You can select the quotation text below or click "Copy Again".'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {quoteFeedback.quotationText && (
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-neutral-400 uppercase block">
+                              Quotation Text (Click to select all)
+                            </label>
+                            <textarea
+                              readOnly
+                              value={quoteFeedback.quotationText}
+                              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                              rows={5}
+                              className="w-full rounded-lg bg-black/70 border border-amber-700/50 p-2.5 font-mono text-[11px] text-[#F2F0EB] focus:outline-hidden focus:border-amber-400 resize-y"
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          {quoteFeedback.whatsappUrl && (
+                            <a
+                              href={quoteFeedback.whatsappUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs uppercase tracking-wider transition-colors min-h-[36px]"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open WhatsApp Chat Now</span>
+                            </a>
+                          )}
+
+                          {quoteFeedback.quotationText && (
+                            <button
+                              type="button"
+                              onClick={() => handleManualCopy(quoteFeedback.quotationText!)}
+                              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-mono text-xs uppercase tracking-wider transition-colors min-h-[36px] cursor-pointer"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Again</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setQuoteFeedback(null)}
+                            className="px-3 py-2 text-xs text-neutral-400 hover:text-white transition-colors"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Reject Prompt sub-form */}
                 {showRejectPrompt && (

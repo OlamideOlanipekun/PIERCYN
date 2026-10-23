@@ -68,11 +68,13 @@ export interface DbVariant {
 export interface DbInventory {
   id: string;
   variantId: string;
+  stockQuantity: number;
   availableStock: number;
   reservedStock: number;
   soldStock: number;
   damagedStock: number;
   returnedStock: number;
+  reorderLevel: number;
   updatedAt: string;
 }
 
@@ -81,9 +83,13 @@ export interface DbInventoryTransaction {
   inventoryId: string;
   variantId: string;
   quantity: number;
-  type: 'PURCHASE' | 'SALE' | 'RESERVATION' | 'RELEASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE';
+  previousStock?: number;
+  newStock?: number;
+  type: 'PURCHASE' | 'SALE' | 'RESERVATION' | 'RELEASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE' | 'RESTOCK';
   reference: string;
+  referenceType?: string;
   reason?: string;
+  adminId?: string;
   createdAt: string;
 }
 
@@ -543,11 +549,13 @@ export class CommerceDataStore {
           const inv: DbInventory = {
             id: invId,
             variantId,
+            stockQuantity: initialStock,
             availableStock: initialStock,
             reservedStock: 0,
             soldStock: 0,
             damagedStock: 0,
             returnedStock: 0,
+            reorderLevel: 3,
             updatedAt: new Date().toISOString(),
           };
           this.inventory.set(variantId, inv);
@@ -558,8 +566,11 @@ export class CommerceDataStore {
             inventoryId: invId,
             variantId,
             quantity: initialStock,
+            previousStock: 0,
+            newStock: initialStock,
             type: 'PURCHASE',
             reference: 'SYSTEM_INITIALIZATION',
+            referenceType: 'MANUAL',
             reason: 'Opening atelier stock',
             createdAt: new Date().toISOString(),
           });

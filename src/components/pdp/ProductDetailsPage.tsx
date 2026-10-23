@@ -340,54 +340,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               </div>
             )}
 
-            {/* SIZE SELECTOR */}
-            {product.sizes && product.sizes.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[#DAD8D1]">
-                <div className="flex items-center justify-between text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
-                  <span>SELECT SIZE:</span>
-                  <button
-                    onClick={() => setIsSizeGuideOpen(true)}
-                    className="min-h-[36px] flex items-center gap-1 text-[#6E6B65] hover:text-[#141414] cursor-pointer underline font-medium transition-colors"
-                  >
-                    <Ruler className="w-3.5 h-3.5" />
-                    <span>SIZE GUIDE</span>
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((sz) => (
-                    <button
-                      key={sz}
-                      onClick={() => {
-                        setSelectedSize(sz);
-                        setSizeError(false);
-                        eventTracker.track('size_selected', {
-                          productId: product.id,
-                          size: sz,
-                        });
-                      }}
-                      className={`min-w-[50px] min-h-[44px] px-3.5 py-2 text-xs font-sans uppercase tracking-wider rounded-full border transition-all cursor-pointer flex items-center justify-center ${
-                        selectedSize === sz
-                          ? 'border-[#141414] bg-[#141414] text-[#F2F0EB] font-bold shadow-xs'
-                          : 'border-[#D5CFBF] text-[#141414] hover:border-[#141414] bg-white/40 font-semibold'
-                      }`}
-                    >
-                      {sz}
-                    </button>
-                  ))}
-                </div>
-
-                {sizeError && (
-                  <p className="text-[11px] font-mono text-red-700 font-semibold mt-1">
-                    * Please choose a size to add this piece to your bag.
-                  </p>
-                )}
-
-                <p className="text-[11px] text-[#7A7771] font-sans pt-1">
-                  Fit Advice: <strong>{product.fit}</strong>. Designed for relaxed silhouette.
-                </p>
-              </div>
-            )}
 
             {/* QUANTITY SELECTOR */}
             {!isSoldOut && (
@@ -473,27 +425,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
-            </div>
-
-            {/* DELIVERY INFORMATION */}
-            <div className="bg-[#EAE5D9]/70 rounded-xl p-3.5 sm:p-4 text-xs space-y-2 border border-[#DAD8D1]/70">
-              <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[#141414]">
-                <Truck className="w-4 h-4 shrink-0" />
-                <span>DELIVERY TIMELINE & RATES</span>
-              </div>
-              <div className="space-y-1 text-[#4A4844] font-sans">
-                <div className="flex justify-between">
-                  <span>Lagos Doorstep:</span>
-                  <strong className="text-[#141414]">{SHIPPING_CONFIG.lagosTimeframe} (₦{SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()})</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Nationwide Nigeria:</span>
-                  <strong className="text-[#141414]">{SHIPPING_CONFIG.nationwideTimeframe} (₦{SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()})</strong>
-                </div>
-                <div className="pt-1 text-[11px] text-emerald-800 font-semibold border-t border-[#DAD8D1]">
-                  Complimentary delivery on orders over ₦{SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()}
-                </div>
-              </div>
             </div>
 
             {/* WHATSAPP CONSULTATION LINK */}
