@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { Product } from '../types';
 import { formatPrice, formatNumericPrice } from '../utils/currency';
-import { Heart, Check, Loader2, X } from 'lucide-react';
+import { Heart, Check, Loader2 } from 'lucide-react';
 import { StarRatingDisplay } from './reviews/StarRating';
 import { motion, useReducedMotion } from 'motion/react';
 
@@ -23,7 +23,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const reduceMotion = useReducedMotion();
   const [isHovered, setIsHovered] = useState(false);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
-  const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -80,7 +79,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
     const availableSizes = product.sizes || [];
     if (availableSizes.length > 1) {
-      setShowSizeSelector(true);
+      onViewProduct(product);
       return;
     }
 
@@ -95,7 +94,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       const success = await addToCart(product, activeColor?.name, sizeToUse, 1);
       if (success) {
         setJustAdded(true);
-        setShowSizeSelector(false);
         setTimeout(() => {
           setJustAdded(false);
         }, 2000);
@@ -103,12 +101,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     } finally {
       setIsAdding(false);
     }
-  };
-
-  const handleSizeSelect = (e: React.MouseEvent, size: string) => {
-    e.stopPropagation();
-    if (isAdding) return;
-    performAddToCart(size);
   };
 
   return (
@@ -278,37 +270,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* 2.D Quick Add to Cart Button */}
         <div className="pt-1 mt-auto" onClick={(e) => e.stopPropagation()}>
-          {showSizeSelector ? (
-            <div className="w-full bg-[#EAE6DD] border border-[#DAD6CC] rounded-[4px] p-2 flex flex-col gap-1.5 transition-all duration-200 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[9.5px] sm:text-[10px] font-sans font-bold tracking-[0.12em] uppercase text-[#141414]">
-                  Select Size
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowSizeSelector(false)}
-                  className="text-[#777777] hover:text-[#141414] p-0.5 rounded cursor-pointer transition-colors"
-                  aria-label="Close size selector"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {(product.sizes || []).map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    disabled={isAdding}
-                    onClick={(e) => handleSizeSelect(e, size)}
-                    className="flex-1 min-w-[32px] h-7 sm:h-8 rounded-[3px] bg-[#F2F0EB] hover:bg-[#141414] hover:text-[#F2F0EB] text-[#141414] text-[10.5px] sm:text-[11px] font-mono font-medium border border-[#DAD6CC] hover:border-[#141414] transition-colors flex items-center justify-center cursor-pointer active:scale-95 disabled:opacity-50"
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <button
+          <button
               type="button"
               onClick={handleQuickAddClick}
               disabled={isAdding || product.isSoldOut}
@@ -333,11 +295,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </>
               ) : product.isSoldOut ? (
                 <span>Sold Out</span>
+              ) : (product.sizes || []).length > 1 ? (
+                <span>Choose Options</span>
               ) : (
                 <span>+ Add to Cart</span>
               )}
             </button>
-          )}
         </div>
       </div>
     </motion.div>
