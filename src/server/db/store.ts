@@ -1,5 +1,6 @@
 import { ALL_PRODUCTS } from '../../data/allProducts';
 import { COMMERCE_CONFIG } from '../config/constants';
+import { loadInventoryState } from './persist';
 
 export interface DbCategory {
   id: string;
@@ -577,6 +578,9 @@ export class CommerceDataStore {
         });
       });
     });
+
+    // 2b. Restore persisted inventory state (overwrites seed defaults with admin-set values)
+    loadInventoryState(this.inventory);
 
     // 3. Seed Default Admin User
     // Can be overridden via ADMIN_EMAIL and ADMIN_PASSWORD_HASH environment variables

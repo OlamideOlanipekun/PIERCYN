@@ -1,5 +1,6 @@
 import { dbStore, DbInventory, DbInventoryTransaction, DbReservation } from '../../db/store';
 import { prisma } from '../../db/prisma';
+import { saveInventoryState } from '../../db/persist';
 
 export interface StockCheckResult {
   variantId: string;
@@ -408,6 +409,9 @@ export class InventoryService {
       adminId,
       createdAt: new Date().toISOString(),
     });
+
+    // Persist inventory state to disk so adjustments survive server restarts
+    saveInventoryState(dbStore.inventory);
 
     return true;
   }
