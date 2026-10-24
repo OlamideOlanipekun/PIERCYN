@@ -456,13 +456,11 @@ export const ProductsView: React.FC = () => {
         return;
       }
 
-      const cleanSlug = formName.replace(/[^a-zA-Z0-9]+/g, '-').toUpperCase().slice(0, 10);
       const initStock = Math.max(0, Number(formInitialStock) || 0);
 
       const defaultVariants = formIsSingleUnit
         ? [
             {
-              sku: `PCY-${cleanSlug}-01`,
               size: 'ONE_SIZE',
               colour: 'Original Piece',
               colourHex: '#121212',
@@ -473,7 +471,6 @@ export const ProductsView: React.FC = () => {
           ]
         : [
             {
-              sku: `PCY-${cleanSlug}-BLK-M`,
               size: 'M',
               colour: 'Onyx Black',
               colourHex: '#121212',
@@ -482,7 +479,6 @@ export const ProductsView: React.FC = () => {
               initialStock: initStock,
             },
             {
-              sku: `PCY-${cleanSlug}-BLK-L`,
               size: 'L',
               colour: 'Onyx Black',
               colourHex: '#121212',
@@ -491,7 +487,6 @@ export const ProductsView: React.FC = () => {
               initialStock: initStock,
             },
             {
-              sku: `PCY-${cleanSlug}-WHT-M`,
               size: 'M',
               colour: 'Bone White',
               colourHex: '#F2F0EB',

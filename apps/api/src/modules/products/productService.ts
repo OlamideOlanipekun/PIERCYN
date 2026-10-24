@@ -1,5 +1,6 @@
 import { prisma, checkDatabaseHealth } from '../../db/prisma';
 import { slugify } from '@piercyn/utils';
+import { randomUUID } from 'node:crypto';
 
 // Cached availability flag - reset after 30s so transient failures recover automatically.
 let _dbAvailable: boolean | null = null;
@@ -465,13 +466,15 @@ export class ProductService {
   }
 
   public static async createProduct(input: CreateProductInput): Promise<EnrichedProduct> {
-    const slug = input.slug || slugify(input.name);
+    const baseSlug = slugify(input.slug || input.name) || 'product';
+    const existingSlug = await prisma.product.findUnique({ where: { slug: baseSlug }, select: { id: true } });
+    const slug = existingSlug ? `${baseSlug}-${randomUUID().slice(0, 8)}` : baseSlug;
     const costPriceNGN = input.costPriceNGN ?? Math.round(input.priceNGN * 0.38);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const createWithSlug = (productSlug: string) => prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          slug,
+          slug: productSlug,
           name: input.name.trim(),
           description: input.description.trim(),
           shortDescription: input.shortDescription?.trim(),
@@ -506,7 +509,7 @@ export class ProductService {
       for (let idx = 0; idx < variantInputs.length; idx++) {
         const vInput = variantInputs[idx];
         const colourSlug = slugify(vInput.colour).toUpperCase().slice(0, 3);
-        const sku = vInput.sku || `PCY-${slugify(product.name).toUpperCase().slice(0, 8)}-${colourSlug}-${vInput.size.toUpperCase()}`;
+        const sku = vInput.sku || `PCY-${product.id.slice(-8).toUpperCase()}-${colourSlug}-${vInput.size.toUpperCase()}`;
         const stockQty = vInput.initialStock ?? 10;
 
         const variant = await tx.productVariant.create({
@@ -561,6 +564,15 @@ export class ProductService {
         },
       });
     });
+
+    let result;
+    try {
+      result = await createWithSlug(slug);
+    } catch (error: any) {
+      const target = Array.isArray(error?.meta?.target) ? error.meta.target.join(',') : String(error?.meta?.target || '');
+      if (error?.code !== 'P2002' || !target.toLowerCase().includes('slug')) throw error;
+      result = await createWithSlug(`${baseSlug}-${randomUUID().slice(0, 8)}`);
+    }
 
     return this.mapPrismaProduct(result);
   }
