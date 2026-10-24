@@ -298,7 +298,7 @@ export const ProductsView: React.FC = () => {
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [search, setSearch] = useState('');
 
   // Modals
