@@ -45,7 +45,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
       setError(null);
       const [analyticsData, ordersData, alertsData] = await Promise.all([
         AdminApi.getAnalytics(),
-        AdminApi.getOrders({ limit: 6 } as any),
+        AdminApi.getOrders({ limit: 6 }),
         AdminApi.getAlerts(),
       ]);
       setAnalytics(analyticsData);
@@ -99,6 +99,10 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
     ...trendPoints.map((p) => p.revenueNGN || 0),
     50000
   );
+  const inventoryAlerts = [
+    ...(alerts?.outOfStockVariants ?? []).map((item) => ({ ...item, alertType: 'OUT_OF_STOCK' as const })),
+    ...analytics.lowStockItems.map((item) => ({ ...item, alertType: 'LOW_STOCK' as const })),
+  ].slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -151,7 +155,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
               {analytics.unitsSold}
             </div>
             <p className="text-[11px] text-neutral-500 mt-1 font-sans">
-              Garments dispatched
+              Units in paid orders
             </p>
           </div>
 
@@ -531,11 +535,11 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
 
         {/* Right Col: Low Stock & Fast Sellers */}
         <div className="space-y-6 min-w-0">
-          {/* Low Stock Alerts */}
+          {/* Low and Out-of-Stock Alerts */}
           <div className="p-4 sm:p-5 rounded-2xl bg-[#141414] border border-[#262626] min-w-0">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199]">
-                LOW STOCK ALERT
+                STOCK ALERTS
               </span>
               <button
                 onClick={() => onSelectTab('inventory')}
@@ -545,13 +549,13 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
               </button>
             </div>
 
-            {analytics.lowStockItems.length === 0 ? (
+            {inventoryAlerts.length === 0 ? (
               <p className="text-xs text-neutral-500 font-mono py-4 text-center">
-                All inventory levels healthy.
+                No low-stock or out-of-stock variants.
               </p>
             ) : (
               <div className="space-y-2">
-                {analytics.lowStockItems.slice(0, 4).map((it) => (
+                {inventoryAlerts.map((it) => (
                   <div
                     key={it.variantId}
                     onClick={() => onSelectTab('inventory')}
@@ -563,8 +567,8 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                         {it.colour} / {it.size}
                       </span>
                     </div>
-                    <span className="font-mono text-amber-400 font-bold">
-                      {it.availableStock} left
+                    <span className={`font-mono font-bold ${it.alertType === 'OUT_OF_STOCK' ? 'text-red-400' : 'text-amber-400'}`}>
+                      {it.alertType === 'OUT_OF_STOCK' ? 'OUT OF STOCK' : `${it.availableStock} left`}
                     </span>
                   </div>
                 ))}

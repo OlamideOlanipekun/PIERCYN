@@ -1011,6 +1011,7 @@ export const ProductsView: React.FC = () => {
                   ) || 0;
                   const currentPhysicalStock = totalAvailable + totalReserved;
                   const primarySku = p.variants?.[0]?.sku || p.slug;
+                  const categoryLabel = categories.find((category) => category.id === p.categoryId)?.name || 'Category unavailable';
                   const stockStatus: 'IN_STOCK' | 'LOW_STOCK' | 'SOLD_OUT' =
                     totalAvailable === 0 ? 'SOLD_OUT' : totalAvailable <= 5 ? 'LOW_STOCK' : 'IN_STOCK';
 
@@ -1046,7 +1047,7 @@ export const ProductsView: React.FC = () => {
                           <div>
                             <span className="font-semibold text-[#F2F0EB] block">{p.name}</span>
                             <span className="text-[10px] font-mono text-neutral-500 uppercase block">
-                              {p.categoryId.replace('cat-', '')}
+                              {categoryLabel}
                             </span>
                           </div>
                         </div>

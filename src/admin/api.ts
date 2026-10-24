@@ -118,6 +118,8 @@ class AdminApiClient {
     search?: string;
     startDate?: string;
     endDate?: string;
+    limit?: number;
+    offset?: number;
   }): Promise<AdminOrder[]> {
     const query = new URLSearchParams();
     if (params?.status && params.status !== 'ALL') query.set('status', params.status);
@@ -125,6 +127,8 @@ class AdminApiClient {
     if (params?.search) query.set('search', params.search);
     if (params?.startDate) query.set('startDate', params.startDate);
     if (params?.endDate) query.set('endDate', params.endDate);
+    if (params?.limit !== undefined) query.set('limit', String(params.limit));
+    if (params?.offset !== undefined) query.set('offset', String(params.offset));
 
     const qs = query.toString() ? `?${query.toString()}` : '';
     return this.request<AdminOrder[]>(`/orders${qs}`);

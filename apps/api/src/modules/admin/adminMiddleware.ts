@@ -5,7 +5,7 @@ export interface AuthenticatedAdminRequest extends Request {
   admin?: AdminUserResponse;
 }
 
-export function requireAdmin(req: AuthenticatedAdminRequest, res: Response, next: NextFunction) {
+export async function requireAdmin(req: AuthenticatedAdminRequest, res: Response, next: NextFunction) {
   let token = '';
 
   const authHeader = req.headers['authorization'];
@@ -24,14 +24,22 @@ export function requireAdmin(req: AuthenticatedAdminRequest, res: Response, next
     });
   }
 
-  const admin = AdminAuthService.verifyToken(token);
-  if (!admin) {
-    return res.status(403).json({
+  try {
+    const admin = await AdminAuthService.verifyToken(token);
+    if (!admin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Invalid or expired admin session token.',
+      });
+    }
+
+    req.admin = admin;
+    return next();
+  } catch (error) {
+    console.error('[ADMIN_SESSION_VERIFY_ERROR]', error);
+    return res.status(503).json({
       success: false,
-      error: 'Forbidden: Invalid or expired admin session token.',
+      error: 'Admin session verification is temporarily unavailable. Please try again later.',
     });
   }
-
-  req.admin = admin;
-  next();
 }

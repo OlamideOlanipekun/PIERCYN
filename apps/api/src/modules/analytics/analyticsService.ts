@@ -1,5 +1,6 @@
 import { prisma } from '../../db/prisma';
-import { COMMERCE_CONFIG } from '../../config/constants';
+import { getLowStockThreshold } from '../admin/storeSettingsService';
+import { isLowStockAvailable } from './stockMetrics';
 
 export interface TrendDataPoint {
   date: string;
@@ -249,7 +250,7 @@ export class AnalyticsService {
     let totalAvailableStock = 0;
     const productStockMap = new Map<string, number>();
     const lowStockItems: AtelierAnalyticsSummary['lowStockItems'] = [];
-    const threshold = COMMERCE_CONFIG.INVENTORY.LOW_STOCK_THRESHOLD;
+    const threshold = await getLowStockThreshold();
 
     for (const inv of inventories) {
       const available = Math.max(0, inv.stockQuantity - inv.reservedQuantity);
@@ -271,7 +272,7 @@ export class AnalyticsService {
       inventoryValuationAtCostNGN += available * unitCost;
       inventoryValuationAtRetailNGN += available * unitRetail;
 
-      if (available <= threshold) {
+      if (isLowStockAvailable(available, threshold)) {
         lowStockItems.push({
           variantId: inv.variantId,
           productName: product.name,

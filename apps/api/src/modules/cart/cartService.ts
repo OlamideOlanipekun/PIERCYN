@@ -56,10 +56,19 @@ export class CartService {
 
       const stock = await InventoryService.getVariantStock(variant.id);
       const availableStock = stock ? Math.max(0, stock.stockQuantity - stock.reservedQuantity) : 0;
-      const requestedQty = Math.max(1, Math.min(line.quantity, COMMERCE_CONFIG.LIMITS.MAX_CART_QUANTITY_PER_ITEM));
+      const maxQuantity = COMMERCE_CONFIG.LIMITS.MAX_CART_QUANTITY_PER_ITEM;
+      const quantityError = !Number.isInteger(line.quantity) || line.quantity < 1
+        ? `Quantity must be a whole number between 1 and ${maxQuantity}.`
+        : line.quantity > maxQuantity
+          ? `Maximum quantity per item is ${maxQuantity}.`
+          : undefined;
+      const requestedQty = Number.isFinite(line.quantity)
+        ? Math.max(1, Math.min(Math.trunc(line.quantity), maxQuantity))
+        : 1;
 
-      const isAvailable = availableStock >= requestedQty;
-      if (!isAvailable) {
+      if (quantityError) errors.push(`${variant.sku}: ${quantityError}`);
+      const isAvailable = !quantityError && availableStock >= requestedQty;
+      if (!quantityError && !isAvailable) {
         errors.push(
           `Only ${availableStock} unit(s) of ${product.name} (${variant.colour} / ${variant.size}) available.`
         );
@@ -87,7 +96,7 @@ export class CartService {
         lineTotalNGN: lineTotal,
         isAvailable,
         availableStock,
-        errorMessage: isAvailable ? undefined : `Requested ${requestedQty}, only ${availableStock} available`,
+        errorMessage: quantityError || (isAvailable ? undefined : `Requested ${requestedQty}, only ${availableStock} available`),
       });
     }
 

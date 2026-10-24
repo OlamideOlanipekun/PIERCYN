@@ -13,6 +13,7 @@ import { AnalyticsService } from '../analytics/analyticsService';
 import { AuditService } from './auditService';
 import { affiliateAdminRouter } from '../affiliate/affiliateAdminRouter';
 import { ReviewService } from '../reviews/reviewService';
+import { getLowStockThreshold, isValidLowStockThreshold, saveLowStockThreshold } from './storeSettingsService';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { z } from 'zod';
@@ -296,7 +297,7 @@ adminRouter.post('/auth/logout', requireAdmin, async (req: AuthenticatedAdminReq
     (req.headers['authorization']?.replace('Bearer ', '') ||
       req.headers['x-admin-token'] ||
       req.headers['x-auth-token']) as string;
-  AdminAuthService.logout(token);
+  await AdminAuthService.logout(token);
 
   if (req.admin) {
     await AuditService.log({
@@ -1390,7 +1391,7 @@ adminRouter.get('/analytics', requireAdmin, async (_req: Request, res: Response)
 // 7. ALERTS
 adminRouter.get('/alerts', requireAdmin, async (_req: Request, res: Response) => {
   try {
-    const threshold = storeSettingsState.lowStockThreshold;
+    const threshold = await getLowStockThreshold();
     const inventories = await prisma.inventory.findMany({
       include: {
         variant: {
@@ -1541,6 +1542,7 @@ adminRouter.get('/audit-logs', requireAdmin, async (req: Request, res: Response)
 // 10. SETTINGS
 adminRouter.get('/settings', requireAdmin, async (_req: Request, res: Response) => {
   try {
+    storeSettingsState.lowStockThreshold = await getLowStockThreshold();
     const shippingConfigs = await prisma.shippingConfig.findMany();
     const lagosConfig = shippingConfigs.find((c) => c.regionKey === 'lagos');
     const nationwideConfig = shippingConfigs.find((c) => c.regionKey === 'nationwide');
@@ -1579,6 +1581,15 @@ adminRouter.patch('/settings', requireAdmin, async (req: AuthenticatedAdminReque
       lowStockThreshold,
     } = req.body;
 
+    const parsedLowStockThreshold = lowStockThreshold === undefined ? undefined : Number(lowStockThreshold);
+    if (parsedLowStockThreshold !== undefined) {
+      if (!isValidLowStockThreshold(parsedLowStockThreshold)) {
+        return res.status(400).json({ success: false, error: 'Low-stock threshold must be a whole number between 0 and 10000.' });
+      }
+      await saveLowStockThreshold(parsedLowStockThreshold);
+      storeSettingsState.lowStockThreshold = parsedLowStockThreshold;
+    }
+
     if (storeName !== undefined) storeSettingsState.storeName = storeName;
     if (tagline !== undefined) storeSettingsState.tagline = tagline;
     if (atelierAddress !== undefined) storeSettingsState.atelierAddress = atelierAddress;
@@ -1590,9 +1601,6 @@ adminRouter.patch('/settings', requireAdmin, async (req: AuthenticatedAdminReque
       storeSettingsState.lagosDeliveryFeeNGN = Number(lagosDeliveryFeeNGN);
     if (nationwideDeliveryFeeNGN !== undefined)
       storeSettingsState.nationwideDeliveryFeeNGN = Number(nationwideDeliveryFeeNGN);
-    if (lowStockThreshold !== undefined)
-      storeSettingsState.lowStockThreshold = Number(lowStockThreshold);
-
     // Persist shipping fee and threshold updates to PostgreSQL
     try {
       if (lagosDeliveryFeeNGN !== undefined || freeShippingThresholdNGN !== undefined) {
@@ -1714,4 +1722,3 @@ adminRouter.post('/reviews/:reviewId/moderate', requireAdmin, async (req: Authen
     res.status(400).json({ success: false, error: err.message || 'Moderation action failed.' });
   }
 });
-

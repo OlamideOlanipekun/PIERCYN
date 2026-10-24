@@ -318,11 +318,13 @@ export class ProductService {
       const inv: DbInventory = {
         id: invId,
         variantId,
+        stockQuantity: stockQty,
         availableStock: stockQty,
         reservedStock: 0,
         soldStock: 0,
         damagedStock: 0,
         returnedStock: 0,
+        reorderLevel: 3,
         updatedAt: now,
       };
 
