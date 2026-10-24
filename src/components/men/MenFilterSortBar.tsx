@@ -415,7 +415,7 @@ export const MenFilterSortBar: React.FC<MenFilterSortBarProps> = ({
                   CATEGORY
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {(['ALL', 'HOODIES', 'SWEATSHIRTS', 'T-SHIRTS', 'POLOS', 'JACKETS', 'TROUSERS', 'JEANS', 'ACCESSORIES'] as MenCategory[]).map((cat) => (
+                  {(['ALL', 'HOODIES', 'SWEATSHIRTS', 'TEES', 'T-SHIRTS', 'POLOS', 'JACKETS', 'OUTERWEAR', 'TROUSERS', 'JEANS', 'ACCESSORIES'] as MenCategory[]).map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setTempFilters((prev) => ({ ...prev, category: cat }))}

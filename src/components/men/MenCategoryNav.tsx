@@ -10,9 +10,11 @@ const CATEGORIES: MenCategory[] = [
   'ALL',
   'HOODIES',
   'SWEATSHIRTS',
+  'TEES',
   'T-SHIRTS',
   'POLOS',
   'JACKETS',
+  'OUTERWEAR',
   'TROUSERS',
   'JEANS',
   'ACCESSORIES'

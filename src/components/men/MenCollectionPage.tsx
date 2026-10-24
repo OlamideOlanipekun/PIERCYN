@@ -74,12 +74,7 @@ export const MenCollectionPage: React.FC<MenCollectionPageProps> = ({ onNavigate
     // 1. Category Filter
     if (activeCategory !== 'ALL') {
       const targetCat = activeCategory.toLowerCase();
-      result = result.filter((p) => {
-        if (targetCat === 't-shirts') return p.category === 't-shirts' || p.category === 'tees';
-        if (targetCat === 'jackets') return p.category === 'jackets' || p.category === 'outerwear';
-        if (targetCat === 'denim' || targetCat === 'jeans') return p.category === 'jeans' || p.category === 'trousers';
-        return p.category.toLowerCase() === targetCat;
-      });
+      result = result.filter((p) => p.category.toLowerCase() === targetCat);
     }
 
     // 2. Sizes Filter

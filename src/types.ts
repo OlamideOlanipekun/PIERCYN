@@ -17,9 +17,11 @@ export type MenCategory =
   | 'ALL' 
   | 'HOODIES' 
   | 'SWEATSHIRTS' 
+  | 'TEES'
   | 'T-SHIRTS' 
   | 'POLOS' 
   | 'JACKETS' 
+  | 'OUTERWEAR'
   | 'TROUSERS' 
   | 'JEANS' 
   | 'ACCESSORIES';
@@ -333,7 +335,5 @@ export interface UserProfile {
   city?: string;
   ordersCount?: number;
 }
-
-
 
 
