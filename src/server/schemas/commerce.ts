@@ -1,20 +1,7 @@
 import { z } from 'zod';
+import { NIGERIAN_STATES } from '../../data/nigerianStates';
 
-export const NigerianStateEnum = z.enum([
-  'Lagos State',
-  'Abuja (FCT)',
-  'Rivers State',
-  'Oyo State',
-  'Ogun State',
-  'Delta State',
-  'Enugu State',
-  'Kano State',
-  'Kaduna State',
-  'Edo State',
-  'Anambra State',
-  'Kwara State',
-  'Other Nigerian State',
-]);
+export const NigerianStateEnum = z.enum(NIGERIAN_STATES);
 
 export const ShippingRegionEnum = z.enum(['lagos', 'nationwide']);
 

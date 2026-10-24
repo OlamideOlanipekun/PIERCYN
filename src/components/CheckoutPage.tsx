@@ -5,6 +5,7 @@ import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { usesSizeOnlyOptions } from '../utils/variants';
 import { ActivePageView, CustomerInfo } from '../types';
+import { NIGERIAN_STATES } from '../data/nigerianStates';
 import { 
   ShieldCheck, 
   Truck, 
@@ -24,22 +25,6 @@ interface CheckoutPageProps {
   onSelectPage: (page: ActivePageView) => void;
   onViewProduct?: (product: any) => void;
 }
-
-const NIGERIAN_STATES = [
-  'Lagos State',
-  'Abuja (FCT)',
-  'Rivers State',
-  'Oyo State',
-  'Ogun State',
-  'Delta State',
-  'Enugu State',
-  'Kano State',
-  'Kaduna State',
-  'Edo State',
-  'Anambra State',
-  'Kwara State',
-  'Other Nigerian State',
-];
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onViewProduct }) => {
   const {

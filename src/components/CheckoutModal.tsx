@@ -5,6 +5,7 @@ import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
 import { X, ShieldCheck, Lock, Truck, CreditCard, ArrowLeft, AlertCircle } from 'lucide-react';
 import { CustomerInfo, OrderItem } from '../types';
+import { NIGERIAN_STATES } from '../data/nigerianStates';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -55,23 +56,6 @@ export const CheckoutModal: React.FC = () => {
   }, [isCheckoutOpen, setIsCheckoutOpen]);
 
   if (!isCheckoutOpen) return null;
-
-  // Nigerian States list
-  const NIGERIAN_STATES = [
-    'Lagos State',
-    'Abuja (FCT)',
-    'Rivers State',
-    'Oyo State',
-    'Ogun State',
-    'Delta State',
-    'Enugu State',
-    'Kano State',
-    'Kaduna State',
-    'Edo State',
-    'Anambra State',
-    'Kwara State',
-    'Other Nigerian State',
-  ];
 
   const itemsSubtotal = Math.max(0, cartSubtotal - (promoDiscountNGN || 0));
 
