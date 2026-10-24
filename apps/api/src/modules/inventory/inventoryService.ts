@@ -936,7 +936,9 @@ export class InventoryService {
         const s = filter.search.toLowerCase();
         const matchesSku = inv.variant.sku.toLowerCase().includes(s);
         const matchesName = inv.variant.product?.name.toLowerCase().includes(s) || false;
-        if (!matchesSku && !matchesName) continue;
+        const matchesSize = inv.variant.size.toLowerCase().includes(s);
+        const matchesColour = inv.variant.colour.toLowerCase().includes(s);
+        if (!matchesSku && !matchesName && !matchesSize && !matchesColour) continue;
       }
 
       const status: 'IN_STOCK' | 'LOW_STOCK' | 'SOLD_OUT' =
