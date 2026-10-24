@@ -3,7 +3,7 @@
  *
  * Dynamic homepage section that:
  * 1. Fetches all active categories from the backend (with resilient defaults)
- * 2. Groups products by category (with alias matching e.g. t-shirts -> tees)
+ * 2. Groups products by their exact category slug
  * 3. Renders an editorial preview row (up to 4 cards) per category with products
  * 4. Includes a prominent "VIEW ALL →" button linking to /shop?category=<slug>
  *
@@ -26,30 +26,17 @@ interface HomepageCategoryPreviewsProps {
 }
 
 const DEFAULT_PREVIEW_CATEGORIES: StorefrontCategory[] = [
-  { id: 'cat-tees', name: 'Tees & Tops', slug: 'tees', sortOrder: 1, description: 'Heavyweight organic cotton, relaxed silhouettes, and signature cuts.' },
-  { id: 'cat-hoodies', name: 'Hoodies & Sweatshirts', slug: 'hoodies', sortOrder: 2, description: 'Dense-knit fleece engineered for structure, warmth, and year-round wear.' },
-  { id: 'cat-trousers', name: 'Trousers & Cargos', slug: 'trousers', sortOrder: 3, description: 'Precision-tailored streetwear silhouettes crafted from structured twill and ripstop.' },
-  { id: 'cat-outerwear', name: 'Outerwear & Jackets', slug: 'outerwear', sortOrder: 4, description: 'Statement outer layers with utilitarian hardware and premium technical fabrics.' },
-  { id: 'cat-polos', name: 'Polos', slug: 'polos', sortOrder: 5, description: 'Refined modern essentials with clean collars and subtle tailoring.' },
-  { id: 'cat-accessories', name: 'Accessories', slug: 'accessories', sortOrder: 6, description: 'Minimalist statement accents designed to complete the fit.' },
+  { id: 'cat-tees', name: 'Tees', slug: 'tees', sortOrder: 1, description: 'Heavyweight organic cotton, relaxed silhouettes, and signature cuts.' },
+  { id: 'cat-t-shirts', name: 'T-Shirts', slug: 't-shirts', sortOrder: 2, description: 'Everyday graphic and plain T-shirts.' },
+  { id: 'cat-hoodies', name: 'Hoodies', slug: 'hoodies', sortOrder: 3, description: 'Dense-knit fleece engineered for structure, warmth, and year-round wear.' },
+  { id: 'cat-sweatshirts', name: 'Sweatshirts', slug: 'sweatshirts', sortOrder: 4, description: 'Structured heavyweight sweatshirts.' },
+  { id: 'cat-jeans', name: 'Jeans', slug: 'jeans', sortOrder: 5, description: 'Denim fits and washes.' },
+  { id: 'cat-trousers', name: 'Trousers', slug: 'trousers', sortOrder: 6, description: 'Precision-tailored streetwear silhouettes crafted from structured twill and ripstop.' },
+  { id: 'cat-jackets', name: 'Jackets', slug: 'jackets', sortOrder: 7, description: 'Statement jackets with considered structure and finish.' },
+  { id: 'cat-outerwear', name: 'Outerwear', slug: 'outerwear', sortOrder: 8, description: 'Statement outer layers with utilitarian hardware and premium technical fabrics.' },
+  { id: 'cat-polos', name: 'Polos', slug: 'polos', sortOrder: 9, description: 'Refined modern essentials with clean collars and subtle tailoring.' },
+  { id: 'cat-accessories', name: 'Accessories', slug: 'accessories', sortOrder: 10, description: 'Minimalist statement accents designed to complete the fit.' },
 ];
-
-const CATEGORY_ALIASES: Record<string, string> = {
-  't-shirts': 'tees',
-  'tshirt': 'tees',
-  't-shirt': 'tees',
-  'tops': 'tees',
-  'sweatshirts': 'hoodies',
-  'fleece': 'hoodies',
-  'sweatshirt': 'hoodies',
-  'hoodie': 'hoodies',
-  'jeans': 'trousers',
-  'cargos': 'trousers',
-  'cargo': 'trousers',
-  'pants': 'trousers',
-  'jackets': 'outerwear',
-  'bombers': 'outerwear',
-};
 
 // ─── Single Category Row ──────────────────────────────────────────────────────
 
@@ -177,7 +164,7 @@ export const HomepageCategoryPreviews: React.FC<HomepageCategoryPreviewsProps> =
   }, []);
 
   /**
-   * Group products by category slug with alias support.
+   * Group products by their exact category slug.
    */
   const productsByCategory = useMemo(() => {
     const map = new Map<string, Product[]>();
@@ -185,7 +172,7 @@ export const HomepageCategoryPreviews: React.FC<HomepageCategoryPreviewsProps> =
       const rawSlug = (product.category || (product as any).categorySlug || '').toLowerCase();
       if (!rawSlug) continue;
 
-      const canonicalSlug = CATEGORY_ALIASES[rawSlug] || rawSlug;
+      const canonicalSlug = rawSlug;
 
       if (!map.has(canonicalSlug)) {
         map.set(canonicalSlug, []);
@@ -250,4 +237,3 @@ export const HomepageCategoryPreviews: React.FC<HomepageCategoryPreviewsProps> =
     </>
   );
 };
-

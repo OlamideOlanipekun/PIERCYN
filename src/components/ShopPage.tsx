@@ -107,11 +107,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               const catLower = request.category.toLowerCase();
               matched = matched.filter((p) => {
                 const pCat = (p.category || (p as any).categorySlug || '').toLowerCase();
-                return pCat === catLower ||
-                  (catLower === 'tees' && (pCat === 't-shirts' || pCat === 'tops')) ||
-                  (catLower === 'hoodies' && pCat === 'sweatshirts') ||
-                  (catLower === 'trousers' && (pCat === 'jeans' || pCat === 'cargos')) ||
-                  (catLower === 'outerwear' && pCat === 'jackets');
+                return pCat === catLower;
               });
             }
             if (request.search) {
