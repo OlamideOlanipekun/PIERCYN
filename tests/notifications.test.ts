@@ -56,6 +56,35 @@ describe('PIERCYN Notification Engine - Email Template Rendering', () => {
     expect(rendered.text).toContain('adunni@example.com');
   });
 
+  it('escapes customer-controlled text before inserting it into email HTML', () => {
+    const rendered = renderOrderCreatedEmail({
+      orderId: 'ord_html_test',
+      orderNumber: 'PCY-2026-HTML',
+      customerName: 'Customer <b>name</b>',
+      customerEmail: 'customer@example.com',
+      customerPhone: '+2348000000000',
+      deliveryAddress: '1 Test <img src=x>',
+      deliveryCity: 'Lagos',
+      deliveryState: 'Lagos',
+      orderNote: '<img src=x onerror=alert(1)>',
+      subtotalNGN: 1000,
+      deliveryFeeNGN: 0,
+      discountNGN: 0,
+      totalNGN: 1000,
+      paymentMethod: 'TRANSFER',
+      items: [{
+        name: '<svg onload=alert(1)>', sku: 'SKU-1', size: 'M', colour: 'Black',
+        quantity: 1, unitPriceNGN: 1000, totalNGN: 1000,
+      }],
+      createdAt: new Date().toISOString(),
+    });
+
+    expect(rendered.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(rendered.html).toContain('&lt;svg onload=alert(1)&gt;');
+    expect(rendered.html).not.toContain('<img src=x onerror=alert(1)>');
+    expect(rendered.html).not.toContain('<svg onload=alert(1)>');
+  });
+
   it('renders RECEIPT_UPLOADED email with payment proof & review requirements', () => {
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const payload: ReceiptUploadedPayload = {

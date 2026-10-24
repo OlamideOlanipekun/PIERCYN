@@ -14,6 +14,16 @@ function formatNGN(amount: number): string {
   }).format(n);
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character] as string);
+}
+
 const BASE_STYLES = `
   body { margin: 0; padding: 0; background-color: #f5f5f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1c1917; -webkit-font-smoothing: antialiased; }
   .wrapper { width: 100%; max-width: 600px; margin: 0 auto; padding: 40px 20px; box-sizing: border-box; }
@@ -46,12 +56,12 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
       (item) => `
       <tr>
         <td>
-          <div style="font-weight: 600;">${item.name}</div>
-          <div style="font-size: 11px; color: #78716c;">${item.sku} • Size: ${item.size} • Color: ${item.colour}</div>
+          <div style="font-weight: 600;">${escapeHtml(item.name)}</div>
+          <div style="font-size: 11px; color: #78716c;">${escapeHtml(item.sku)} • Size: ${escapeHtml(item.size)} • Color: ${escapeHtml(item.colour)}</div>
         </td>
-        <td style="text-align: center;">${item.quantity}</td>
-        <td style="text-align: right;">${formatNGN(item.unitPriceNGN)}</td>
-        <td style="text-align: right; font-weight: 600;">${formatNGN(item.totalNGN)}</td>
+        <td style="text-align: center;">${escapeHtml(item.quantity)}</td>
+        <td style="text-align: right;">${escapeHtml(formatNGN(item.unitPriceNGN))}</td>
+        <td style="text-align: right; font-weight: 600;">${escapeHtml(formatNGN(item.totalNGN))}</td>
       </tr>`
     )
     .join('');
@@ -70,14 +80,14 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
         <h1 class="brand">PIERCYN</h1>
         <div class="eyebrow">Commerce Engine • Order Notification</div>
       </div>
-      <div class="h1">New Order Placed: #${p.orderNumber}</div>
-      <table class="meta-grid">
-        <tr><td class="meta-label">Customer</td><td class="meta-val">${p.customerName}</td></tr>
-        <tr><td class="meta-label">Email</td><td class="meta-val">${p.customerEmail}</td></tr>
-        <tr><td class="meta-label">Phone</td><td class="meta-val">${p.customerPhone}</td></tr>
-        <tr><td class="meta-label">Delivery Address</td><td class="meta-val">${p.deliveryAddress}, ${p.deliveryCity}, ${p.deliveryState}</td></tr>
-        <tr><td class="meta-label">Payment Method</td><td class="meta-val"><span class="badge badge-dark">${p.paymentMethod}</span></td></tr>
-        ${p.orderNote ? `<tr><td class="meta-label">Order Note</td><td class="meta-val">${p.orderNote}</td></tr>` : ''}
+        <div class="h1">New Order Placed: #${escapeHtml(p.orderNumber)}</div>
+        <table class="meta-grid">
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Email</td><td class="meta-val">${escapeHtml(p.customerEmail)}</td></tr>
+        <tr><td class="meta-label">Phone</td><td class="meta-val">${escapeHtml(p.customerPhone)}</td></tr>
+        <tr><td class="meta-label">Delivery Address</td><td class="meta-val">${escapeHtml(p.deliveryAddress)}, ${escapeHtml(p.deliveryCity)}, ${escapeHtml(p.deliveryState)}</td></tr>
+        <tr><td class="meta-label">Payment Method</td><td class="meta-val"><span class="badge badge-dark">${escapeHtml(p.paymentMethod)}</span></td></tr>
+        ${p.orderNote ? `<tr><td class="meta-label">Order Note</td><td class="meta-val">${escapeHtml(p.orderNote)}</td></tr>` : ''}
       </table>
 
       <table class="table">
@@ -91,14 +101,14 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
         </thead>
         <tbody>
           ${itemsHtml}
-          <tr><td colspan="3" style="text-align: right; color: #78716c;">Subtotal</td><td style="text-align: right;">${formatNGN(p.subtotalNGN)}</td></tr>
-          ${p.discountNGN > 0 ? `<tr><td colspan="3" style="text-align: right; color: #78716c;">Discount</td><td style="text-align: right; color: #dc2626;">-${formatNGN(p.discountNGN)}</td></tr>` : ''}
-          <tr><td colspan="3" style="text-align: right; color: #78716c;">Delivery Fee</td><td style="text-align: right;">${p.deliveryFeeNGN > 0 ? formatNGN(p.deliveryFeeNGN) : 'Quote Pending'}</td></tr>
-          <tr class="total-row"><td colspan="3" style="text-align: right;">Total</td><td style="text-align: right; color: #1c1917;">${formatNGN(p.totalNGN)}</td></tr>
+          <tr><td colspan="3" style="text-align: right; color: #78716c;">Subtotal</td><td style="text-align: right;">${escapeHtml(formatNGN(p.subtotalNGN))}</td></tr>
+          ${p.discountNGN > 0 ? `<tr><td colspan="3" style="text-align: right; color: #78716c;">Discount</td><td style="text-align: right; color: #dc2626;">-${escapeHtml(formatNGN(p.discountNGN))}</td></tr>` : ''}
+          <tr><td colspan="3" style="text-align: right; color: #78716c;">Delivery Fee</td><td style="text-align: right;">${p.deliveryFeeNGN > 0 ? escapeHtml(formatNGN(p.deliveryFeeNGN)) : 'Quote Pending'}</td></tr>
+          <tr class="total-row"><td colspan="3" style="text-align: right;">Total</td><td style="text-align: right; color: #1c1917;">${escapeHtml(formatNGN(p.totalNGN))}</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="footer">PIERCYN Automated Commercial Dispatch • Ref: ${p.orderNumber}</div>
+    <div class="footer">PIERCYN Automated Commercial Dispatch • Ref: ${escapeHtml(p.orderNumber)}</div>
   </div>
 </body>
 </html>`;
@@ -135,17 +145,17 @@ export function renderReceiptUploadedEmail(p: ReceiptUploadedPayload): { subject
         <div class="eyebrow">Direct Transfer Review • Action Required</div>
       </div>
       <div class="h1">Bank Transfer Receipt Received</div>
-      <p style="font-size: 13px; color: #78716c; margin-top: -8px;">A customer has submitted a transfer receipt for Order #${p.orderNumber}. Verification is pending.</p>
+      <p style="font-size: 13px; color: #78716c; margin-top: -8px;">A customer has submitted a transfer receipt for Order #${escapeHtml(p.orderNumber)}. Verification is pending.</p>
       
       <table class="meta-grid">
-        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${p.orderNumber}</td></tr>
-        <tr><td class="meta-label">Customer</td><td class="meta-val">${p.customerName}</td></tr>
-        <tr><td class="meta-label">Contact</td><td class="meta-val">${p.customerEmail} • ${p.customerPhone}</td></tr>
-        <tr><td class="meta-label">Amount Expected</td><td class="meta-val">${formatNGN(p.totalNGN)}</td></tr>
-        <tr><td class="meta-label">Transfer Ref</td><td class="meta-val"><code>${p.providerReference}</code></td></tr>
-        <tr><td class="meta-label">Uploaded At</td><td class="meta-val">${new Date(p.uploadedAt).toLocaleString('en-NG')}</td></tr>
-        <tr><td class="meta-label">Review Deadline</td><td class="meta-val"><span class="badge badge-amber">${new Date(p.reviewDeadlineAt).toLocaleString('en-NG')}</span></td></tr>
-        <tr><td class="meta-label">Storage Path</td><td class="meta-val" style="word-break: break-all; font-family: monospace; font-size: 11px;">${p.receiptPath}</td></tr>
+        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${escapeHtml(p.orderNumber)}</td></tr>
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Contact</td><td class="meta-val">${escapeHtml(p.customerEmail)} • ${escapeHtml(p.customerPhone)}</td></tr>
+        <tr><td class="meta-label">Amount Expected</td><td class="meta-val">${escapeHtml(formatNGN(p.totalNGN))}</td></tr>
+        <tr><td class="meta-label">Transfer Ref</td><td class="meta-val"><code>${escapeHtml(p.providerReference)}</code></td></tr>
+        <tr><td class="meta-label">Uploaded At</td><td class="meta-val">${escapeHtml(new Date(p.uploadedAt).toLocaleString('en-NG'))}</td></tr>
+        <tr><td class="meta-label">Review Deadline</td><td class="meta-val"><span class="badge badge-amber">${escapeHtml(new Date(p.reviewDeadlineAt).toLocaleString('en-NG'))}</span></td></tr>
+        <tr><td class="meta-label">Storage Path</td><td class="meta-val" style="word-break: break-all; font-family: monospace; font-size: 11px;">${escapeHtml(p.receiptPath)}</td></tr>
       </table>
     </div>
     <div class="footer">PIERCYN Direct Transfer Review System</div>
@@ -180,19 +190,19 @@ export function renderPaymentVerifiedEmail(p: PaymentVerifiedPayload): { subject
         <h1 class="brand">PIERCYN</h1>
         <div class="eyebrow">Payment Reconciliation • Confirmed</div>
       </div>
-      <div class="h1">Payment Confirmed: Order #${p.orderNumber}</div>
+      <div class="h1">Payment Confirmed: Order #${escapeHtml(p.orderNumber)}</div>
       <p style="font-size: 13px; color: #78716c; margin-top: -8px;">Full payment has been verified. The order is now moving into fulfilment.</p>
       
       <table class="meta-grid">
-        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${p.orderNumber}</td></tr>
-        <tr><td class="meta-label">Customer</td><td class="meta-val">${p.customerName}</td></tr>
-        <tr><td class="meta-label">Email</td><td class="meta-val">${p.customerEmail}</td></tr>
-        <tr><td class="meta-label">Amount Confirmed</td><td class="meta-val" style="color: #15803d; font-size: 15px;">${formatNGN(p.amountNGN)}</td></tr>
-        <tr><td class="meta-label">Payment Method</td><td class="meta-val">${p.paymentMethod}</td></tr>
-        <tr><td class="meta-label">Provider Ref</td><td class="meta-val"><code>${p.providerReference}</code></td></tr>
-        <tr><td class="meta-label">Source</td><td class="meta-val"><span class="badge badge-dark">${p.verificationSource}</span></td></tr>
-        <tr><td class="meta-label">Verified At</td><td class="meta-val">${new Date(p.verifiedAt).toLocaleString('en-NG')}</td></tr>
-        ${p.verifiedBy ? `<tr><td class="meta-label">Verified By</td><td class="meta-val">${p.verifiedBy}</td></tr>` : ''}
+        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${escapeHtml(p.orderNumber)}</td></tr>
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Email</td><td class="meta-val">${escapeHtml(p.customerEmail)}</td></tr>
+        <tr><td class="meta-label">Amount Confirmed</td><td class="meta-val" style="color: #15803d; font-size: 15px;">${escapeHtml(formatNGN(p.amountNGN))}</td></tr>
+        <tr><td class="meta-label">Payment Method</td><td class="meta-val">${escapeHtml(p.paymentMethod)}</td></tr>
+        <tr><td class="meta-label">Provider Ref</td><td class="meta-val"><code>${escapeHtml(p.providerReference)}</code></td></tr>
+        <tr><td class="meta-label">Source</td><td class="meta-val"><span class="badge badge-dark">${escapeHtml(p.verificationSource)}</span></td></tr>
+        <tr><td class="meta-label">Verified At</td><td class="meta-val">${escapeHtml(new Date(p.verifiedAt).toLocaleString('en-NG'))}</td></tr>
+        ${p.verifiedBy ? `<tr><td class="meta-label">Verified By</td><td class="meta-val">${escapeHtml(p.verifiedBy)}</td></tr>` : ''}
       </table>
     </div>
     <div class="footer">PIERCYN Automated Commercial Engine</div>
@@ -228,16 +238,16 @@ export function renderOutOfStockEmail(p: ProductOutOfStockPayload): { subject: s
         <h1 class="brand">PIERCYN</h1>
         <div class="eyebrow">Inventory Alert • Inventory Depleted</div>
       </div>
-      <div class="h1"><span class="badge badge-red" style="vertical-align: middle; margin-right: 6px;">SOLD OUT</span> ${p.productName}</div>
+      <div class="h1"><span class="badge badge-red" style="vertical-align: middle; margin-right: 6px;">SOLD OUT</span> ${escapeHtml(p.productName)}</div>
       <p style="font-size: 13px; color: #78716c; margin-top: -8px;">A product variant has reached zero stock and is now marked sold out in the storefront.</p>
       
       <table class="meta-grid">
-        <tr><td class="meta-label">Product Name</td><td class="meta-val">${p.productName}</td></tr>
-        <tr><td class="meta-label">SKU</td><td class="meta-val"><code>${p.sku}</code></td></tr>
-        <tr><td class="meta-label">Variant Specs</td><td class="meta-val">Size: ${p.size} • Color: ${p.colour}</td></tr>
-        <tr><td class="meta-label">Depleted At</td><td class="meta-val">${new Date(p.depletedAt).toLocaleString('en-NG')}</td></tr>
-        ${p.triggerReference ? `<tr><td class="meta-label">Depletion Trigger</td><td class="meta-val">${p.triggerReference}</td></tr>` : ''}
-        ${p.reason ? `<tr><td class="meta-label">Reason</td><td class="meta-val">${p.reason}</td></tr>` : ''}
+        <tr><td class="meta-label">Product Name</td><td class="meta-val">${escapeHtml(p.productName)}</td></tr>
+        <tr><td class="meta-label">SKU</td><td class="meta-val"><code>${escapeHtml(p.sku)}</code></td></tr>
+        <tr><td class="meta-label">Variant Specs</td><td class="meta-val">Size: ${escapeHtml(p.size)} • Color: ${escapeHtml(p.colour)}</td></tr>
+        <tr><td class="meta-label">Depleted At</td><td class="meta-val">${escapeHtml(new Date(p.depletedAt).toLocaleString('en-NG'))}</td></tr>
+        ${p.triggerReference ? `<tr><td class="meta-label">Depletion Trigger</td><td class="meta-val">${escapeHtml(p.triggerReference)}</td></tr>` : ''}
+        ${p.reason ? `<tr><td class="meta-label">Reason</td><td class="meta-val">${escapeHtml(p.reason)}</td></tr>` : ''}
       </table>
     </div>
     <div class="footer">PIERCYN Real-time Inventory Guard</div>

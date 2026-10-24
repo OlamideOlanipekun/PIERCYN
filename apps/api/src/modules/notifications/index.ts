@@ -1,3 +1,5 @@
+import { waitUntil } from '@vercel/functions';
+
 export * from './types';
 export * from './emailConfig';
 export * from './emailTemplates';
@@ -5,18 +7,21 @@ export * from './notificationQueueService';
 export * from './notificationWorker';
 
 /**
- * Fires an opportunistic in-process dispatch of pending notification jobs.
- * This guarantees real-time delivery (<2s) on any plan without delaying the
- * client's HTTP response. If the invocation ends or temporary network failure
- * occurs, the database-backed queue ensures retries by the cron worker.
+ * Registers opportunistic notification work with the Vercel invocation so it
+ * can continue after the response without relying on an untracked timer.
  */
 export function triggerNotificationProcessingAsync(): void {
-  // Use setImmediate to avoid blocking the synchronous completion of the request
-  setImmediate(() => {
-    import('./notificationWorker').then(({ NotificationWorker }) => {
-      NotificationWorker.processNotifications(5).catch((err) => {
-        console.warn('[NOTIFICATION_ASYNC_DISPATCH_WARN]', err?.message || err);
-      });
+  const task = import('./notificationWorker')
+    .then(({ NotificationWorker }) => NotificationWorker.processNotifications(2))
+    .catch((err) => {
+      console.warn('[NOTIFICATION_ASYNC_DISPATCH_WARN]', err?.message || err);
     });
-  });
+
+  try {
+    waitUntil(task);
+  } catch (err: any) {
+    // Local/non-Vercel execution has no invocation context. The task still has
+    // its rejection handler; production Vercel requests register it above.
+    console.warn('[NOTIFICATION_WAITUNTIL_UNAVAILABLE]', err?.message || err);
+  }
 }

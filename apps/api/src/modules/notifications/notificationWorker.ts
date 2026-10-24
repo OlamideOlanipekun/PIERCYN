@@ -141,6 +141,41 @@ export class NotificationWorker {
       };
     }
 
+    // Validate SMTP before claiming jobs. Bad credentials or an unavailable
+    // server must not turn an entire batch into terminal failures.
+    try {
+      await transporter.verify();
+    } catch (err) {
+      const message = sanitizeError(err);
+      console.warn('[NOTIFICATION_SMTP_VERIFY_FAILED]', message);
+      return {
+        claimed: 0,
+        sent: 0,
+        failed: 0,
+        retried: 0,
+        recovered,
+        skipped: true,
+        message: `SMTP verification failed; queued notifications were left pending. ${message}`,
+      };
+    }
+
+    // Requeue jobs previously failed only because SMTP authentication was bad.
+    // A successful verify means they can now be retried without DB intervention.
+    await prisma.notificationJob.updateMany({
+      where: {
+        status: 'FAILED',
+        lastError: { startsWith: 'Authentication error:' },
+      },
+      data: {
+        status: 'PENDING',
+        attempts: 0,
+        nextAttemptAt: new Date(),
+        lockedAt: null,
+        lockedBy: null,
+        lastError: null,
+      },
+    });
+
     const jobs = await this.claimPendingJobs(batchSize, workerId);
     if (jobs.length === 0) {
       return { claimed: 0, sent: 0, failed: 0, retried: 0, recovered, skipped: false };
