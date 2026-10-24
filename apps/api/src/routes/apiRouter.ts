@@ -40,6 +40,46 @@ apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/', reviewRouter);
 
+const publicSiteOrigin = (process.env.APP_URL || 'https://piercyn.vercel.app').replace(/\/+$/, '');
+const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+apiRouter.get('/sitemap.xml', async (_req: Request, res: Response) => {
+  try {
+    const [products, categories] = await Promise.all([
+      prisma.product.findMany({
+        where: { status: 'ACTIVE', category: { isActive: true } },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true, products: { some: { status: 'ACTIVE' } } },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
+
+    const urls = new Map<string, string | undefined>();
+    const addUrl = (path: string, updatedAt?: Date) => {
+      const loc = `${publicSiteOrigin}${path}`;
+      urls.set(loc, updatedAt?.toISOString());
+    };
+    [
+      '/', '/shop', '/men', '/women', '/new-arrivals', '/available-to-order',
+      '/accessories', '/lookbook', '/collections', '/about', '/shipping',
+      '/returns', '/contact', '/privacy', '/terms', '/size-guide', '/faq',
+    ].forEach((path) => addUrl(path === '/' ? '/' : path));
+    categories.forEach((category) => addUrl(`/category/${encodeURIComponent(category.slug)}`, category.updatedAt));
+    products.forEach((product) => addUrl(`/products/${encodeURIComponent(product.slug)}`, product.updatedAt));
+
+    const entries = [...urls.entries()].map(([loc, lastmod]) =>
+      `  <url><loc>${escapeXml(loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}</url>`
+    );
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>`);
+  } catch (error) {
+    console.error('[SITEMAP_GENERATION_FAILED]', error);
+    res.status(503).type('text/plain').send('Unable to generate sitemap.');
+  }
+});
+
 const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
 const getSessionId = (req: Request): string => {

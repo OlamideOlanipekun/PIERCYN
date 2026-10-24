@@ -581,8 +581,13 @@ export class ProductService {
     const data: any = { ...updates };
     delete data.variants;
 
-    if (updates.name && !updates.slug) {
-      data.slug = slugify(updates.name);
+    const requestedSlug = updates.slug ? slugify(updates.slug) : updates.name ? slugify(updates.name) : undefined;
+    if (requestedSlug) {
+      const slugConflict = await prisma.product.findFirst({
+        where: { slug: requestedSlug, id: { not: id } },
+        select: { id: true },
+      });
+      data.slug = slugConflict ? `${requestedSlug}-${randomUUID().slice(0, 8)}` : requestedSlug;
     }
 
     if (updates.images !== undefined && (!Array.isArray(updates.images) || updates.images.length === 0)) {

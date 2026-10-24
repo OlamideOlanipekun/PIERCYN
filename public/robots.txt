@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /affiliate
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /order-confirmation
+Disallow: /track-order
+Disallow: /search
+
+Sitemap: https://piercyn.vercel.app/sitemap.xml
