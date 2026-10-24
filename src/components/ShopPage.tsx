@@ -67,7 +67,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
     };
   }, []);
 
-  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'XXL'];
 
   useEffect(() => { setSelectedCategory(initialCategory || 'all'); }, [initialCategory]);
 

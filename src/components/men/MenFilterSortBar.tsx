@@ -21,7 +21,7 @@ interface MenFilterSortBarProps {
   onClearFilters: () => void;
 }
 
-const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'XXL'];
 const AVAILABLE_COLORS = [
   { name: 'Charcoal / Black', hex: '#232323' },
   { name: 'Raw Bone / Ivory', hex: '#E8E4DA' },

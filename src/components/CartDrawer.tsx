@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useShop } from '../context/ShopContext';
 import { formatNumericPrice } from '../utils/currency';
 import { SHIPPING_CONFIG } from '../utils/shipping';
+import { usesSizeOnlyOptions } from '../utils/variants';
 import { X, Minus, Plus, ShoppingBag, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 
 export const CartDrawer: React.FC = () => {
@@ -216,8 +217,7 @@ export const CartDrawer: React.FC = () => {
 
                       <div className="flex items-center gap-3 text-[11px] text-[#6E6B65] uppercase font-mono mt-1">
                         <span>SIZE: {item.selectedSize}</span>
-                        <span>•</span>
-                        <span>COLOR: {item.selectedColor}</span>
+                        {!usesSizeOnlyOptions(item.product) && <><span>•</span><span>COLOR: {item.selectedColor}</span></>}
                       </div>
                     </div>
 

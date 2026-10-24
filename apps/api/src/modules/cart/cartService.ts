@@ -69,8 +69,11 @@ export class CartService {
       if (quantityError) errors.push(`${variant.sku}: ${quantityError}`);
       const isAvailable = !quantityError && availableStock >= requestedQty;
       if (!quantityError && !isAvailable) {
+        const variantLabel = /trouser|jean|short/i.test(product.categoryName || '')
+          ? `${product.name} (${variant.size})`
+          : `${product.name} (${variant.colour} / ${variant.size})`;
         errors.push(
-          `Only ${availableStock} unit(s) of ${product.name} (${variant.colour} / ${variant.size}) available.`
+          `Only ${availableStock} unit(s) of ${variantLabel} available.`
         );
       }
 

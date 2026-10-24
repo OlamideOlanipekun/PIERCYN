@@ -21,7 +21,7 @@ interface WomenFilterSortBarProps {
   onClearFilters: () => void;
 }
 
-const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
+const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 const AVAILABLE_COLORS = [
   { name: 'Bone / Raw Ecru', hex: '#E8E4DA' },
   { name: 'Obsidian Noir', hex: '#181818' },

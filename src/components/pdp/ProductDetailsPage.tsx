@@ -9,6 +9,7 @@ import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
 import { ReviewsSection } from '../reviews/ReviewsSection';
 import { StarRatingDisplay } from '../reviews/StarRating';
+import { findProductVariant, usesSizeOnlyOptions } from '../../utils/variants';
 import {
   Plus,
   Minus,
@@ -59,7 +60,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       setSelectedColorIdx(0);
       setQuantity(1);
       if (product.sizes && product.sizes.length > 0) {
-        setSelectedSize(product.sizes[0]);
+        const firstAvailableSize = product.sizes.find((size) => {
+          const variant = findProductVariant(product, product.colors?.[0]?.name, size);
+          return Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+        });
+        setSelectedSize(firstAvailableSize || product.sizes[0]);
       } else {
         setSelectedSize('');
       }
@@ -108,11 +113,20 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     );
   }
 
+  const isSizeOnlyProduct = usesSizeOnlyOptions(product);
+  const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'XXL'];
+  const sizeOptions = isSizeOnlyProduct
+    ? [...new Set([...product.sizes, 'XL', '2XL', '3XL'])].sort((a, b) => {
+        const aIndex = sizeOrder.indexOf(a);
+        const bIndex = sizeOrder.indexOf(b);
+        return (aIndex < 0 ? sizeOrder.length : aIndex) - (bIndex < 0 ? sizeOrder.length : bIndex);
+      })
+    : product.sizes;
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
   const hasVariants = Boolean(product.variants?.length);
-  const selectedVariant = product.variants?.find((variant) => variant.size === selectedSize && variant.colour === currentColor?.name);
+  const selectedVariant = findProductVariant(product, currentColor?.name, selectedSize);
   const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
   const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
   const isSoldOut = product.isSoldOut || (hasVariants
@@ -304,7 +318,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </div>
 
             {/* COLOR SELECTOR */}
-            {product.colors && product.colors.length > 0 && (
+            {!isSizeOnlyProduct && product.colors && product.colors.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-[#DAD8D1]">
                 <div className="flex items-center justify-between text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
                   <span>COLOR: <strong className="font-bold">{currentColor?.name}</strong></span>
@@ -340,6 +354,43 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               </div>
             )}
 
+
+            {isSizeOnlyProduct && (
+              <section className="space-y-2 border-t border-[#DAD8D1] pt-3" aria-label="Choose size">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">SIZE</span>
+                  <button type="button" onClick={() => setIsSizeGuideOpen(true)} className="text-[10px] font-mono uppercase underline underline-offset-2 text-[#62605B]">Size guide</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((size) => {
+                    const variant = findProductVariant(product, currentColor?.name, size);
+                    const inStock = Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={!inStock}
+                        aria-pressed={selectedSize === size}
+                        aria-label={`${size}${inStock ? '' : ', unavailable'}`}
+                        title={inStock ? size : 'Unavailable — currently out of stock'}
+                        onClick={() => { setSelectedSize(size); setSizeError(false); setQuantity(1); }}
+                        className={`relative min-w-12 h-11 rounded-md border px-3 text-xs font-mono font-semibold transition-colors ${
+                          !inStock
+                            ? 'cursor-not-allowed border-[#DAD8D1] bg-[#E8E6E1] text-[#99958E] line-through'
+                            : selectedSize === size
+                              ? 'border-[#141414] bg-[#141414] text-white'
+                              : 'border-[#B9B6AF] bg-white text-[#141414] hover:border-[#141414]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-[#77736C]">Unavailable sizes are crossed out. Stock is checked again when adding to bag and at checkout.</p>
+                {sizeError && <p role="alert" className="text-xs text-red-700">Please select an available size.</p>}
+              </section>
+            )}
 
             {/* QUANTITY SELECTOR */}
             {!isSoldOut && (

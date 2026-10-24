@@ -24,6 +24,24 @@ export function getVariantId(productId: string, colorName: string = 'Default', s
   return `var-${slugify(sku)}`;
 }
 
+export function usesSizeOnlyOptions(product: Pick<Product, 'category' | 'categoryName'>): boolean {
+  const category = `${product.categoryName || ''} ${product.category || ''}`.toLowerCase();
+  return /trouser|jean|short/.test(category);
+}
+
+export function findProductVariant(product: Product, colorName?: string, size?: string) {
+  if (!size || !product.variants?.length) return undefined;
+  const matchingSize = product.variants.filter((variant) => variant.size.toUpperCase() === size.toUpperCase());
+  if (usesSizeOnlyOptions(product)) {
+    return matchingSize.find((variant) => variant.active !== false && (variant.availableStock ?? 0) > 0)
+      || matchingSize.find((variant) => variant.colour.toLowerCase() === (colorName || '').toLowerCase())
+      || matchingSize[0];
+  }
+  return matchingSize.find((variant) =>
+    variant.colour.toLowerCase() === (colorName || '').toLowerCase() || variant.colourHex === colorName
+  );
+}
+
 /**
  * Resolve the real variant details for a given product selection
  */
@@ -37,11 +55,7 @@ export function resolveProductVariant(
 
   // If product already contains enriched variants from the backend, find exact match
   if (product.variants && product.variants.length > 0) {
-    const match = product.variants.find(
-      (v) =>
-        (v.colour.toLowerCase() === selectedColor.toLowerCase() || v.colourHex === selectedColor) &&
-        v.size.toUpperCase() === selectedSize.toUpperCase()
-    );
+    const match = findProductVariant(product, selectedColor, selectedSize);
     if (match) {
       return {
         id: match.id,

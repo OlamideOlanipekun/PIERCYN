@@ -3,6 +3,7 @@ import { useShop } from '../context/ShopContext';
 import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
 import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
+import { usesSizeOnlyOptions } from '../utils/variants';
 import { ActivePageView, CustomerInfo } from '../types';
 import { 
   ShieldCheck, 
@@ -544,7 +545,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                     <div className="truncate">
                       <strong className="block truncate text-[#141414] uppercase">{item.product.name}</strong>
                       <span className="text-[11px] text-[#7A7771]">
-                        {item.selectedSize} · {item.selectedColor} × {item.quantity}
+                        {item.selectedSize}{usesSizeOnlyOptions(item.product) ? '' : ` · ${item.selectedColor}`} × {item.quantity}
                       </span>
                     </div>
                   </div>

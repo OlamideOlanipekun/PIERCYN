@@ -80,6 +80,7 @@ export function mapServerProduct(p: any): Product {
     name: p.name || '',
     slug: p.slug || p.id || '',
     category: p.categorySlug || p.category || 'hoodies',
+    categoryName: p.categoryName,
     collection: p.collection || 'essentials',
     priceNGN: p.priceNGN,
     priceUSD: p.priceUSD || Math.round(p.priceNGN / 1500),

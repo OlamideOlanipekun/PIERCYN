@@ -3,6 +3,7 @@ import { useShop } from '../context/ShopContext';
 import { ActivePageView } from '../types';
 import { formatPrice } from '../utils/currency';
 import { SHIPPING_CONFIG } from '../utils/shipping';
+import { usesSizeOnlyOptions } from '../utils/variants';
 import { 
   ShoppingBag, 
   Trash2, 
@@ -177,8 +178,7 @@ export const CartPage: React.FC<CartPageProps> = ({ onSelectPage, onViewProduct 
 
                       {/* Variant Attributes */}
                       <div className="flex items-center gap-3 text-xs text-[#55524D] mt-1 font-sans">
-                        <span>Color: <strong>{item.selectedColor}</strong></span>
-                        <span>•</span>
+                        {!usesSizeOnlyOptions(item.product) && <><span>Color: <strong>{item.selectedColor}</strong></span><span>•</span></>}
                         <span>Size: <strong>{item.selectedSize}</strong></span>
                       </div>
 

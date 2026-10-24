@@ -8,7 +8,7 @@ export const ThePieceSection: React.FC = () => {
   const { currency, addToCart, setQuickViewProduct, setIsCraftsmanshipOpen, setIsSizeGuideOpen } = useShop();
   const signatureHoodie = PRODUCTS.find((p) => p.id === 'piercyn-sig-hoodie') || PRODUCTS[0];
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL'>('L');
+  const [selectedSize, setSelectedSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '2XL' | '3XL'>('L');
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
   const currentColor = signatureHoodie.colors[selectedColorIdx] || signatureHoodie.colors[0];

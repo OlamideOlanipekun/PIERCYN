@@ -101,6 +101,7 @@ export interface Product {
   name: string;
   slug?: string;
   category: ProductCategory;
+  categoryName?: string;
   collection: 'everyday' | 'after-dark' | 'essentials' | 'the-drop';
   priceNGN: number;
   priceUSD: number;
@@ -112,7 +113,7 @@ export interface Product {
   fabric: string;
   origin: string;
   colors: ProductColor[];
-  sizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL')[];
+  sizes: ('XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '2XL' | '3XL')[];
   images: string[];
   // Garment photography metadata
   imageType?: 'product' | 'model' | 'lifestyle';
