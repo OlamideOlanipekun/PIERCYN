@@ -286,6 +286,8 @@ export class ProductService {
             { name: { contains: filter.search, mode: 'insensitive' } },
             { description: { contains: filter.search, mode: 'insensitive' } },
             { tag: { contains: filter.search, mode: 'insensitive' } },
+            { category: { name: { contains: filter.search, mode: 'insensitive' } } },
+            { variants: { some: { sku: { contains: filter.search, mode: 'insensitive' } } } },
           ];
         }
 

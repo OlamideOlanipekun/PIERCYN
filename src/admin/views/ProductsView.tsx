@@ -416,10 +416,10 @@ export const ProductsView: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [categoryFilter, statusFilter]);
+  }, [categoryFilter, statusFilter, search]);
 
   useEffect(() => {
-    AdminApi.getCategories().then((data) => {
+    AdminApi.getCategories(true).then((data) => {
       setCategories(data);
       setFormCategory((current) => data.some((category) => category.id === current) ? current : (data[0]?.id || ''));
     }).catch((err: any) => setError(err?.message || 'Unable to load categories.'));
