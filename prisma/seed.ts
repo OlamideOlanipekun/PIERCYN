@@ -159,6 +159,7 @@ async function main() {
       update: {
         name: p.name,
         description: p.description,
+        categoryId: category.id,
         priceNGN: p.priceNGN,
         costPriceNGN: estimateCostPrice(p.priceNGN),
         priceUSD: p.priceUSD ?? 0,
