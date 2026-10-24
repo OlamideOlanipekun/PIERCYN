@@ -601,7 +601,7 @@ export const ProductsView: React.FC = () => {
           .map((slot) => [slot.originalUrl as string, slot.url])
       );
       if (replacements.size > 0) {
-        await Promise.allSettled(
+        await Promise.all(
           (editingProduct.variants || []).flatMap((variant) => {
             const image = variant.image ? replacements.get(variant.image) : undefined;
             const altImage = variant.altImage ? replacements.get(variant.altImage) : undefined;
@@ -618,7 +618,7 @@ export const ProductsView: React.FC = () => {
         const variantsToSync = (editingProduct.variants || []).filter(
           (v) => !v.image || v.image === oldPrimary
         );
-        await Promise.allSettled(
+        await Promise.all(
           variantsToSync.map((v) =>
             AdminApi.updateVariant(v.id, { image: newPrimary })
           )

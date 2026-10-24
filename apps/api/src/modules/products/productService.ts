@@ -571,16 +571,63 @@ export class ProductService {
       data.slug = slugify(updates.name);
     }
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data,
-      include: {
-        category: true,
-        variants: {
-          include: { inventory: true },
-          orderBy: { sortOrder: 'asc' },
+    if (updates.images !== undefined && (!Array.isArray(updates.images) || updates.images.length === 0)) {
+      throw new Error('A product must retain at least one image.');
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      let currentVariants: Array<{ id: string; image: string | null; altImage: string | null }> = [];
+      const removedImageUrls = new Set<string>();
+
+      if (Array.isArray(updates.images)) {
+        const current = await tx.product.findUnique({
+          where: { id },
+          select: {
+            images: true,
+            variants: { select: { id: true, image: true, altImage: true } },
+          },
+        });
+        if (!current) throw new Error('Product not found.');
+        currentVariants = current.variants;
+
+        const retainedUrls = new Set(updates.images);
+        const existingUrls = [
+          ...(current.images || []),
+          ...currentVariants.flatMap((variant) => [variant.image, variant.altImage]),
+        ];
+        for (const url of existingUrls) {
+          if (url && !retainedUrls.has(url)) removedImageUrls.add(url);
+        }
+      }
+
+      await tx.product.update({ where: { id }, data });
+
+      // Variant image fields are also included in the dashboard gallery. Clear removed
+      // references in the same transaction, falling back to the new primary image.
+      if (removedImageUrls.size > 0) {
+        const fallbackImage = updates.images?.[0] || null;
+        for (const variant of currentVariants) {
+          const imageRemoved = Boolean(variant.image && removedImageUrls.has(variant.image));
+          const altImageRemoved = Boolean(variant.altImage && removedImageUrls.has(variant.altImage));
+          if (!imageRemoved && !altImageRemoved) continue;
+
+          const variantData: { image?: string | null; altImage?: string | null } = {};
+          if (imageRemoved) variantData.image = fallbackImage;
+          if (altImageRemoved) variantData.altImage = null;
+          await tx.productVariant.update({ where: { id: variant.id }, data: variantData });
+        }
+      }
+
+      return tx.product.findUniqueOrThrow({
+        where: { id },
+        include: {
+          category: true,
+          variants: {
+            include: { inventory: true },
+            orderBy: { sortOrder: 'asc' },
+          },
         },
-      },
+      });
     });
 
     return this.mapPrismaProduct(updated);
