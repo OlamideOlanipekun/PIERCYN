@@ -373,6 +373,42 @@ class AdminApiClient {
     });
   }
 
+  public async previewRestockAll(quantity: number): Promise<{
+    variantCount: number;
+    quantityPerVariant: number;
+    totalUnitsAdded: number;
+    currentPhysicalStock: number;
+    resultingPhysicalStock: number;
+    currentAvailableStock: number;
+    resultingAvailableStock: number;
+  }> {
+    return this.request('/inventory/restock-all/preview', {
+      method: 'POST',
+      body: JSON.stringify({ quantity }),
+    });
+  }
+
+  public async restockAll(data: {
+    quantity: number;
+    reference: string;
+    reason?: string;
+  }): Promise<{
+    updatedCount: number;
+    quantityPerVariant: number;
+    totalUnitsAdded: number;
+    currentPhysicalStock: number;
+    resultingPhysicalStock: number;
+    currentAvailableStock: number;
+    resultingAvailableStock: number;
+    reference: string;
+    auditWarning?: string;
+  }> {
+    return this.request('/inventory/restock-all', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   public async bulkAdjustInventoryPreview(items: Array<{
     variantId: string;
     quantity: number;

@@ -17,6 +17,8 @@ import {
   TrendingDown,
 } from 'lucide-react';
 
+type RestockAllPreview = Awaited<ReturnType<typeof AdminApi.previewRestockAll>>;
+
 export const InventoryView: React.FC = () => {
   const [inventory, setInventory] = useState<AdminInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,14 @@ export const InventoryView: React.FC = () => {
   // Global ledger view state
   const [allLedger, setAllLedger] = useState<AdminInventoryLedgerEntry[]>([]);
   const [loadingAllLedger, setLoadingAllLedger] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [restockAllOpen, setRestockAllOpen] = useState(false);
+  const [restockAllQuantity, setRestockAllQuantity] = useState(1);
+  const [restockAllReference, setRestockAllReference] = useState('');
+  const [restockAllReason, setRestockAllReason] = useState('Bulk restock across all inventory variants');
+  const [restockAllPreview, setRestockAllPreview] = useState<RestockAllPreview | null>(null);
+  const [previewingRestockAll, setPreviewingRestockAll] = useState(false);
+  const [submittingRestockAll, setSubmittingRestockAll] = useState(false);
 
   const fetchInventory = async () => {
     try {
@@ -99,22 +109,79 @@ export const InventoryView: React.FC = () => {
     }
   };
 
+  const openRestockAll = () => {
+    setError(null);
+    setNotice(null);
+    setRestockAllQuantity(1);
+    setRestockAllReference(`BULK-RESTOCK-${Date.now()}`);
+    setRestockAllReason('Bulk restock across all inventory variants');
+    setRestockAllPreview(null);
+    setRestockAllOpen(true);
+  };
+
+  const handlePreviewRestockAll = async () => {
+    if (!Number.isSafeInteger(restockAllQuantity) || restockAllQuantity < 1 || restockAllQuantity > 100_000) {
+      setError('Enter a whole-number quantity from 1 to 100,000 per variant.');
+      return;
+    }
+    try {
+      setPreviewingRestockAll(true);
+      setError(null);
+      setRestockAllPreview(await AdminApi.previewRestockAll(restockAllQuantity));
+    } catch (err: any) {
+      setError(err.message || 'Unable to preview bulk restock.');
+      setRestockAllPreview(null);
+    } finally {
+      setPreviewingRestockAll(false);
+    }
+  };
+
+  const handleRestockAllSubmit = async () => {
+    if (!restockAllPreview || restockAllPreview.quantityPerVariant !== restockAllQuantity) {
+      setError('Preview the current quantity before confirming the bulk restock.');
+      return;
+    }
+    try {
+      setSubmittingRestockAll(true);
+      setError(null);
+      const result = await AdminApi.restockAll({
+        quantity: restockAllQuantity,
+        reference: restockAllReference.trim() || `BULK-RESTOCK-${Date.now()}`,
+        reason: restockAllReason.trim() || 'Bulk restock across all inventory variants',
+      });
+      setRestockAllOpen(false);
+      setNotice(`Restocked ${result.updatedCount} variants; added ${result.totalUnitsAdded.toLocaleString()} units total.${result.auditWarning ? ` ${result.auditWarning}` : ''}`);
+      if (activeTab === 'ledger') await loadAllLedger();
+      else await fetchInventory();
+    } catch (err: any) {
+      setError(err.message || 'Unable to confirm the bulk restock. Refresh inventory and the ledger before retrying to avoid duplicate adjustments.');
+    } finally {
+      setSubmittingRestockAll(false);
+    }
+  };
+
   const handleRestockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restockingItem) return;
+    const quantity = Number(restockQty);
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+      setError('Units to add must be a positive whole number.');
+      return;
+    }
 
     try {
       setSubmitting(true);
       setError(null);
       await AdminApi.adjustInventory({
         variantId: restockingItem.variantId,
-        quantity: Number(restockQty),
+        quantity,
         type: 'PURCHASE',
         reference: restockRef.trim() || `RESTOCK-${Date.now()}`,
         reason: restockReason.trim() || 'Manual Restock',
       });
 
       setRestockingItem(null);
+      setNotice(`Added ${quantity} units to ${restockingItem.productName} (${restockingItem.sku}).`);
       await fetchInventory();
     } catch (err: any) {
       setError(err.message || 'Restock failed');
@@ -126,19 +193,29 @@ export const InventoryView: React.FC = () => {
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustingItem) return;
+    const quantity = Number(adjustQty);
+    if (!Number.isSafeInteger(quantity) || (adjustType === 'ADJUSTMENT' ? quantity < 0 : quantity < 1)) {
+      setError(adjustType === 'ADJUSTMENT'
+        ? 'Enter a non-negative whole-number physical stock count.'
+        : 'Enter a positive whole-number unit quantity.');
+      return;
+    }
 
     try {
       setSubmitting(true);
       setError(null);
       await AdminApi.adjustInventory({
         variantId: adjustingItem.variantId,
-        quantity: Number(adjustQty),
+        quantity,
         type: adjustType,
         reference: adjustRef.trim() || `ADJ-${Date.now()}`,
         reason: adjustReason.trim() || 'Manual adjustment',
       });
 
       setAdjustingItem(null);
+      setNotice(adjustType === 'ADJUSTMENT'
+        ? `Physical stock for ${adjustingItem.sku} set to ${quantity}.`
+        : `${adjustType} recorded for ${adjustingItem.sku}: ${quantity} unit(s).`);
       await fetchInventory();
     } catch (err: any) {
       setError(err.message || 'Adjustment failed');
@@ -149,6 +226,19 @@ export const InventoryView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold text-[#F2F0EB]">Inventory</h2>
+          <p className="text-[11px] text-neutral-500">Physical, available, and reserved stock by variant.</p>
+        </div>
+        <button
+          type="button"
+          onClick={openRestockAll}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold font-mono uppercase text-white hover:bg-emerald-600 min-h-[42px]"
+        >
+          <Plus className="w-4 h-4" /> RESTOCK ALL
+        </button>
+      </div>
       {/* ------------------------------------------------------------- */}
       {/* 1. VIEW TABS */}
       {/* ------------------------------------------------------------- */}
@@ -186,6 +276,12 @@ export const InventoryView: React.FC = () => {
           <span>Audit Ledger Transactions</span>
         </button>
       </div>
+
+      {notice && (
+        <div role="status" className="rounded-lg border border-emerald-800 bg-emerald-950/30 px-4 py-3 text-xs text-emerald-200">
+          {notice}
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 2. SEARCH BAR (For Variants) */}
@@ -411,7 +507,11 @@ export const InventoryView: React.FC = () => {
                       </div>
 
                       {/* Stock counts */}
-                      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                      <div className="grid grid-cols-4 gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 text-center font-mono text-xs">
+                        <div>
+                          <span className="text-[9px] text-neutral-500 uppercase block">Physical</span>
+                          <span className="text-[#F2F0EB]">{item.stockQuantity ?? item.availableStock + item.reservedStock}</span>
+                        </div>
                         <div>
                           <span className="text-[9px] text-neutral-500 uppercase block">Available</span>
                           <span className={`text-base font-bold ${
@@ -436,6 +536,7 @@ export const InventoryView: React.FC = () => {
                           onClick={() => {
                             setRestockingItem(item);
                             setRestockQty(10);
+                            setNotice(null);
                           }}
                           className="flex-1 py-2.5 px-3 rounded-lg bg-[#F2F0EB] hover:bg-white text-[#0A0A0A] font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition-colors min-h-[42px]"
                         >
@@ -444,7 +545,10 @@ export const InventoryView: React.FC = () => {
                         <button
                           onClick={() => {
                             setAdjustingItem(item);
-                            setAdjustQty(1);
+                            setAdjustQty(item.stockQuantity ?? item.availableStock + item.reservedStock);
+                            setAdjustType('ADJUSTMENT');
+                            setError(null);
+                            setNotice(null);
                           }}
                           className="flex-1 py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-xs uppercase font-bold flex items-center justify-center cursor-pointer transition-colors min-h-[42px]"
                         >
@@ -465,13 +569,14 @@ export const InventoryView: React.FC = () => {
 
                 {/* DESKTOP VARIANT TABLE (>= md) */}
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-xs min-w-[720px]">
+                  <table className="w-full text-left text-xs min-w-[860px]">
                     <thead>
                       <tr className="border-b border-[#262626] text-[10px] font-mono text-[#A3A199] uppercase tracking-wider">
                         <th className="py-3 font-normal">Garment / Piece</th>
                         <th className="py-3 font-normal">SKU</th>
                         <th className="py-3 font-normal">Size</th>
                         <th className="py-3 font-normal">Color</th>
+                        <th className="py-3 font-normal">Physical</th>
                         <th className="py-3 font-normal">Available</th>
                         <th className="py-3 font-normal">Reserved</th>
                         <th className="py-3 font-normal">Sold</th>
@@ -506,6 +611,10 @@ export const InventoryView: React.FC = () => {
                             </div>
                           </td>
 
+                          <td className="py-3.5 font-mono text-neutral-300">
+                            {item.stockQuantity ?? item.availableStock + item.reservedStock}
+                          </td>
+
                           <td className="py-3.5 font-mono text-base font-bold text-[#F2F0EB]">
                             {item.availableStock}
                           </td>
@@ -537,6 +646,7 @@ export const InventoryView: React.FC = () => {
                               onClick={() => {
                                 setRestockingItem(item);
                                 setRestockQty(10);
+                                setNotice(null);
                               }}
                               className="px-2 py-1 rounded bg-[#F2F0EB] text-[#0A0A0A] font-bold font-mono text-[10px] uppercase hover:bg-white cursor-pointer"
                             >
@@ -546,7 +656,10 @@ export const InventoryView: React.FC = () => {
                             <button
                               onClick={() => {
                                 setAdjustingItem(item);
-                                setAdjustQty(1);
+                                setAdjustQty(item.stockQuantity ?? item.availableStock + item.reservedStock);
+                                setAdjustType('ADJUSTMENT');
+                                setError(null);
+                                setNotice(null);
                               }}
                               className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[#F2F0EB] font-mono text-[10px] uppercase cursor-pointer"
                             >
@@ -571,6 +684,126 @@ export const InventoryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {restockAllOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="restock-all-title" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm font-sans">
+          <div className="w-full max-w-lg bg-[#141414] border border-[#2D2D2D] rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 text-[#F2F0EB] max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#242424] pb-3 mb-4">
+              <div>
+                <h3 id="restock-all-title" className="font-bold text-sm text-emerald-300">RESTOCK ALL VARIANTS</h3>
+                <p className="text-[11px] text-neutral-400 mt-1">Add the same number of units to every inventory variant.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setRestockAllOpen(false); setError(null); }}
+                disabled={submittingRestockAll}
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 disabled:opacity-50"
+                aria-label="Close restock all dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3 text-amber-100">
+                This applies to every inventory record, ignoring the current search and tabs. It does not set stock to a target; it adds the entered quantity to each variant.
+              </p>
+
+              {error && (
+                <div role="alert" className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-200">{error}</div>
+              )}
+
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Units to Add Per Variant *</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100_000}
+                  step={1}
+                  required
+                  value={restockAllQuantity}
+                  onChange={(e) => {
+                    setRestockAllQuantity(Number(e.target.value));
+                    setRestockAllPreview(null);
+                    setError(null);
+                  }}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2.5 text-[#F2F0EB] outline-hidden font-mono text-lg font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Batch Reference *</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={120}
+                  value={restockAllReference}
+                  onChange={(e) => setRestockAllReference(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">Reason / Source</label>
+                <input
+                  type="text"
+                  maxLength={500}
+                  value={restockAllReason}
+                  onChange={(e) => setRestockAllReason(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handlePreviewRestockAll}
+                disabled={previewingRestockAll || submittingRestockAll}
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 font-mono font-bold uppercase text-[#F2F0EB] hover:bg-white/10 disabled:opacity-50"
+              >
+                {previewingRestockAll ? 'CALCULATING PREVIEW…' : 'PREVIEW ALL VARIANTS'}
+              </button>
+
+              {restockAllPreview && (
+                <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-4 space-y-3">
+                  {restockAllPreview.variantCount === 0 ? (
+                    <p className="text-amber-200">No inventory records were found, so nothing can be restocked.</p>
+                  ) : (
+                    <>
+                      <p className="font-bold text-emerald-200">
+                        Preview: {restockAllPreview.variantCount.toLocaleString()} variants will each receive {restockAllPreview.quantityPerVariant} units ({restockAllPreview.totalUnitsAdded.toLocaleString()} units total).
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-neutral-300">
+                        <span>Physical stock</span>
+                        <span>{restockAllPreview.currentPhysicalStock.toLocaleString()} → {restockAllPreview.resultingPhysicalStock.toLocaleString()}</span>
+                        <span>Available stock</span>
+                        <span>{restockAllPreview.currentAvailableStock.toLocaleString()} → {restockAllPreview.resultingAvailableStock.toLocaleString()}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRestockAllSubmit}
+                        disabled={submittingRestockAll || previewingRestockAll}
+                        className="w-full rounded-lg bg-emerald-700 px-4 py-3 font-mono font-bold uppercase text-white hover:bg-emerald-600 disabled:opacity-50"
+                      >
+                        {submittingRestockAll ? 'RESTOCKING…' : `CONFIRM: ADD ${restockAllPreview.totalUnitsAdded.toLocaleString()} UNITS TO ALL`}
+                      </button>
+                      <p className="text-[10px] text-neutral-400">Each variant receives its own inventory ledger entry under this batch reference.</p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => { setRestockAllOpen(false); setError(null); }}
+                disabled={submittingRestockAll}
+                className="w-full rounded-lg px-4 py-2.5 text-neutral-400 hover:text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 4. RESTOCK MODAL */}
@@ -597,10 +830,11 @@ export const InventoryView: React.FC = () => {
             </div>
 
             <form onSubmit={handleRestockSubmit} className="space-y-4 text-xs">
+              {error && <div role="alert" className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-200">{error}</div>}
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 flex justify-between font-mono">
-                <span className="text-neutral-400">Current Stock</span>
-                <span className="font-bold text-emerald-400 text-sm">
-                  {restockingItem.availableStock} units
+                  <span className="text-neutral-400">Physical / Available</span>
+                  <span className="font-bold text-emerald-400 text-sm">
+                  {restockingItem.stockQuantity ?? restockingItem.availableStock + restockingItem.reservedStock} / {restockingItem.availableStock} units
                 </span>
               </div>
 
@@ -691,10 +925,11 @@ export const InventoryView: React.FC = () => {
             </div>
 
             <form onSubmit={handleAdjustSubmit} className="space-y-4 text-xs">
+              {error && <div role="alert" className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-200">{error}</div>}
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 flex justify-between font-mono">
-                <span className="text-neutral-400">Available Stock</span>
-                <span className="font-bold text-[#F2F0EB] text-sm">
-                  {adjustingItem.availableStock} units
+                  <span className="text-neutral-400">Physical / Available Stock</span>
+                  <span className="font-bold text-[#F2F0EB] text-sm">
+                  {adjustingItem.stockQuantity ?? adjustingItem.availableStock + adjustingItem.reservedStock} / {adjustingItem.availableStock} units
                 </span>
               </div>
 
@@ -704,7 +939,14 @@ export const InventoryView: React.FC = () => {
                 </label>
                 <select
                   value={adjustType}
-                  onChange={(e) => setAdjustType(e.target.value as any)}
+                  onChange={(e) => {
+                    const nextType = e.target.value as typeof adjustType;
+                    setAdjustType(nextType);
+                    setAdjustQty(nextType === 'ADJUSTMENT'
+                      ? (adjustingItem.stockQuantity ?? adjustingItem.availableStock + adjustingItem.reservedStock)
+                      : 1);
+                    setError(null);
+                  }}
                   className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono min-h-[42px]"
                 >
                   <option value="ADJUSTMENT">ADJUSTMENT (Count correction)</option>
@@ -716,10 +958,12 @@ export const InventoryView: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
-                  Quantity * (Negative to reduce, positive to increase)
+                  {adjustType === 'ADJUSTMENT' ? 'New Physical Stock Count *' : adjustType === 'RETURN' ? 'Units to Add *' : 'Units to Remove *'}
                 </label>
                 <input
                   type="number"
+                  min={adjustType === 'ADJUSTMENT' ? 0 : 1}
+                  step={1}
                   required
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(Number(e.target.value))}

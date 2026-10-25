@@ -971,6 +971,112 @@ export class InventoryService {
     return result;
   }
 
+  public static async previewRestockAll(quantity: number) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100_000) {
+      throw new Error('Restock quantity must be a whole number from 1 to 100,000 per variant.');
+    }
+
+    const inventories = await prisma.inventory.findMany({
+      select: { stockQuantity: true, reservedQuantity: true },
+    });
+    const variantCount = inventories.length;
+    const currentPhysicalStock = inventories.reduce((sum, item) => sum + item.stockQuantity, 0);
+    const currentAvailableStock = inventories.reduce(
+      (sum, item) => sum + Math.max(0, item.stockQuantity - item.reservedQuantity),
+      0
+    );
+    const resultingAvailableStock = inventories.reduce(
+      (sum, item) => sum + Math.max(0, item.stockQuantity + quantity - item.reservedQuantity),
+      0
+    );
+    const totalUnitsAdded = variantCount * quantity;
+
+    return {
+      variantCount,
+      quantityPerVariant: quantity,
+      totalUnitsAdded,
+      currentPhysicalStock,
+      resultingPhysicalStock: currentPhysicalStock + totalUnitsAdded,
+      currentAvailableStock,
+      resultingAvailableStock,
+    };
+  }
+
+  public static async restockAll(
+    quantity: number,
+    reference: string,
+    reason: string,
+    adminId?: string
+  ) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100_000) {
+      throw new Error('Restock quantity must be a whole number from 1 to 100,000 per variant.');
+    }
+    if (!reference.trim()) throw new Error('A restock reference is required.');
+
+    return prisma.$transaction(async (tx) => {
+      const before = await tx.inventory.findMany({
+        select: { id: true, variantId: true, stockQuantity: true, reservedQuantity: true },
+      });
+      if (before.length === 0) throw new Error('No inventory records were found to restock.');
+
+      const variantIds = before.map((item) => item.variantId);
+      const updated = await tx.inventory.updateMany({
+        where: { variantId: { in: variantIds } },
+        data: { stockQuantity: { increment: quantity } },
+      });
+      if (updated.count !== before.length) {
+        throw new Error('Inventory changed during bulk restock; no changes were applied. Please preview again.');
+      }
+
+      const after = await tx.inventory.findMany({
+        where: { variantId: { in: variantIds } },
+        select: { id: true, variantId: true, stockQuantity: true, reservedQuantity: true },
+      });
+      if (after.length !== before.length) {
+        throw new Error('Inventory changed during bulk restock; no changes were applied. Please preview again.');
+      }
+
+      await tx.inventoryTransaction.createMany({
+        data: after.map((item) => {
+          const previousStock = item.stockQuantity - quantity;
+          return {
+            inventoryId: item.id,
+            variantId: item.variantId,
+            type: 'RESTOCK' as const,
+            quantity,
+            previousStock,
+            newStock: item.stockQuantity,
+            referenceType: 'MANUAL',
+            referenceId: reference.trim(),
+            reason: reason.trim() || 'Bulk restock across all inventory variants',
+            adminId,
+          };
+        }),
+      });
+
+      const resultingPhysicalStock = after.reduce((sum, item) => sum + item.stockQuantity, 0);
+      const currentPhysicalStock = after.reduce((sum, item) => sum + item.stockQuantity - quantity, 0);
+      const currentAvailableStock = after.reduce(
+        (sum, item) => sum + Math.max(0, item.stockQuantity - quantity - item.reservedQuantity),
+        0
+      );
+      const resultingAvailableStock = after.reduce(
+        (sum, item) => sum + Math.max(0, item.stockQuantity - item.reservedQuantity),
+        0
+      );
+
+      return {
+        updatedCount: after.length,
+        quantityPerVariant: quantity,
+        totalUnitsAdded: after.length * quantity,
+        currentPhysicalStock,
+        resultingPhysicalStock,
+        currentAvailableStock,
+        resultingAvailableStock,
+      };
+    });
+  }
+
   public static async getLedger(variantId?: string, limit: number = 100): Promise<any[]> {
     const where: any = {};
     if (variantId) {

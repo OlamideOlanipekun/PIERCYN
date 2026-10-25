@@ -49,6 +49,7 @@ export interface EnrichedProductVariant {
   sortOrder: number;
   availableStock: number;
   stock: {
+    stockQuantity?: number;
     availableStock: number;
     reservedStock: number;
     soldStock: number;
@@ -158,7 +159,7 @@ export interface CreateProductInput {
 }
 
 export class ProductService {
-  public static mapPrismaProduct(prod: any): EnrichedProduct {
+  public static mapPrismaProduct(prod: any, includePhysicalStock = false): EnrichedProduct {
     let totalStock = 0;
     const variants: EnrichedProductVariant[] = (prod.variants || []).map((v: any) => {
       const stockQty = v.inventory ? v.inventory.stockQuantity : 0;
@@ -186,6 +187,7 @@ export class ProductService {
         // Keep the nested stock shape consumed by the admin Products dashboard.
         // The storefront also uses the flat availableStock field above.
         stock: {
+          ...(includePhysicalStock ? { stockQuantity: stockQty } : {}),
           availableStock: available,
           reservedStock: reservedQty,
           soldStock: v.inventory?.soldQuantity ?? 0,
@@ -247,6 +249,7 @@ export class ProductService {
     status?: string;
     search?: string;
     includeInactive?: boolean;
+    includePhysicalStock?: boolean;
     minPrice?: number;
     maxPrice?: number;
     sizes?: string[];
@@ -325,7 +328,7 @@ export class ProductService {
           orderBy: orderBy as any,
         });
 
-        return products.map((p) => this.mapPrismaProduct(p));
+        return products.map((p) => this.mapPrismaProduct(p, Boolean(filter?.includePhysicalStock)));
       } catch (err) {
         console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
         markDatabaseUnavailable();

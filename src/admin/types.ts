@@ -170,6 +170,7 @@ export interface AdminVariant {
   altImage?: string;
   active: boolean;
   stock?: {
+    stockQuantity?: number;
     availableStock: number;
     reservedStock: number;
     soldStock: number;
@@ -496,4 +497,3 @@ export interface AdminReviewsResult {
     totalPages: number;
   };
 }
-

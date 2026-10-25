@@ -295,6 +295,7 @@ export const ProductsView: React.FC = () => {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -346,12 +347,20 @@ export const ProductsView: React.FC = () => {
   const [stockAdjustReason, setStockAdjustReason] = useState<string>('');
   const [stockAdjustSubmitting, setStockAdjustSubmitting] = useState<boolean>(false);
 
+  const physicalStockForVariant = (variant: AdminProduct['variants'][number] | undefined) => {
+    if (!variant) return 0;
+    return variant.stock?.stockQuantity ??
+      ((variant.stock?.availableStock ?? 0) + (variant.stock?.reservedStock ?? 0));
+  };
+
   const openStockAdjustModal = (product: AdminProduct) => {
+    setError(null);
+    setNotice(null);
     setStockAdjustProduct(product);
     const firstVariant = product.variants?.[0];
     setStockAdjustVariantId(firstVariant?.id || '');
     setStockAdjustType('SET_EXACT');
-    setStockAdjustQuantity(firstVariant?.stock?.availableStock ?? 0);
+    setStockAdjustQuantity(physicalStockForVariant(firstVariant));
     setStockAdjustReference(`AUDIT-${Date.now().toString().slice(-6)}`);
     setStockAdjustReason('Physical stock audit count');
   };
@@ -384,6 +393,10 @@ export const ProductsView: React.FC = () => {
         reference: stockAdjustReference.trim() || `PROD-ADJ-${Date.now()}`,
         reason: stockAdjustReason.trim() || `Admin stock adjustment from Products view`,
       });
+      const selectedVariant = stockAdjustProduct.variants.find((variant) => variant.id === targetVariantId);
+      setNotice(stockAdjustType === 'SET_EXACT'
+        ? `Physical stock for ${selectedVariant?.sku || stockAdjustProduct.name} set to ${qty}.`
+        : `${stockAdjustType === 'PURCHASE' ? 'Added' : 'Removed'} ${qty} unit(s) ${stockAdjustType === 'PURCHASE' ? 'to' : 'from'} ${selectedVariant?.sku || stockAdjustProduct.name}.`);
       setStockAdjustProduct(null);
       await fetchProducts();
     } catch (err: any) {
@@ -701,6 +714,11 @@ export const ProductsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div role="status" className="rounded-lg border border-emerald-800 bg-emerald-950/30 px-4 py-3 text-xs text-emerald-200">
+          {notice}
+        </div>
+      )}
       {/* ------------------------------------------------------------- */}
       {/* 1. TOP HEADER & ACTION */}
       {/* ------------------------------------------------------------- */}
@@ -1220,18 +1238,31 @@ export const ProductsView: React.FC = () => {
                     onChange={(e) => {
                       setStockAdjustVariantId(e.target.value);
                       const v = stockAdjustProduct.variants.find((v) => v.id === e.target.value);
-                      setStockAdjustQuantity(v?.stock?.availableStock ?? 0);
+                      setStockAdjustQuantity(stockAdjustType === 'SET_EXACT' ? physicalStockForVariant(v) : 1);
                     }}
                     className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg px-3 py-2 text-[#F2F0EB] outline-hidden font-mono"
                   >
                     {stockAdjustProduct.variants.map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.sku} — {v.colour}{v.size ? ` / ${v.size}` : ''} (avail: {v.stock?.availableStock ?? 0})
+                        {v.sku} — {v.colour}{v.size ? ` / ${v.size}` : ''} (physical: {physicalStockForVariant(v)}, avail: {v.stock?.availableStock ?? 0})
                       </option>
                     ))}
                   </select>
                 </div>
               )}
+
+              {(() => {
+                const selectedVariant = stockAdjustProduct.variants.find((v) => v.id === stockAdjustVariantId);
+                if (!selectedVariant) return null;
+                return (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10 flex justify-between font-mono text-[11px]">
+                    <span className="text-neutral-400">Current physical / available</span>
+                    <span className="font-bold text-[#F2F0EB]">
+                      {physicalStockForVariant(selectedVariant)} / {selectedVariant.stock?.availableStock ?? 0}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Adjustment type */}
               <div>
@@ -1247,7 +1278,11 @@ export const ProductsView: React.FC = () => {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setStockAdjustType(key)}
+                      onClick={() => {
+                        setStockAdjustType(key);
+                        const selectedVariant = stockAdjustProduct.variants.find((v) => v.id === stockAdjustVariantId);
+                        setStockAdjustQuantity(key === 'SET_EXACT' ? physicalStockForVariant(selectedVariant) : 1);
+                      }}
                       className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
                         stockAdjustType === key
                           ? key === 'DAMAGE'
@@ -1268,7 +1303,7 @@ export const ProductsView: React.FC = () => {
               {/* Quantity */}
               <div>
                 <label className="block text-[11px] font-mono text-[#A3A199] uppercase mb-1">
-                  {stockAdjustType === 'SET_EXACT' ? 'New Stock Quantity' : stockAdjustType === 'PURCHASE' ? 'Units to Add' : 'Units to Remove'}
+                  {stockAdjustType === 'SET_EXACT' ? 'New Physical Stock Quantity' : stockAdjustType === 'PURCHASE' ? 'Units to Add' : 'Units to Remove'}
                 </label>
                 <input
                   type="number"

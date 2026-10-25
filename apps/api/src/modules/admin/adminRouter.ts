@@ -249,6 +249,11 @@ const BulkInventoryAdjustmentSchema = z.object({
     })
   ).min(1).max(200),
 });
+const RestockAllSchema = z.object({
+  quantity: z.number().int().min(1).max(100_000),
+  reference: z.string().trim().max(120).optional(),
+  reason: z.string().trim().max(500).optional(),
+});
 
 // 1. AUTH
 adminRouter.post('/auth/login', async (req: Request, res: Response) => {
@@ -1009,6 +1014,7 @@ adminRouter.get('/products', requireAdmin, async (req: Request, res: Response) =
       status: status as string,
       search: search as string,
       includeInactive: true,
+      includePhysicalStock: true,
     });
     res.json({ success: true, count: products.length, data: products });
   } catch (err: any) {
@@ -1258,6 +1264,57 @@ adminRouter.get('/inventory', requireAdmin, async (req: Request, res: Response) 
     res.json({ success: true, count: inventory.length, data: inventory });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+adminRouter.post('/inventory/restock-all/preview', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const validated = RestockAllSchema.parse(req.body);
+    const preview = await InventoryService.previewRestockAll(validated.quantity);
+    res.json({ success: true, data: preview });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(err.errors ? 400 : 500).json({ success: false, error: msg });
+  }
+});
+
+adminRouter.post('/inventory/restock-all', requireAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = RestockAllSchema.parse(req.body);
+    const reference = validated.reference || `BULK-RESTOCK-${Date.now()}`;
+    const reason = validated.reason || 'Bulk restock across all inventory variants';
+    const result = await InventoryService.restockAll(
+      validated.quantity,
+      reference,
+      reason,
+      req.admin?.id
+    );
+
+    let auditWarning: string | undefined;
+    try {
+      await AuditService.log({
+        adminId: req.admin?.id || 'admin',
+        adminEmail: req.admin?.email || 'admin@piercyn.com',
+        action: 'STOCK_BULK_ADJUSTED',
+        resource: 'INVENTORY',
+        resourceId: reference,
+        previousValue: `${result.currentPhysicalStock} physical units`,
+        newValue: `${result.resultingPhysicalStock} physical units across ${result.updatedCount} variants`,
+        note: `${reason}; added ${result.totalUnitsAdded} units (${validated.quantity} per variant). Reference: ${reference}`,
+      });
+    } catch (auditErr) {
+      console.error('[ADMIN_RESTOCK_ALL_AUDIT]', auditErr);
+      auditWarning = 'Stock was updated, but the admin audit log could not be written.';
+    }
+
+    res.json({
+      success: true,
+      message: `Added ${result.totalUnitsAdded} units across ${result.updatedCount} variants.`,
+      data: { ...result, reference, auditWarning },
+    });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0].message : err.message;
+    res.status(err.errors ? 400 : 500).json({ success: false, error: msg });
   }
 });
 

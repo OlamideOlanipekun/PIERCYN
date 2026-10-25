@@ -33,11 +33,16 @@ const productWithVariant = (overrides: Record<string, unknown> = {}) => ({
 
 describe('ProductService.mapPrismaProduct inventory status', () => {
   it('does not mark a restocked product sold out because of a stale product flag', () => {
-    const mapped = ProductService.mapPrismaProduct(productWithVariant({ isSoldOut: true }));
+    const mapped = ProductService.mapPrismaProduct(productWithVariant({ isSoldOut: true }), true);
 
     expect(mapped.totalAvailableStock).toBe(3);
     expect(mapped.variants[0].availableStock).toBe(3);
+    expect(mapped.variants[0].stock.stockQuantity).toBe(5);
+    expect(mapped.variants[0].stock.reservedStock).toBe(2);
     expect(mapped.isSoldOut).toBe(false);
+
+    const publicMapped = ProductService.mapPrismaProduct(productWithVariant());
+    expect(publicMapped.variants[0].stock).not.toHaveProperty('stockQuantity');
   });
 
   it('marks a product sold out when all variant stock is reserved or depleted', () => {
