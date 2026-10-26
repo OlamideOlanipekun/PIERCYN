@@ -18,6 +18,7 @@ import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
 import { prisma } from '../db/prisma';
+import { getWhatsAppWebhookChallenge, isValidWhatsAppWebhookSignature } from '../security/whatsappWebhook';
 import {
   createOrderAccessToken,
   isOrderAccessTokenConfigured,
@@ -39,6 +40,44 @@ export const apiRouter = Router();
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/', reviewRouter);
+
+/** Meta WhatsApp Cloud API webhook verification and signed-event receiver. */
+apiRouter.get('/webhooks/whatsapp', (req: Request, res: Response) => {
+  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+  if (!verifyToken) {
+    return res.status(503).type('text/plain').send('WhatsApp webhook is not configured.');
+  }
+  const challenge = getWhatsAppWebhookChallenge(
+    req.query['hub.mode'], req.query['hub.verify_token'], req.query['hub.challenge'], verifyToken
+  );
+  if (challenge === null) {
+    return res.status(403).type('text/plain').send('Webhook verification failed.');
+  }
+
+  return res.status(200).type('text/plain').send(challenge);
+});
+
+apiRouter.post('/webhooks/whatsapp', (req: Request, res: Response) => {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  const signature = req.header('x-hub-signature-256') || '';
+  const rawBody = (req as any).rawBody as string | undefined;
+
+  if (!appSecret) {
+    return res.status(503).json({ success: false, error: 'WhatsApp webhook is not configured.' });
+  }
+  if (!isValidWhatsAppWebhookSignature(rawBody, signature, appSecret)) {
+    return res.status(401).json({ success: false, error: 'Invalid webhook signature.' });
+  }
+
+  const body = req.body;
+  const entries = Array.isArray(body?.entry) ? body.entry : [];
+  console.info('[WHATSAPP_WEBHOOK_ACCEPTED]', JSON.stringify({
+    object: body?.object || null,
+    entryCount: entries.length,
+    changeCount: entries.reduce((count: number, entry: any) => count + (Array.isArray(entry?.changes) ? entry.changes.length : 0), 0),
+  }));
+  return res.sendStatus(200);
+});
 
 const publicSiteOrigin = (process.env.APP_URL || 'https://piercyn.vercel.app').replace(/\/+$/, '');
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
