@@ -3,6 +3,7 @@ import { ArrowLeft, RefreshCw, SlidersHorizontal, Tag } from 'lucide-react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
 import { catalogService, StorefrontCategory } from '../services/catalogService';
+import { formatCategorySeoTitle } from '../utils/seo';
 
 interface CategoryPageProps {
   slug: string;
@@ -36,7 +37,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
       // If category not found in active list, we can still attempt to query products by slug
       if (matched) {
         setCategory(matched);
-        document.title = `${matched.name} — PIERCYN`;
+        document.title = formatCategorySeoTitle(matched.name);
       } else {
         // Fallback title based on slug
         const formattedSlug = slug.replace(/-/g, ' ').toUpperCase();
@@ -46,7 +47,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
           slug: slug,
           sortOrder: 99,
         });
-        document.title = `${formattedSlug} — PIERCYN`;
+        document.title = formatCategorySeoTitle(formattedSlug);
       }
 
       // 2. Query products for this category

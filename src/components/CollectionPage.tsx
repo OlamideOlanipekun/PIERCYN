@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
+import { formatSeoTitle } from '../utils/seo';
 
 const COLLECTIONS: Record<string, { title: string; description: string; categories: string[] }> = {
   'mens-tshirts': { title: "MEN'S T-SHIRTS", description: 'Everyday essentials, cut for Lagos heat and daily rotation.', categories: ['tees', 't-shirts'] },
@@ -30,6 +31,12 @@ export const CollectionPage: React.FC<CollectionPageProps> = ({ slug, products, 
   useEffect(() => {
     if (!collection && !loading) onNotFound();
   }, [collection, loading, onNotFound]);
+  useEffect(() => {
+    if (collection) {
+      const title = collection.title === "MEN'S T-SHIRTS" ? "Men's T-shirts" : collection.title.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+      document.title = formatSeoTitle(`${title} Collection | PIERCYN Lagos`);
+    }
+  }, [collection]);
   if (!collection) return null;
 
   return (

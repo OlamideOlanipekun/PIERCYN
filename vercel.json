@@ -28,7 +28,7 @@
     },
     {
       "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "destination": "/api/seo/fallback?path=$1"
     }
   ]
 }

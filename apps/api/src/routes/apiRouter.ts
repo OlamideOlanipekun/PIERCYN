@@ -19,6 +19,7 @@ import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
 import { prisma } from '../db/prisma';
 import { getWhatsAppWebhookChallenge, isValidWhatsAppWebhookSignature } from '../security/whatsappWebhook';
+import { seoFallbackRouter } from './seoFallbackRouter';
 import {
   createOrderAccessToken,
   isOrderAccessTokenConfigured,
@@ -37,6 +38,7 @@ import {
 
 export const apiRouter = Router();
 
+apiRouter.use('/seo', seoFallbackRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/', reviewRouter);

@@ -40,9 +40,26 @@ import { CollectionsGrid } from './components/CollectionsGrid';
 import { LookbookSection } from './components/LookbookSection';
 import { LookbookModal } from './components/LookbookModal';
 import { ScrollReveal } from './components/ScrollReveal';
+import { formatProductSeoTitle, PUBLIC_PAGE_TITLES, syncClientSeo } from './utils/seo';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+
+const STOREFRONT_PAGE_TITLES: Record<StorefrontPageKey, string> = {
+  shipping: PUBLIC_PAGE_TITLES.shipping,
+  returns: PUBLIC_PAGE_TITLES.returns,
+  contact: PUBLIC_PAGE_TITLES.contact,
+  privacy: PUBLIC_PAGE_TITLES.privacy,
+  terms: PUBLIC_PAGE_TITLES.terms,
+  search: 'Search | PIERCYN',
+  'size-guide': PUBLIC_PAGE_TITLES.sizeGuide,
+  faq: PUBLIC_PAGE_TITLES.faq,
+  'track-order': 'Track Order | PIERCYN',
+  'available-to-order': PUBLIC_PAGE_TITLES.availableToOrder,
+  cart: 'Cart | PIERCYN',
+  checkout: 'Checkout | PIERCYN',
+  'order-confirmation': 'Order Confirmed | PIERCYN',
+};
 
 
 // V1: Simple "Why PIERCYN" brand section for homepage
@@ -119,7 +136,7 @@ const MainLayout: React.FC = () => {
     if (storefrontRoute) {
       setStorefrontPage(storefrontRoute);
       setCurrentPdpProduct(null);
-      document.title = `${storefrontRoute.replaceAll('-', ' ')} — PIERCYN`;
+      document.title = STOREFRONT_PAGE_TITLES[storefrontRoute];
       return;
     }
     setStorefrontPage(null);
@@ -127,17 +144,17 @@ const MainLayout: React.FC = () => {
     if (rawPath === '/cart') {
       setActivePage('cart');
       setCurrentPdpProduct(null);
-      document.title = 'Cart — PIERCYN';
+      document.title = STOREFRONT_PAGE_TITLES.cart;
     } else if (rawPath === '/checkout') {
       setActivePage('checkout');
       setCurrentPdpProduct(null);
-      document.title = 'Checkout — PIERCYN';
+      document.title = STOREFRONT_PAGE_TITLES.checkout;
     } else if (rawPath === '/order-confirmation' || rawPath.startsWith('/order/success/')) {
       const orderId = new URLSearchParams(window.location.search).get('orderId') || rawPath.replace('/order/success/', '');
       setRouteParam(orderId);
       setActivePage('orderSuccess');
       setCurrentPdpProduct(null);
-      document.title = 'Order Confirmed — PIERCYN';
+      document.title = STOREFRONT_PAGE_TITLES['order-confirmation'];
     } else if (rawPath === '/shop') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
@@ -146,39 +163,39 @@ const MainLayout: React.FC = () => {
       if (categoryParam) {
         setSelectedCategoryFilter(categoryParam);
       }
-      document.title = 'PIERCYN — Shop All';
+      document.title = PUBLIC_PAGE_TITLES.shop;
     } else if (rawPath === '/men') {
       setActivePage('men');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Men';
+      document.title = PUBLIC_PAGE_TITLES.men;
     } else if (rawPath === '/women') {
       setActivePage('women');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Women';
+      document.title = PUBLIC_PAGE_TITLES.women;
     } else if (rawPath === '/new' || rawPath === '/new-in' || rawPath === '/new-arrivals') {
       setActivePage('new');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — New Arrivals';
+      document.title = PUBLIC_PAGE_TITLES.new;
     } else if (rawPath === '/accessories') {
       setActivePage('accessories');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Accessories';
+      document.title = PUBLIC_PAGE_TITLES.accessories;
     } else if (rawPath === '/account') {
       setActivePage('account');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Account';
+      document.title = 'Account | PIERCYN';
     } else if (rawPath === '/lookbook') {
       setActivePage('lookbook');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Lookbook';
+      document.title = PUBLIC_PAGE_TITLES.lookbook;
     } else if (rawPath === '/collections') {
       setActivePage('collections');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Collections';
+      document.title = PUBLIC_PAGE_TITLES.collections;
     } else if (rawPath === '/about') {
       setActivePage('about');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — About';
+      document.title = PUBLIC_PAGE_TITLES.about;
     } else if (rawPath.startsWith('/products/') || rawPath.startsWith('/product/')) {
       const slug = rawPath.replace(/^\/products?\//, '');
       if (rawPath.startsWith('/product/')) window.history.replaceState({}, '', `/products/${slug}${window.location.search}`);
@@ -194,13 +211,13 @@ const MainLayout: React.FC = () => {
       if (foundInCache) {
         setCurrentPdpProduct(foundInCache);
         setIsLoadingProduct(false);
-        document.title = `${foundInCache.name} — PIERCYN`;
+        document.title = formatProductSeoTitle(foundInCache.name);
       } else {
         setIsLoadingProduct(true);
         getProductBySlug(slug).then((backendProduct) => {
           if (backendProduct) {
             setCurrentPdpProduct(backendProduct);
-            document.title = `${backendProduct.name} — PIERCYN`;
+            document.title = formatProductSeoTitle(backendProduct.name);
           } else {
             setCurrentPdpProduct(null);
             document.title = 'Piece Not Found — PIERCYN';
@@ -216,13 +233,13 @@ const MainLayout: React.FC = () => {
       setRouteParam(rawPath.replace('/collections/', ''));
       setActivePage('collection');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Collection';
+      document.title = 'PIERCYN Collection';
     } else if (rawPath.startsWith('/categories/') || rawPath.startsWith('/category/')) {
       const catSlug = rawPath.replace(/^\/categor(?:ies|y)\//, '');
       setRouteParam(catSlug);
       setActivePage('category');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Category';
+      document.title = 'PIERCYN Category';
     } else if (rawPath.startsWith('/order/success/')) {
       setRouteParam(rawPath.replace('/order/success/', ''));
       setActivePage('orderSuccess');
@@ -232,7 +249,7 @@ const MainLayout: React.FC = () => {
     } else if (rawPath === '/') {
       setActivePage('home');
       setCurrentPdpProduct(null);
-      document.title = 'PIERCYN — Look Good. Spend Less.';
+      document.title = PUBLIC_PAGE_TITLES.home;
     } else {
       setActivePage('notFound');
       setCurrentPdpProduct(null);
@@ -250,6 +267,17 @@ const MainLayout: React.FC = () => {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [products]);
+
+  useEffect(() => {
+    const updateSeo = () => {
+      syncClientSeo(window.location.pathname, document.title, currentPdpProduct);
+    };
+    updateSeo();
+    const titleElement = document.querySelector('title');
+    const observer = titleElement ? new MutationObserver(updateSeo) : null;
+    observer?.observe(titleElement!, { childList: true, subtree: true, characterData: true });
+    return () => observer?.disconnect();
+  }, [activePage, currentPdpProduct, storefrontPage, routeParam, isAdminView, isAffiliateView]);
 
   const handleNavigateSection = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -308,16 +336,16 @@ const MainLayout: React.FC = () => {
     syncRouteFromUrl();
 
     const titleMap: Record<ActivePageView, string> = {
-      home: 'PIERCYN — Look Good. Spend Less.',
-      shop: 'PIERCYN — Shop All',
-      men: 'PIERCYN — Men',
-      women: 'PIERCYN — Women',
-      new: 'PIERCYN — New Arrivals',
-      accessories: 'PIERCYN — Accessories',
-      collections: 'PIERCYN — Collections',
-      lookbook: 'PIERCYN — Lookbook',
-      about: 'PIERCYN — About',
-      account: 'PIERCYN — Account',
+      home: PUBLIC_PAGE_TITLES.home,
+      shop: PUBLIC_PAGE_TITLES.shop,
+      men: PUBLIC_PAGE_TITLES.men,
+      women: PUBLIC_PAGE_TITLES.women,
+      new: PUBLIC_PAGE_TITLES.new,
+      accessories: PUBLIC_PAGE_TITLES.accessories,
+      collections: PUBLIC_PAGE_TITLES.collections,
+      lookbook: PUBLIC_PAGE_TITLES.lookbook,
+      about: PUBLIC_PAGE_TITLES.about,
+      account: 'Account | PIERCYN',
       product: 'PIERCYN',
       collection: 'PIERCYN — Collection',
       category: 'PIERCYN — Category',
@@ -328,15 +356,15 @@ const MainLayout: React.FC = () => {
       cart: 'Cart — PIERCYN',
       checkout: 'Checkout — PIERCYN',
       orderConfirmation: 'Order Confirmed — PIERCYN',
-      shipping: 'Shipping & Delivery — PIERCYN',
-      returns: 'Returns & Exchanges — PIERCYN',
-      contact: 'Contact — PIERCYN',
-      privacy: 'Privacy Policy — PIERCYN',
-      terms: 'Terms & Conditions — PIERCYN',
-      search: 'Search — PIERCYN',
-      sizeGuide: 'Size Guide — PIERCYN',
-      faq: 'FAQ — PIERCYN',
-      trackOrder: 'Track Order — PIERCYN',
+      shipping: PUBLIC_PAGE_TITLES.shipping,
+      returns: PUBLIC_PAGE_TITLES.returns,
+      contact: PUBLIC_PAGE_TITLES.contact,
+      privacy: PUBLIC_PAGE_TITLES.privacy,
+      terms: PUBLIC_PAGE_TITLES.terms,
+      search: 'Search | PIERCYN',
+      sizeGuide: PUBLIC_PAGE_TITLES.sizeGuide,
+      faq: PUBLIC_PAGE_TITLES.faq,
+      trackOrder: 'Track Order | PIERCYN',
     };
 
     document.title = titleMap[page] || 'PIERCYN';
@@ -365,7 +393,7 @@ const MainLayout: React.FC = () => {
     if (window.location.pathname !== targetUrl) {
       window.history.pushState({ productId: product.id }, '', targetUrl);
     }
-    document.title = `${product.name} — PIERCYN`;
+    document.title = formatProductSeoTitle(product.name);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -382,7 +410,7 @@ const MainLayout: React.FC = () => {
     const url = `/shop?category=${encodeURIComponent(categorySlug)}`;
     window.history.pushState({ page: 'shop', category: categorySlug }, '', url);
     syncRouteFromUrl();
-    document.title = 'PIERCYN — Shop All';
+    document.title = PUBLIC_PAGE_TITLES.shop;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -399,7 +427,7 @@ const MainLayout: React.FC = () => {
           onBackToStore={() => {
             setIsAdminView(false);
             window.history.pushState({}, '', '/');
-            document.title = 'PIERCYN — Look Good. Spend Less.';
+            document.title = PUBLIC_PAGE_TITLES.home;
           }}
         />
       </React.Suspense>
@@ -423,7 +451,7 @@ const MainLayout: React.FC = () => {
             onClick={() => {
               setIsAffiliateView(false);
               window.history.pushState({}, '', '/');
-              document.title = 'PIERCYN — Look Good. Spend Less.';
+              document.title = PUBLIC_PAGE_TITLES.home;
             }}
             className="w-full py-3 bg-[#F2F0EB] text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold hover:bg-white transition-colors"
           >

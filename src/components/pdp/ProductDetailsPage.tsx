@@ -10,6 +10,7 @@ import { ProductCard } from '../ProductCard';
 import { ReviewsSection } from '../reviews/ReviewsSection';
 import { StarRatingDisplay } from '../reviews/StarRating';
 import { findProductVariant, usesSizeOnlyOptions } from '../../utils/variants';
+import { formatProductSeoTitle } from '../../utils/seo';
 import {
   Plus,
   Minus,
@@ -72,7 +73,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       setQuantity(1);
 
       // Dynamic Title & SEO
-      document.title = `${product.name} — PIERCYN Lagos`;
+      document.title = formatProductSeoTitle(product.name);
 
       // Track analytics
       eventTracker.track('product_view', {
@@ -187,39 +188,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   return (
     <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-screen pt-20 sm:pt-24 pb-20 font-sans">
-      {/* Structured Data (Schema.org) for Rich Snippets */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'Product',
-            name: product.name,
-            description: product.description,
-            image: product.images,
-            offers: {
-              '@type': 'Offer',
-              price: product.priceNGN,
-              priceCurrency: 'NGN',
-              availability:
-                product.isSoldOut || (typeof selectedStock === 'number' && selectedStock <= 0)
-                  ? 'https://schema.org/OutOfStock'
-                  : 'https://schema.org/InStock',
-            },
-            ...(product.ratingSummary && product.ratingSummary.totalReviews > 0
-              ? {
-                  aggregateRating: {
-                    '@type': 'AggregateRating',
-                    ratingValue: product.ratingSummary.averageRating,
-                    reviewCount: product.ratingSummary.totalReviews,
-                    bestRating: 5,
-                    worstRating: 1,
-                  },
-                }
-              : {}),
-          }),
-        }}
-      />
       <div className="piercyn-container">
         
         {/* Breadcrumb Navigation */}
