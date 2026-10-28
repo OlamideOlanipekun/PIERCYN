@@ -193,14 +193,23 @@ export const api = {
   },
 
   // Events & Analytics
-  async trackEvent(eventType: string, metadata: Record<string, any> = {}, productId?: string, variantId?: string, orderId?: string) {
+  async trackEvent(
+    eventType: string,
+    metadata: Record<string, any> = {},
+    productId?: string,
+    variantId?: string,
+    orderId?: string,
+    traffic?: { visitorId: string; sessionId: string; path: string }
+  ) {
     try {
       await fetch(`${API_BASE}/events`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
           eventType,
-          sessionId: getSessionId(),
+          sessionId: traffic?.sessionId || getSessionId(),
+          visitorId: traffic?.visitorId,
+          path: traffic?.path,
           productId,
           variantId,
           orderId,

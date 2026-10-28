@@ -75,8 +75,10 @@ export const LoginUserSchema = z.object({
 });
 
 export const TrackEventSchema = z.object({
-  eventType: z.string().min(1),
-  sessionId: z.string().optional(),
+  eventType: z.string().min(1).max(40),
+  sessionId: z.string().max(128).optional(),
+  visitorId: z.string().max(128).optional(),
+  path: z.string().startsWith('/').max(512).optional(),
   customerId: z.string().optional(),
   productId: z.string().optional(),
   variantId: z.string().optional(),

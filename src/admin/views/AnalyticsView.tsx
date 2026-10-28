@@ -12,19 +12,25 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
+  Eye,
+  Users,
+  Activity,
 } from 'lucide-react';
 
 export const AnalyticsView: React.FC = () => {
   const [analytics, setAnalytics] = useState<AdminAnalyticsSummary | null>(null);
+  const [trafficDays, setTrafficDays] = useState<7 | 30 | 90>(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    AdminApi.getAnalytics()
+    setLoading(true);
+    setError(null);
+    AdminApi.getAnalytics(trafficDays)
       .then((data) => setAnalytics(data))
       .catch((err) => setError(err.message || 'Unable to load analytics'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [trafficDays]);
 
   if (loading) {
     return (
@@ -46,6 +52,66 @@ export const AnalyticsView: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <section className="p-5 sm:p-6 rounded-2xl bg-[#141414] border border-[#262626]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-1">STOREFRONT TRAFFIC</span>
+            <h2 className="text-base font-bold text-[#F2F0EB]">Who is visiting PIERCYN?</h2>
+          </div>
+          <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#0A0A0A] border border-[#282828] text-xs font-mono self-start sm:self-auto">
+            {([7, 30, 90] as const).map((days) => (
+              <button key={days} type="button" onClick={() => setTrafficDays(days)} className={`px-3 py-1.5 rounded min-h-[32px] ${trafficDays === days ? 'bg-[#F2F0EB] text-[#0A0A0A] font-bold' : 'text-[#A3A199] hover:text-[#F2F0EB]'}`}>
+                {days} Days
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { label: 'PAGE VIEWS', value: analytics.traffic.pageViews, note: 'Storefront page visits', Icon: Eye },
+            { label: 'UNIQUE BROWSERS', value: analytics.traffic.uniqueVisitors, note: 'Estimated first-party IDs', Icon: Users },
+            { label: 'SESSIONS', value: analytics.traffic.sessions, note: 'New after 30 min idle', Icon: Activity },
+          ].map(({ label, value, note, Icon }) => (
+            <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3A199]">{label}</span>
+                <Icon className="w-4 h-4 text-neutral-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-[#F2F0EB]">{value.toLocaleString()}</div>
+              <p className="text-[10px] text-neutral-500 mt-1">{note} · last {trafficDays} days</p>
+            </div>
+          ))}
+        </div>
+
+        {!analytics.traffic.trackingEnabled ? (
+          <p className="mt-4 p-3 rounded-lg bg-amber-950/20 border border-amber-900/40 text-[11px] text-amber-200">
+            Traffic tracking is awaiting its database update. Counts will begin after activation; earlier visits cannot be recovered.
+          </p>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <p className="text-[10px] text-neutral-500 leading-relaxed">
+              Unique browsers are estimates, not named customers or cross-device people. PIERCYN stores the page path only (not query strings) and respects Do Not Track.
+            </p>
+            <div className="rounded-xl bg-white/5 border border-white/5 p-3">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-[#A3A199] mb-2">TOP PAGES</div>
+              {analytics.traffic.topPages.length === 0 ? (
+                <p className="text-[11px] text-neutral-500">No page visits recorded in this period.</p>
+              ) : (
+                <div className="space-y-2">
+                  {analytics.traffic.topPages.map((page) => (
+                    <div key={page.path} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="font-mono text-neutral-300 truncate">{page.path}</span>
+                      <span className="font-mono text-[#F2F0EB] shrink-0">{page.views.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* ------------------------------------------------------------- */}
       {/* 1. FINANCIAL SUMMARY (Revenue - COGS = Gross Profit) */}
       {/* ------------------------------------------------------------- */}
@@ -203,7 +269,7 @@ export const AnalyticsView: React.FC = () => {
             <h3 className="text-sm font-bold text-[#F2F0EB]">Where do clients drop off?</h3>
           </div>
           <span className="text-[10px] font-mono text-neutral-400">
-            Live Session Tracking
+            Measured events · last {trafficDays} days
           </span>
         </div>
 

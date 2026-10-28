@@ -1436,9 +1436,11 @@ adminRouter.get('/customers/:id', requireAdmin, async (req: Request, res: Respon
 });
 
 // 6. ANALYTICS
-adminRouter.get('/analytics', requireAdmin, async (_req: Request, res: Response) => {
+adminRouter.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
   try {
-    const summary = await AnalyticsService.getAnalyticsSummary();
+    const requestedDays = Number(req.query.days);
+    const days = [7, 30, 90].includes(requestedDays) ? requestedDays : 30;
+    const summary = await AnalyticsService.getAnalyticsSummary(days);
     res.json({ success: true, data: summary });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

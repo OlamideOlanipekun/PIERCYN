@@ -174,6 +174,34 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
         </div>
       </div>
 
+      <section className="p-4 sm:p-5 rounded-2xl bg-[#141414] border border-[#262626]">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#A3A199] block">STOREFRONT TRAFFIC · LAST 30 DAYS</span>
+            <p className="text-[10px] text-neutral-500 mt-1">Unique browsers are estimates, not named or cross-device customers.</p>
+          </div>
+          <button type="button" onClick={() => onSelectTab('analytics')} className="text-[10px] font-mono text-[#F2F0EB] hover:text-white inline-flex items-center gap-1 shrink-0">
+            DETAILS <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {[
+            { label: 'PAGE VIEWS', value: analytics.traffic.pageViews, note: 'Storefront pages opened' },
+            { label: 'UNIQUE BROWSERS', value: analytics.traffic.uniqueVisitors, note: 'Estimated first-party IDs' },
+            { label: 'SESSIONS', value: analytics.traffic.sessions, note: '30-minute inactivity window' },
+          ].map((metric) => (
+            <div key={metric.label} className="p-3.5 rounded-xl bg-white/5 border border-white/5">
+              <span className="text-[9px] font-mono uppercase tracking-wider text-[#A3A199] block mb-1">{metric.label}</span>
+              <div className="text-xl font-bold font-mono text-[#F2F0EB]">{metric.value.toLocaleString()}</div>
+              <p className="text-[10px] text-neutral-500 mt-1">{metric.note}</p>
+            </div>
+          ))}
+        </div>
+        {!analytics.traffic.trackingEnabled && (
+          <p className="text-[10px] text-amber-300 mt-3">Traffic tracking is not active yet; these are not historical visitor totals.</p>
+        )}
+      </section>
+
       {/* ------------------------------------------------------------- */}
       {/* 2. OPERATIONAL STATUS METRICS (PENDING, LOW STOCK, OUT, CLIENTS) */}
       {/* ------------------------------------------------------------- */}

@@ -475,8 +475,8 @@ class AdminApiClient {
   }
 
   // 6. Analytics
-  public async getAnalytics(): Promise<AdminAnalyticsSummary> {
-    return this.request<AdminAnalyticsSummary>('/analytics');
+  public async getAnalytics(days: 7 | 30 | 90 = 30): Promise<AdminAnalyticsSummary> {
+    return this.request<AdminAnalyticsSummary>(`/analytics?days=${days}`);
   }
 
   // 7. Operational Alerts

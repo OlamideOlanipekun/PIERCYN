@@ -138,6 +138,7 @@ enum EventType {
   ADD_TO_CART
   CHECKOUT_STARTED
   PURCHASE_COMPLETED
+  PAGE_VIEW
 }
 
 enum NotificationJobStatus {
@@ -744,6 +745,8 @@ model ShippingConfig {
 model AnalyticsEvent {
   id         String    @id @default(cuid())
   sessionId  String?
+  visitorId  String?
+  path       String?
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
@@ -759,9 +762,12 @@ model AnalyticsEvent {
   createdAt  DateTime  @default(now())
 
   @@index([eventType])
+  @@index([eventType, createdAt])
   @@index([createdAt])
   @@index([productId])
   @@index([sessionId])
+  @@index([visitorId, createdAt])
+  @@index([path, createdAt])
 }
 
 // ============================================================

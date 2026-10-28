@@ -41,6 +41,7 @@ import { LookbookSection } from './components/LookbookSection';
 import { LookbookModal } from './components/LookbookModal';
 import { ScrollReveal } from './components/ScrollReveal';
 import { formatProductSeoTitle, PUBLIC_PAGE_TITLES, syncClientSeo } from './utils/seo';
+import { eventTracker } from './services/eventTracker';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -102,6 +103,7 @@ const MainLayout: React.FC = () => {
   // Sync state from current URL pathname
   const syncRouteFromUrl = () => {
     const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+    eventTracker.trackPageView(rawPath);
 
     if (rawPath.startsWith('/admin')) {
       setIsAdminView(true);
@@ -393,6 +395,7 @@ const MainLayout: React.FC = () => {
     if (window.location.pathname !== targetUrl) {
       window.history.pushState({ productId: product.id }, '', targetUrl);
     }
+    eventTracker.trackPageView(targetUrl);
     document.title = formatProductSeoTitle(product.name);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

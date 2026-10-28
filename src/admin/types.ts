@@ -350,6 +350,14 @@ export interface AdminAnalyticsSummary {
     cartToCheckoutPercent: number;
     checkoutToPurchasePercent: number;
   };
+  traffic: {
+    trackingEnabled: boolean;
+    periodDays: number;
+    pageViews: number;
+    uniqueVisitors: number;
+    sessions: number;
+    topPages: Array<{ path: string; views: number }>;
+  };
 }
 
 export interface AdminAlerts {

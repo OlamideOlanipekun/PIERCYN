@@ -86,10 +86,59 @@ export interface AtelierAnalyticsSummary {
     cartToCheckoutPercent: number;
     checkoutToPurchasePercent: number;
   };
+  traffic: {
+    trackingEnabled: boolean;
+    periodDays: number;
+    pageViews: number;
+    uniqueVisitors: number;
+    sessions: number;
+    topPages: Array<{ path: string; views: number }>;
+  };
 }
 
 export class AnalyticsService {
-  public static async getAnalyticsSummary(): Promise<AtelierAnalyticsSummary> {
+  public static async getTrafficSummary(days = 30): Promise<AtelierAnalyticsSummary['traffic']> {
+    const periodDays = [7, 30, 90].includes(days) ? days : 30;
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+    const where = { eventType: 'PAGE_VIEW' as const, createdAt: { gte: since } };
+
+    try {
+      const [pageViews, visitorGroups, sessionGroups, pageGroups] = await Promise.all([
+        prisma.analyticsEvent.count({ where }),
+        prisma.analyticsEvent.groupBy({
+          by: ['visitorId'],
+          where: { ...where, visitorId: { not: null } },
+        }),
+        prisma.analyticsEvent.groupBy({
+          by: ['sessionId'],
+          where: { ...where, sessionId: { not: null } },
+        }),
+        prisma.analyticsEvent.groupBy({
+          by: ['path'],
+          where: { ...where, path: { not: null } },
+          orderBy: { _count: { path: 'desc' } },
+          take: 10,
+          _count: { path: true },
+        }),
+      ]);
+
+      return {
+        trackingEnabled: true,
+        periodDays,
+        pageViews,
+        uniqueVisitors: visitorGroups.length,
+        sessions: sessionGroups.length,
+        topPages: pageGroups
+          .filter((page) => Boolean(page.path))
+          .map((page) => ({ path: page.path!, views: page._count.path })),
+      };
+    } catch {
+      // A fresh deployment can arrive before the additive database migration is applied.
+      return { trackingEnabled: false, periodDays, pageViews: 0, uniqueVisitors: 0, sessions: 0, topPages: [] };
+    }
+  }
+
+  public static async getAnalyticsSummary(days = 30): Promise<AtelierAnalyticsSummary> {
     const orders = await prisma.order.findMany({
       include: { items: true },
       orderBy: { createdAt: 'desc' },
@@ -341,26 +390,15 @@ export class AnalyticsService {
       };
     }).sort((a, b) => b.unitsSold - a.unitsSold || b.revenueNGN - a.revenueNGN);
 
-    const events = await prisma.analyticsEvent.findMany({
-      take: 1000,
-    });
-
-    let productViews = 0;
-    let addToCart = 0;
-    let checkoutStarted = 0;
-    let purchases = 0;
-
-    for (const evt of events) {
-      if (evt.eventType === 'PRODUCT_VIEW') productViews++;
-      else if (evt.eventType === 'ADD_TO_CART') addToCart++;
-      else if (evt.eventType === 'CHECKOUT_STARTED') checkoutStarted++;
-      else if (evt.eventType === 'PURCHASE_COMPLETED') purchases++;
-    }
-
-    if (purchases === 0) purchases = paidOrders;
-    if (checkoutStarted === 0) checkoutStarted = Math.max(totalOrders, purchases);
-    if (addToCart === 0) addToCart = Math.max(checkoutStarted * 2, 8);
-    if (productViews === 0) productViews = Math.max(addToCart * 4, 25);
+    const periodStart = new Date(Date.now() - ( [7, 30, 90].includes(days) ? days : 30) * 24 * 60 * 60 * 1000);
+    const eventWhere = { createdAt: { gte: periodStart } };
+    const [productViews, addToCart, checkoutStarted, purchases, traffic] = await Promise.all([
+      prisma.analyticsEvent.count({ where: { ...eventWhere, eventType: 'PRODUCT_VIEW' } }),
+      prisma.analyticsEvent.count({ where: { ...eventWhere, eventType: 'ADD_TO_CART' } }),
+      prisma.analyticsEvent.count({ where: { ...eventWhere, eventType: 'CHECKOUT_STARTED' } }),
+      prisma.analyticsEvent.count({ where: { ...eventWhere, eventType: 'PURCHASE_COMPLETED' } }),
+      this.getTrafficSummary(days),
+    ]);
 
     const viewToCartPercent = productViews > 0 ? Math.round((addToCart / productViews) * 100) : 0;
     const cartToCheckoutPercent = addToCart > 0 ? Math.round((checkoutStarted / addToCart) * 100) : 0;
@@ -403,6 +441,7 @@ export class AnalyticsService {
         cartToCheckoutPercent,
         checkoutToPurchasePercent,
       },
+      traffic,
     };
   }
 }

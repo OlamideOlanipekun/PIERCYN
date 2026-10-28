@@ -3,6 +3,8 @@ import { prisma } from '../db/prisma';
 export interface EventData {
   eventType: string;
   sessionId?: string;
+  visitorId?: string;
+  path?: string;
   customerId?: string;
   productId?: string;
   variantId?: string;
@@ -24,20 +26,33 @@ export class EventService {
       purchase: 'PURCHASE_COMPLETED',
       purchase_completed: 'PURCHASE_COMPLETED',
       PURCHASE_COMPLETED: 'PURCHASE_COMPLETED',
+      page_view: 'PAGE_VIEW',
+      PAGE_VIEW: 'PAGE_VIEW',
     };
 
-    const mappedType = eventTypeMap[event.eventType] || 'PRODUCT_VIEW';
+    const mappedType = eventTypeMap[event.eventType];
+    if (!mappedType) return null;
+    let pagePath: string | undefined;
+    if (mappedType === 'PAGE_VIEW') {
+      if (!event.sessionId || !event.visitorId || !event.path || event.path.startsWith('//')) return null;
+      pagePath = event.path.split(/[?#]/, 1)[0].toLowerCase().replace(/\/+$/, '') || '/';
+      pagePath = pagePath.replace(/^\/product\//, '/products/').replace(/^\/categories\//, '/category/');
+      if (pagePath === '/new' || pagePath === '/new-in') pagePath = '/new-arrivals';
+      if (/^\/(admin|affiliate|account|cart|checkout|order|orders|track-order|order-confirmation)(\/|$)/.test(pagePath)) return null;
+    }
 
     try {
       return await prisma.analyticsEvent.create({
         data: {
           sessionId: event.sessionId,
+          visitorId: event.visitorId,
+          path: pagePath,
           customerId: event.customerId,
           productId: event.productId,
           variantId: event.variantId,
           orderId: event.orderId,
           eventType: mappedType,
-          metadata: event.metadata ? JSON.stringify(event.metadata) : undefined,
+          metadata: mappedType === 'PAGE_VIEW' ? undefined : event.metadata ? JSON.stringify(event.metadata) : undefined,
         },
       });
     } catch {
