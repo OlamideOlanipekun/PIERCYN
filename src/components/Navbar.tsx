@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { ActivePageView } from '../types';
 import { useAuth } from '../hooks/useAuth';
-import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, User, Check } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { PiercynLogo } from './PiercynLogo';
 
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="search-trigger-btn"
               onClick={() => setIsSearchOpen(true)}
-              className="w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 cursor-pointer"
+              className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 cursor-pointer"
               aria-label="Search"
             >
               <Search className="w-5 h-5 stroke-[1.75]" />
@@ -168,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <User className="w-5 h-5 stroke-[1.75]" />
               {isAuthenticated && (
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-400 flex items-center justify-center"><Check className="w-2 h-2 stroke-[3] text-[#0A0A0A]" /></span>
               )}
             </button>
 
@@ -177,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="cart-drawer-trigger-btn"
               onClick={() => setIsCartOpen(true)}
               whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-              className="h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-colors duration-300 uppercase cursor-pointer px-3.5 sm:px-5 rounded-full shadow-xs text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1.5 text-[#141414] bg-[#F2F0EB] hover:bg-white"
+              className="h-[38px] sm:h-[42px] min-h-[38px] sm:min-h-[42px] flex items-center justify-center transition-colors duration-300 uppercase cursor-pointer px-2.5 sm:px-5 rounded-full shadow-xs text-[11px] sm:text-[12px] font-semibold tracking-[0.08em] gap-1 sm:gap-1.5 text-[#141414] bg-[#F2F0EB] hover:bg-white"
               aria-label={`Shopping Bag, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
             >
               <motion.span
@@ -189,7 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[1.75]" />
               </motion.span>
-              <span className="font-sans font-semibold inline-flex items-center">
+              <span className="hidden sm:inline-flex font-sans font-semibold items-center">
                 BAG (
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
@@ -206,6 +206,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </AnimatePresence>
                 )
               </span>
+              {/* Mobile: compact count only */}
+              <span className="sm:hidden font-sans font-semibold">{cartCount}</span>
             </motion.button>
           </div>
         </div>
