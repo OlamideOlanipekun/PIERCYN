@@ -468,13 +468,57 @@ export class ProductService {
       }
   }
 
+  private static async resolveUniqueSlug(baseSlug: string, tx: any, excludeId?: string): Promise<string> {
+    let cleanSlug = (baseSlug || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    if (!cleanSlug) cleanSlug = 'product';
+
+    let candidate = cleanSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await tx.product.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+
+      if (!existing || (excludeId && existing.id === excludeId)) {
+        return candidate;
+      }
+
+      counter++;
+      candidate = `${cleanSlug}-${counter}`;
+    }
+  }
+
+  private static async resolveUniqueSku(baseSku: string, tx: any, excludeId?: string): Promise<string> {
+    let cleanSku = (baseSku || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '-').replace(/-+/g, '-');
+    if (!cleanSku) cleanSku = 'PCY-ITEM';
+
+    let candidate = cleanSku;
+    let counter = 1;
+
+    while (true) {
+      const existing = await tx.productVariant.findUnique({
+        where: { sku: candidate },
+        select: { id: true },
+      });
+
+      if (!existing || (excludeId && existing.id === excludeId)) {
+        return candidate;
+      }
+
+      counter++;
+      candidate = `${cleanSku}-${counter}`;
+    }
+  }
+
   public static async createProduct(input: CreateProductInput): Promise<EnrichedProduct> {
-    const baseSlug = slugify(input.slug || input.name) || 'product';
-    const existingSlug = await prisma.product.findUnique({ where: { slug: baseSlug }, select: { id: true } });
-    const slug = existingSlug ? `${baseSlug}-${randomUUID().slice(0, 8)}` : baseSlug;
+    const rawSlug = input.slug || slugify(input.name);
     const costPriceNGN = input.costPriceNGN ?? Math.round(input.priceNGN * 0.38);
 
-    const createWithSlug = (productSlug: string) => prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      const slug = await this.resolveUniqueSlug(rawSlug, tx);
+
       const product = await tx.product.create({
         data: {
           slug: productSlug,
@@ -512,7 +556,8 @@ export class ProductService {
       for (let idx = 0; idx < variantInputs.length; idx++) {
         const vInput = variantInputs[idx];
         const colourSlug = slugify(vInput.colour).toUpperCase().slice(0, 3);
-        const sku = vInput.sku || `PCY-${product.id.slice(-8).toUpperCase()}-${colourSlug}-${vInput.size.toUpperCase()}`;
+        const rawSku = vInput.sku || `PCY-${slugify(product.name).toUpperCase().slice(0, 8)}-${colourSlug}-${vInput.size.toUpperCase()}`;
+        const sku = await this.resolveUniqueSku(rawSku, tx);
         const stockQty = vInput.initialStock ?? 10;
 
         const variant = await tx.productVariant.create({
@@ -568,15 +613,6 @@ export class ProductService {
       });
     });
 
-    let result;
-    try {
-      result = await createWithSlug(slug);
-    } catch (error: any) {
-      const target = Array.isArray(error?.meta?.target) ? error.meta.target.join(',') : String(error?.meta?.target || '');
-      if (error?.code !== 'P2002' || !target.toLowerCase().includes('slug')) throw error;
-      result = await createWithSlug(`${baseSlug}-${randomUUID().slice(0, 8)}`);
-    }
-
     return this.mapPrismaProduct(result);
   }
 
@@ -584,13 +620,10 @@ export class ProductService {
     const data: any = { ...updates };
     delete data.variants;
 
-    const requestedSlug = updates.slug ? slugify(updates.slug) : updates.name ? slugify(updates.name) : undefined;
-    if (requestedSlug) {
-      const slugConflict = await prisma.product.findFirst({
-        where: { slug: requestedSlug, id: { not: id } },
-        select: { id: true },
-      });
-      data.slug = slugConflict ? `${requestedSlug}-${randomUUID().slice(0, 8)}` : requestedSlug;
+    if (updates.name && !updates.slug) {
+      data.slug = await this.resolveUniqueSlug(slugify(updates.name), prisma, id);
+    } else if (updates.slug) {
+      data.slug = await this.resolveUniqueSlug(updates.slug, prisma, id);
     }
 
     if (updates.images !== undefined && (!Array.isArray(updates.images) || updates.images.length === 0)) {

@@ -245,7 +245,13 @@ export class ProductService {
    * Admin: Create a new product with variants and initial stock
    */
   public static createProduct(input: CreateProductInput): EnrichedProduct {
-    const slug = input.slug || this.slugify(input.name);
+    let slug = input.slug || this.slugify(input.name);
+    let counter = 1;
+    const baseSlug = slug;
+    while (Array.from(dbStore.products.values()).some((p) => p.slug === slug)) {
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
     const id = `prod-${slug}-${Date.now().toString().slice(-4)}`;
     const costPriceNGN = input.costPriceNGN ?? Math.round(input.priceNGN * 0.38);
     const now = new Date().toISOString();

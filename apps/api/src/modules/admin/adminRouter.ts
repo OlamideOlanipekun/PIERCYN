@@ -1192,6 +1192,10 @@ adminRouter.post('/products', requireAdmin, async (req: AuthenticatedAdminReques
 
     res.status(201).json({ success: true, data: created });
   } catch (err: any) {
+    if (err?.code === 'P2002') {
+      const field = Array.isArray(err.meta?.target) ? err.meta.target.join(', ') : (err.meta?.target || 'slug');
+      return res.status(409).json({ success: false, error: `A product with this ${field} already exists. Please choose a unique name or slug.` });
+    }
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
   }
@@ -1217,6 +1221,10 @@ adminRouter.patch('/products/:id', requireAdmin, async (req: AuthenticatedAdminR
 
     res.json({ success: true, data: updated });
   } catch (err: any) {
+    if (err?.code === 'P2002') {
+      const field = Array.isArray(err.meta?.target) ? err.meta.target.join(', ') : (err.meta?.target || 'slug');
+      return res.status(409).json({ success: false, error: `A product with this ${field} already exists. Please choose a unique name or slug.` });
+    }
     res.status(400).json({ success: false, error: err.message });
   }
 });
