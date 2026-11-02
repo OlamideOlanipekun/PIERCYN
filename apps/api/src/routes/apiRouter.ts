@@ -227,22 +227,24 @@ apiRouter.get('/categories/:slug/products', async (req: Request, res: Response) 
   }
 });
 
-// 2. CART
-apiRouter.get('/cart', async (req: Request, res: Response) => {
+// 2. CART (Auth-aware: binds cart items to verified customer profiles when signed in)
+apiRouter.get('/cart', optionalAuth, async (req: Request, res: Response) => {
   try {
     const sessionId = getSessionId(req);
-    const cart = await CartService.calculateCart(sessionId);
+    const customerId = req.user ? (await AuthService.resolveCustomerId(req.user.supabaseId)) || undefined : undefined;
+    const cart = await CartService.calculateCart(sessionId, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-apiRouter.post('/cart/items', async (req: Request, res: Response) => {
+apiRouter.post('/cart/items', optionalAuth, async (req: Request, res: Response) => {
   try {
     const sessionId = getSessionId(req);
+    const customerId = req.user ? (await AuthService.resolveCustomerId(req.user.supabaseId)) || undefined : undefined;
     const validated = AddToCartSchema.parse(req.body);
-    const cart = await CartService.addItem(sessionId, validated.variantId, validated.quantity);
+    const cart = await CartService.addItem(sessionId, validated.variantId, validated.quantity, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
@@ -250,11 +252,12 @@ apiRouter.post('/cart/items', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.put('/cart/items', async (req: Request, res: Response) => {
+apiRouter.put('/cart/items', optionalAuth, async (req: Request, res: Response) => {
   try {
     const sessionId = getSessionId(req);
+    const customerId = req.user ? (await AuthService.resolveCustomerId(req.user.supabaseId)) || undefined : undefined;
     const validated = UpdateCartItemSchema.parse(req.body);
-    const cart = await CartService.updateItem(sessionId, validated.variantId, validated.quantity);
+    const cart = await CartService.updateItem(sessionId, validated.variantId, validated.quantity, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
@@ -262,19 +265,21 @@ apiRouter.put('/cart/items', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.delete('/cart/items/:variantId', async (req: Request, res: Response) => {
+apiRouter.delete('/cart/items/:variantId', optionalAuth, async (req: Request, res: Response) => {
   try {
     const sessionId = getSessionId(req);
-    const cart = await CartService.removeItem(sessionId, req.params.variantId);
+    const customerId = req.user ? (await AuthService.resolveCustomerId(req.user.supabaseId)) || undefined : undefined;
+    const cart = await CartService.removeItem(sessionId, req.params.variantId, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
-apiRouter.delete('/cart', async (req: Request, res: Response) => {
+apiRouter.delete('/cart', optionalAuth, async (req: Request, res: Response) => {
   const sessionId = getSessionId(req);
-  await CartService.clearCart(sessionId);
+  const customerId = req.user ? (await AuthService.resolveCustomerId(req.user.supabaseId)) || undefined : undefined;
+  await CartService.clearCart(sessionId, customerId);
   res.json({ success: true, message: 'Cart cleared' });
 });
 

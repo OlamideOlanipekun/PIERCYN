@@ -114,14 +114,66 @@ export class CartService {
     };
   }
 
-  public static async getOrCreateCart(sessionId: string) {
+  public static async getOrCreateCart(sessionId: string, customerId?: string) {
     const expiresAt = new Date(Date.now() + COMMERCE_CONFIG.LIMITS.CART_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 
+    // 1. If customerId is provided, first look for the customer's active cart
+    if (customerId) {
+      let customerCart = await prisma.cart.findFirst({
+        where: { customerId, status: 'ACTIVE' },
+        include: { items: true },
+      });
+
+      if (customerCart) {
+        // If there was also a separate guest cart for this sessionId, merge its items into the customer cart
+        if (sessionId && customerCart.sessionId !== sessionId) {
+          const guestCart = await prisma.cart.findUnique({
+            where: { sessionId },
+            include: { items: true },
+          });
+
+          if (guestCart && guestCart.id !== customerCart.id && guestCart.items.length > 0) {
+            for (const gItem of guestCart.items) {
+              const existing = customerCart.items.find((i) => i.variantId === gItem.variantId);
+              if (existing) {
+                await prisma.cartItem.update({
+                  where: { id: existing.id },
+                  data: { quantity: Math.min(existing.quantity + gItem.quantity, 10) },
+                });
+              } else {
+                await prisma.cartItem.create({
+                  data: {
+                    cartId: customerCart.id,
+                    variantId: gItem.variantId,
+                    quantity: gItem.quantity,
+                  },
+                });
+              }
+            }
+            await prisma.cart.delete({ where: { id: guestCart.id } });
+          }
+
+          // Point the customer cart to this active session
+          customerCart = await prisma.cart.update({
+            where: { id: customerCart.id },
+            data: { sessionId, expiresAt },
+            include: { items: true },
+          });
+        }
+        return customerCart;
+      }
+    }
+
+    // 2. Otherwise find or create by sessionId, attaching customerId if authenticated
     return prisma.cart.upsert({
       where: { sessionId },
-      update: { expiresAt },
+      update: {
+        expiresAt,
+        ...(customerId ? { customerId } : {}),
+      },
       create: {
         sessionId,
+        customerId: customerId || null,
         expiresAt,
         status: 'ACTIVE',
       },
@@ -131,8 +183,8 @@ export class CartService {
     });
   }
 
-  public static async calculateCart(sessionId: string): Promise<CalculatedCart> {
-    const cart = await this.getOrCreateCart(sessionId);
+  public static async calculateCart(sessionId: string, customerId?: string): Promise<CalculatedCart> {
+    const cart = await this.getOrCreateCart(sessionId, customerId);
     const cartItems = await prisma.cartItem.findMany({
       where: { cartId: cart.id },
     });
@@ -146,9 +198,10 @@ export class CartService {
   public static async addItem(
     sessionId: string,
     variantId: string,
-    quantity: number = 1
+    quantity: number = 1,
+    customerId?: string
   ): Promise<CalculatedCart> {
-    const cart = await this.getOrCreateCart(sessionId);
+    const cart = await this.getOrCreateCart(sessionId, customerId);
     const variant = await ProductService.getVariantByIdOrSku(variantId);
 
     if (!variant) {
@@ -187,15 +240,16 @@ export class CartService {
       });
     }
 
-    return this.calculateCart(sessionId);
+    return this.calculateCart(sessionId, customerId);
   }
 
   public static async updateItem(
     sessionId: string,
     variantId: string,
-    quantity: number
+    quantity: number,
+    customerId?: string
   ): Promise<CalculatedCart> {
-    const cart = await this.getOrCreateCart(sessionId);
+    const cart = await this.getOrCreateCart(sessionId, customerId);
     const variant = await ProductService.getVariantByIdOrSku(variantId);
 
     if (!variant) {
@@ -229,17 +283,17 @@ export class CartService {
       });
     }
 
-    return this.calculateCart(sessionId);
+    return this.calculateCart(sessionId, customerId);
   }
 
-  public static async removeItem(sessionId: string, variantId: string): Promise<CalculatedCart> {
-    return this.updateItem(sessionId, variantId, 0);
+  public static async removeItem(sessionId: string, variantId: string, customerId?: string): Promise<CalculatedCart> {
+    return this.updateItem(sessionId, variantId, 0, customerId);
   }
 
-  public static async clearCart(sessionId: string): Promise<void> {
-    const cart = await prisma.cart.findUnique({
-      where: { sessionId },
-    });
+  public static async clearCart(sessionId: string, customerId?: string): Promise<void> {
+    const cart = customerId
+      ? await prisma.cart.findFirst({ where: { customerId, status: 'ACTIVE' } })
+      : await prisma.cart.findUnique({ where: { sessionId } });
 
     if (cart) {
       await prisma.cartItem.deleteMany({

@@ -242,7 +242,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return catalogService.getProductBySlug(cleanSlug);
   }, [products]);
 
-  // Initialize server cart from GET /api/cart
+  // Initialize & sync server cart from GET /api/cart
   useEffect(() => {
     const initServerCart = async () => {
       try {
@@ -253,6 +253,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCart(items);
           setCartSubtotal(calculated.subtotalNGN || 0);
           setCartCount(calculated.itemCount || 0);
+        } else {
+          setCart([]);
+          setCartSubtotal(0);
+          setCartCount(0);
         }
       } catch {
         // Fallback
@@ -260,6 +264,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     initServerCart();
+
+    const handleAuthChange = () => {
+      initServerCart();
+    };
+    window.addEventListener('piercyn_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('piercyn_auth_changed', handleAuthChange);
   }, [products]);
 
   // NOTE: Public order listing is not available via the API (admin-only).

@@ -131,13 +131,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(currentSession?.user ?? null);
 
       if (currentSession) {
+        localStorage.setItem('piercyn_auth_token', currentSession.access_token);
         syncWithBackend(currentSession);
       } else {
         localStorage.removeItem('piercyn_auth_token');
+        localStorage.removeItem('piercyn_session_id');
         setCustomer(null);
         syncedUserIdRef.current = null;
       }
       setLoading(false);
+      window.dispatchEvent(new Event('piercyn_auth_changed'));
     });
 
     return () => {
@@ -173,10 +176,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       localStorage.removeItem('piercyn_auth_token');
       localStorage.removeItem('piercyn_user');
+      localStorage.removeItem('piercyn_session_id');
       setUser(null);
       setSession(null);
       setCustomer(null);
       syncedUserIdRef.current = null;
+      window.dispatchEvent(new Event('piercyn_auth_changed'));
     }
   }, []);
 
