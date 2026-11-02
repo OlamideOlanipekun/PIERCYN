@@ -10,38 +10,58 @@ export const AuthCallback: React.FC<{ onComplete?: (path: string) => void }> = (
 
     const handleCallback = async () => {
       try {
-        // Wait for Supabase to parse OAuth tokens from the callback URL
-        const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session) {
-          // If session wasn't immediately in getSession, listen for onAuthStateChange
-          const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session && active) {
-              authListener.subscription.unsubscribe();
-              completeNavigation(session.access_token);
-            }
-          });
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        const error = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
 
-          // Timeout fallback
-          setTimeout(() => {
-            if (active && !data.session) {
-              authListener.subscription.unsubscribe();
-              window.history.pushState({}, '', '/login?error=auth_failed');
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }
-          }, 3500);
+        if (error) {
+          throw new Error(errorDescription || error);
+        }
+
+        // 1. If PKCE code is present, exchange it for a session
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+          if (data?.session && active) {
+            completeNavigation(data.session.access_token);
+            return;
+          }
+        }
+
+        // 2. Check if a session already exists
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        if (data?.session && active) {
+          completeNavigation(data.session.access_token);
           return;
         }
 
-        if (active) {
-          completeNavigation(data.session.access_token);
-        }
+        // 3. Fallback: Listen for onAuthStateChange
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session && active) {
+            authListener.subscription.unsubscribe();
+            completeNavigation(session.access_token);
+          }
+        });
+
+        // 4. Timeout fallback
+        setTimeout(() => {
+          if (active) {
+            authListener.subscription.unsubscribe();
+            window.history.pushState({}, '', '/login?error=auth_timeout');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
+        }, 5000);
       } catch (err: any) {
+        console.error('[AuthCallback error]', err);
         if (active) {
           setErrorStatus(err.message || 'Authentication error.');
           setTimeout(() => {
-            window.history.pushState({}, '', '/login?error=auth_failed');
+            window.history.pushState({}, '', `/login?error=${encodeURIComponent(err.message || 'auth_failed')}`);
             window.dispatchEvent(new PopStateEvent('popstate'));
-          }, 2000);
+          }, 2500);
         }
       }
     };
@@ -79,4 +99,5 @@ export const AuthCallback: React.FC<{ onComplete?: (path: string) => void }> = (
     />
   );
 };
+
 export default AuthCallback;
