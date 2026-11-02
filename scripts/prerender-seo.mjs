@@ -216,7 +216,7 @@ async function main() {
     await writeRoute(template, routePath, makePage(template, { title, description, path: routePath, image: matches.find((product) => product.images?.[0])?.images?.[0] || primaryImage, body }));
   }
 
-  const privateRoutes = ['/account', '/cart', '/checkout', '/search', '/track-order', '/order-confirmation', '/admin', '/affiliate'];
+  const privateRoutes = ['/account', '/cart', '/checkout', '/search', '/track-order', '/order-confirmation', '/admin', '/affiliate', '/login', '/signin', '/auth/callback'];
   for (const routePath of privateRoutes) {
     const name = routePath.slice(1).replaceAll('-', ' ');
     const rendered = makePage(template, { title: `${name.replace(/\b\w/g, (letter) => letter.toUpperCase())} | PIERCYN`, description: 'This PIERCYN store page is intended for customer use.', path: routePath, noindex: true, image: primaryImage, body: `<main><h1>${escapeHtml(name)}</h1></main>` });
