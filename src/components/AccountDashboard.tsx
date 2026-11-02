@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
+import { useAuth } from '../hooks/useAuth';
 import { Product } from '../types';
 import { formatNGN } from '../utils/currency';
+import { GoogleSignInButton } from './auth/GoogleSignInButton';
 import { 
   Package, 
   Truck, 
@@ -13,7 +15,11 @@ import {
   ChevronRight, 
   LogOut, 
   User, 
-  MapPin 
+  MapPin,
+  ShieldCheck,
+  PlusCircle,
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 
 interface AccountDashboardProps {
@@ -25,68 +31,150 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
   onSelectPage,
   onViewProduct,
 }) => {
-  const { products, user, logout, wishlist, orders, addToCart, isWishlisted, toggleWishlist } = useShop();
-  const [activeTab, setActiveTab] = useState<'orders' | 'tracking' | 'wishlist'>('orders');
+  const { products, wishlist, orders: localOrders, addToCart } = useShop();
+  const { user, customer, isAuthenticated, loading: authLoading, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState<'orders' | 'tracking' | 'wishlist' | 'claim'>('orders');
+  
+  // Real orders loaded from server for authenticated user
+  const [serverOrders, setServerOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [claimOrderNumber, setClaimOrderNumber] = useState('');
+  const [claimStatus, setClaimStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
 
-  const displayName = user?.firstName || 'Atelier Client';
-  const userCity = user?.city || 'Victoria Island, Lagos';
+  const token = localStorage.getItem('piercyn_auth_token');
 
-  // Mock initial tracking order if none in state
-  const currentTrackingOrder = orders[0] || {
-    id: 'ord-mock-01',
-    orderNumber: 'PCY-849201',
-    orderStatus: 'PROCESSING',
-    createdAt: new Date().toISOString(),
-    totalNGN: 68200,
-    items: [
-      {
-        productId: 'cargo-pant',
-        productName: 'CARGO PANT',
-        color: 'Pitch Black',
-        size: '32L',
-        quantity: 1,
-        unitPriceNGN: 35000,
-        totalPriceNGN: 35000,
-        image: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=600&auto=format&fit=crop',
-      },
-      {
-        productId: 'oversized-tee',
-        productName: 'OVERSIZED TEE',
-        color: 'Pitch Black',
-        size: 'L',
-        quantity: 1,
-        unitPriceNGN: 23200,
-        totalPriceNGN: 23200,
-        image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600&auto=format&fit=crop',
+  // Fetch real authenticated customer orders
+  const fetchCustomerOrders = async () => {
+    if (!token) return;
+    setIsLoadingOrders(true);
+    try {
+      const res = await fetch('/api/auth/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setServerOrders(data.data);
       }
-    ],
-    customer: {
-      fullName: user ? `${user.firstName} ${user.lastName}` : 'Tunde Adeleke',
-      email: user?.email || 'tunde.adeleke@example.com',
-      city: userCity,
-      address: '14 Admiralty Way, Lekki Phase 1',
+    } catch (err) {
+      console.warn('[AccountDashboard] Failed to fetch customer orders:', err);
+    } finally {
+      setIsLoadingOrders(false);
     }
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCustomerOrders();
+    }
+  }, [isAuthenticated]);
+
+  const handleClaimOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!claimOrderNumber.trim() || !token) return;
+
+    setIsClaiming(true);
+    setClaimStatus(null);
+    try {
+      const res = await fetch('/api/auth/claim-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderNumber: claimOrderNumber.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setClaimStatus({ success: true, message: data.message || 'Order successfully linked to your account!' });
+        setClaimOrderNumber('');
+        fetchCustomerOrders();
+      } else {
+        setClaimStatus({ success: false, message: data.error || 'Could not claim order.' });
+      }
+    } catch {
+      setClaimStatus({ success: false, message: 'Network error claiming order. Please retry.' });
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  const displayName = customer?.firstName || user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Atelier Client';
+  const displayEmail = customer?.email || user?.email || '';
+  const avatarUrl = customer?.avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+  const defaultAddress = customer?.addresses?.find((a) => a.isDefault) || customer?.addresses?.[0];
+  const userCity = defaultAddress ? `${defaultAddress.city}, ${defaultAddress.state}` : 'Lagos, Nigeria';
+
+  // Combine server orders with any locally-created orders in the active session
+  const combinedOrders = serverOrders.length > 0 ? serverOrders : localOrders;
+  const currentTrackingOrder = combinedOrders[0];
+
   const wishlistedProducts = products.filter((p) => wishlist.includes(p.id));
   const recentlyViewedProducts = products.slice(0, 4);
+
+  // If user is not authenticated, show welcoming Google Sign-In state
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="py-16 sm:py-24 bg-[#0A0A0A] text-[#F2F0EB] min-h-[80vh] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#121212] border border-[#262626] p-8 sm:p-10 shadow-2xl text-center">
+          <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#A8A59D] block mb-2">
+            CLIENT PORTAL
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-sans text-white mb-3">
+            SIGN IN TO PIERCYN
+          </h1>
+          <p className="text-xs text-[#8E8B82] leading-relaxed mb-8">
+            Access your order history, delivery tracking, saved atelier addresses, and private VIP collection drops.
+          </p>
+
+          <GoogleSignInButton
+            redirectTo="/account"
+            label="Sign in with Google"
+          />
+
+          <div className="mt-8 pt-8 border-t border-[#222222] space-y-3 text-left">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-4 h-4 text-[#A8A59D] flex-shrink-0" />
+              <span className="text-[11px] text-[#A8A59D]">Instant login via Google OAuth — no password needed</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Package className="w-4 h-4 text-[#A8A59D] flex-shrink-0" />
+              <span className="text-[11px] text-[#A8A59D]">Automatic sync with past purchases under your email</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-10 sm:py-16 bg-[#F5F3EE] text-[#111111] min-h-[80vh]">
       <div className="piercyn-container max-w-6xl">
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 border-b border-[#E2DFD7] gap-4">
-          <div>
-            <span className="text-[11px] font-mono tracking-widest uppercase text-[#737069] block mb-1">
-              CUSTOMER ACCOUNT
-            </span>
-            <h1 className="font-sans text-3xl sm:text-4xl font-extrabold tracking-tight text-[#111111]">
-              Welcome, {displayName}!
-            </h1>
-            <p className="text-xs sm:text-sm text-[#737069] mt-1 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" />
-              {userCity} • VIP Atelier Member
-            </p>
+          <div className="flex items-center gap-4">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-14 h-14 rounded-full object-cover border-2 border-[#111111]/10 shadow-sm"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-[#111111] text-[#F5F3EE] font-mono font-bold text-lg flex items-center justify-center">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <span className="text-[11px] font-mono tracking-widest uppercase text-[#737069] block mb-1">
+                ATELIER CLIENT • GOOGLE VERIFIED
+              </span>
+              <h1 className="font-sans text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111111]">
+                Welcome, {displayName}!
+              </h1>
+              <p className="text-xs text-[#737069] mt-0.5 flex items-center gap-1.5 font-mono">
+                {displayEmail} • {userCity}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -98,7 +186,7 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
               <span>SHOP DROPS</span>
             </button>
             <button
-              onClick={logout}
+              onClick={() => signOut()}
               className="h-10 px-4 rounded-full border border-[#E2DFD7] hover:border-[#111111] text-xs font-semibold text-[#737069] hover:text-[#111111] transition-colors cursor-pointer flex items-center gap-1.5"
               title="Sign Out"
             >
@@ -113,205 +201,258 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
           {/* Main Content Area (Tabs) */}
           <div className="lg:col-span-8 space-y-6">
             {/* Tabs Navigation */}
-            <div className="flex items-center gap-2 p-1.5 bg-[#ECE8E1] rounded-2xl">
+            <div className="flex items-center gap-2 p-1.5 bg-[#ECE8E1] rounded-2xl flex-wrap">
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 'orders'
                     ? 'bg-[#FFFFFF] text-[#111111] shadow-xs'
                     : 'text-[#737069] hover:text-[#111111]'
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>Order History ({orders.length || 1})</span>
+                <span>Orders ({combinedOrders.length})</span>
               </button>
               <button
                 onClick={() => setActiveTab('tracking')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 'tracking'
                     ? 'bg-[#FFFFFF] text-[#111111] shadow-xs'
                     : 'text-[#737069] hover:text-[#111111]'
                 }`}
               >
                 <Truck className="w-4 h-4" />
-                <span>Tracking</span>
+                <span>Active Track</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('claim')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'claim'
+                    ? 'bg-[#FFFFFF] text-[#111111] shadow-xs'
+                    : 'text-[#737069] hover:text-[#111111]'
+                }`}
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Claim Past Order</span>
               </button>
               <button
                 onClick={() => setActiveTab('wishlist')}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 'wishlist'
                     ? 'bg-[#FFFFFF] text-[#111111] shadow-xs'
                     : 'text-[#737069] hover:text-[#111111]'
                 }`}
               >
                 <Heart className="w-4 h-4" />
-                <span>Wishlist ({wishlist.length})</span>
+                <span>Saved ({wishlist.length})</span>
               </button>
             </div>
 
-            {/* Tab 1: Order History */}
+            {/* TAB 1: ORDER HISTORY */}
             {activeTab === 'orders' && (
               <div className="space-y-4">
-                <div className="p-5 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7]">
-                  <div className="flex flex-wrap items-center justify-between pb-4 border-b border-[#E2DFD7] gap-2">
-                    <div>
-                      <span className="font-mono text-xs font-bold text-[#111111]">
-                        Order #{currentTrackingOrder.orderNumber}
-                      </span>
-                      <span className="text-[11px] text-[#737069] block">
-                        Placed on {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono font-bold tracking-wider uppercase">
-                        {currentTrackingOrder.orderStatus}
-                      </span>
-                      <span className="font-mono text-sm font-bold text-[#111111]">
-                        {formatNGN(currentTrackingOrder.totalNGN)}
-                      </span>
-                    </div>
+                {isLoadingOrders ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-[#E2DFD7] text-xs font-mono text-[#737069]">
+                    Loading verified orders…
                   </div>
-
-                  {/* Order Items */}
-                  <div className="divide-y divide-[#F5F3EE] my-3">
-                    {currentTrackingOrder.items.map((item: any, idx: number) => (
-                      <div key={idx} className="py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={item.image}
-                            alt={item.productName}
-                            className="w-12 h-14 object-cover rounded-lg bg-[#ECE8E1]"
-                          />
-                          <div>
-                            <h4 className="font-sans text-xs font-bold text-[#111111]">
-                              {item.productName}
-                            </h4>
-                            <p className="text-[11px] font-mono text-[#737069]">
-                              {item.color} • Size {item.size} • Qty {item.quantity}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="font-mono text-xs font-semibold text-[#111111]">
-                          {formatNGN(item.totalPriceNGN)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-3 border-t border-[#E2DFD7] flex items-center justify-between text-xs">
-                    <span className="text-[#737069]">Shipping to: {currentTrackingOrder.customer?.address || 'Lekki Phase 1, Lagos'}</span>
-                    <button
-                      onClick={() => setActiveTab('tracking')}
-                      className="font-bold text-[#111111] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      Track Shipment <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: Live Tracking */}
-            {activeTab === 'tracking' && (
-              <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-[#E2DFD7]">
-                  <div>
-                    <h3 className="font-sans text-sm font-bold uppercase text-[#111111]">
-                      Live Dispatch Tracking
-                    </h3>
-                    <p className="text-xs font-mono text-[#737069] mt-0.5">
-                      Tracking ID: NG-PCY-98234-LAGOS
+                ) : combinedOrders.length === 0 ? (
+                  <div className="p-12 text-center bg-white rounded-2xl border border-[#E2DFD7]">
+                    <Package className="w-10 h-10 text-[#A8A59D] mx-auto mb-3" />
+                    <h3 className="font-sans text-base font-bold text-[#111111]">No purchases yet</h3>
+                    <p className="text-xs text-[#737069] max-w-sm mx-auto mt-1 mb-6">
+                      Pieces you purchase will automatically show up here with live status tracking and invoices.
                     </p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold uppercase">
-                    On Schedule
-                  </span>
-                </div>
-
-                {/* Timeline */}
-                <div className="space-y-6 relative pl-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E2DFD7]">
-                  <div className="relative">
-                    <span className="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-emerald-600 border-2 border-white flex items-center justify-center text-white text-[8px]">
-                      ✓
-                    </span>
-                    <h4 className="font-sans text-xs font-bold text-[#111111]">
-                      Order Confirmed & Atelier Handcrafted
-                    </h4>
-                    <p className="text-[11px] text-[#737069] mt-0.5">
-                      Pieces inspected and packaged at Lagos HQ.
-                    </p>
-                  </div>
-
-                  <div className="relative">
-                    <span className="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-emerald-600 border-2 border-white flex items-center justify-center text-white text-[8px]">
-                      ✓
-                    </span>
-                    <h4 className="font-sans text-xs font-bold text-[#111111]">
-                      Handed over to Express Courier
-                    </h4>
-                    <p className="text-[11px] text-[#737069] mt-0.5">
-                      Dispatch Rider assigned • Contact: +234 812 000 9999
-                    </p>
-                  </div>
-
-                  <div className="relative opacity-60">
-                    <span className="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-[#E2DFD7] border-2 border-white" />
-                    <h4 className="font-sans text-xs font-bold text-[#111111]">
-                      Out for Delivery (Victoria Island / Lekki)
-                    </h4>
-                    <p className="text-[11px] text-[#737069] mt-0.5">
-                      Estimated Arrival: Today, before 5:00 PM
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Wishlist */}
-            {activeTab === 'wishlist' && (
-              <div className="space-y-4">
-                {wishlistedProducts.length === 0 ? (
-                  <div className="p-10 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] text-center">
-                    <Heart className="w-8 h-8 text-[#737069] mx-auto mb-2 opacity-50" />
-                    <p className="text-sm font-semibold text-[#111111]">Your wishlist is currently empty</p>
-                    <p className="text-xs text-[#737069] mt-1 mb-4">Tap the heart on any piece to save for later.</p>
                     <button
                       onClick={() => onSelectPage('shop')}
-                      className="px-5 py-2.5 rounded-full bg-[#111111] text-[#F5F3EE] text-xs font-bold uppercase tracking-wider"
+                      className="px-6 py-2.5 rounded-full bg-[#111111] text-[#F5F3EE] text-xs font-bold uppercase tracking-wider hover:bg-black"
                     >
-                      EXPLORE NEW DROPS
+                      Explore New Arrivals
                     </button>
                   </div>
                 ) : (
+                  combinedOrders.map((ord: any) => (
+                    <div
+                      key={ord.id || ord.orderNumber}
+                      className="p-5 sm:p-6 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-4 hover:border-[#111111]/30 transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#F0ECE1] gap-2">
+                        <div>
+                          <span className="text-[11px] font-mono font-bold text-[#111111]">
+                            ORDER #{ord.orderNumber}
+                          </span>
+                          <span className="text-[11px] text-[#737069] ml-2 font-mono">
+                            {new Date(ord.createdAt).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase font-bold tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {ord.status || ord.orderStatus || 'CONFIRMED'}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-[#111111]">
+                            {formatNGN(ord.totalNGN)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="divide-y divide-[#F0ECE1]">
+                        {ord.items?.map((it: any, idx: number) => (
+                          <div key={idx} className="py-3 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              {it.image && (
+                                <img
+                                  src={it.image}
+                                  alt={it.productName}
+                                  className="w-12 h-14 object-cover rounded bg-[#F5F3EE]"
+                                />
+                              )}
+                              <div>
+                                <h4 className="font-sans text-xs font-bold text-[#111111]">
+                                  {it.productName}
+                                </h4>
+                                <span className="text-[11px] text-[#737069] font-mono">
+                                  Size: {it.size} • Qty: {it.quantity}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="font-mono text-xs text-[#111111]">
+                              {formatNGN(it.totalPriceNGN || it.unitPriceNGN * it.quantity)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-xs text-[#737069]">
+                        <span className="font-mono text-[11px]">
+                          Delivery: {ord.deliveryState || ord.customer?.city || 'Nationwide Express'}
+                        </span>
+                        <a
+                          href={`/track-order?orderNumber=${ord.orderNumber}`}
+                          className="font-mono text-[11px] font-bold text-[#111111] hover:underline flex items-center gap-1"
+                        >
+                          Track Shipment <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: ACTIVE TRACKING */}
+            {activeTab === 'tracking' && (
+              <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-[#F0ECE1]">
+                  <div>
+                    <span className="text-[11px] font-mono uppercase text-[#737069]">Active Shipment</span>
+                    <h3 className="font-sans text-base font-bold text-[#111111]">
+                      Order #{currentTrackingOrder?.orderNumber || 'PCY-RECENT'}
+                    </h3>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-[#111111] text-[#F5F3EE] text-[10px] font-mono uppercase tracking-widest font-bold">
+                    IN TRANSIT
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-[#111111]">Order Verified & Atelier Prepared</p>
+                      <p className="text-[11px] text-[#737069]">Handcrafted and inspected by PIERCYN Quality Team</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Truck className="w-5 h-5 text-[#111111] mt-0.5 animate-bounce" />
+                    <div>
+                      <p className="text-xs font-bold text-[#111111]">Dispatch via Dedicated Courier</p>
+                      <p className="text-[11px] text-[#737069]">En route to {userCity}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: CLAIM PAST ORDER */}
+            {activeTab === 'claim' && (
+              <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-5">
+                <div>
+                  <h3 className="font-sans text-base font-bold text-[#111111]">
+                    Claim Past Guest Purchase
+                  </h3>
+                  <p className="text-xs text-[#737069] mt-1">
+                    Did you place an order before signing into Google? Enter your Order Number (e.g., PC-000001) to link it to your verified account.
+                  </p>
+                </div>
+
+                {claimStatus && (
+                  <div
+                    className={`p-3.5 rounded-xl flex items-start gap-2.5 text-xs ${
+                      claimStatus.success
+                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                        : 'bg-red-50 text-red-900 border border-red-200'
+                    }`}
+                  >
+                    {claimStatus.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <span>{claimStatus.message}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleClaimOrder} className="flex gap-2.5">
+                  <input
+                    type="text"
+                    value={claimOrderNumber}
+                    onChange={(e) => setClaimOrderNumber(e.target.value)}
+                    placeholder="e.g. PC-000123"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-[#E2DFD7] text-xs font-mono uppercase tracking-wider focus:outline-none focus:border-[#111111] bg-white text-[#111111]"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isClaiming}
+                    className="px-5 py-2.5 bg-[#111111] hover:bg-black text-[#F5F3EE] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-60 cursor-pointer"
+                  >
+                    {isClaiming ? 'Claiming…' : 'Link Order'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB 4: SAVED WISHLIST */}
+            {activeTab === 'wishlist' && (
+              <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7]">
+                <h3 className="font-sans text-base font-bold text-[#111111] mb-4">
+                  Saved Pieces ({wishlist.length})
+                </h3>
+                {wishlistedProducts.length === 0 ? (
+                  <p className="text-xs text-[#737069]">No saved pieces yet. Browse drops and click the heart icon to save.</p>
+                ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {wishlistedProducts.map((p) => (
-                      <div
-                        key={p.id}
-                        className="bg-[#FFFFFF] rounded-xl border border-[#E2DFD7] p-3 flex flex-col justify-between"
-                      >
-                        <div
-                          onClick={() => onViewProduct(p)}
-                          className="aspect-[3/4] rounded-lg overflow-hidden bg-[#ECE8E1] mb-2.5 cursor-pointer"
+                      <div key={p.id} className="group relative">
+                        <div className="aspect-[3/4] rounded-lg overflow-hidden bg-[#ECE8E1] mb-2">
+                          <img
+                            src={p.images[0]}
+                            alt={p.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <h4 className="font-sans text-xs font-bold text-[#111111] truncate">{p.name}</h4>
+                        <span className="font-mono text-xs font-bold text-[#737069]">{formatNGN(p.priceNGN)}</span>
+                        <button
+                          onClick={() => addToCart(p)}
+                          className="w-full mt-2 py-1.5 bg-[#111111] text-[#F5F3EE] text-[10px] font-bold uppercase rounded-lg hover:bg-black"
                         >
-                          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                          <h4
-                            onClick={() => onViewProduct(p)}
-                            className="font-sans text-xs font-bold text-[#111111] truncate cursor-pointer hover:underline"
-                          >
-                            {p.name}
-                          </h4>
-                          <span className="font-mono text-xs font-bold text-[#111111] mt-0.5 block">
-                            {formatNGN(p.priceNGN)}
-                          </span>
-                          <button
-                            onClick={() => addToCart(p)}
-                            className="w-full mt-2 py-1.5 bg-[#111111] text-[#F5F3EE] text-[10px] font-bold uppercase rounded-lg hover:bg-black transition-colors"
-                          >
-                            Add to Bag
-                          </button>
-                        </div>
+                          Add to Bag
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -320,32 +461,44 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
             )}
           </div>
 
-          {/* Right Column: Style Preferences & Recently Viewed */}
+          {/* Right Column: Customer Details & Preferences */}
           <div className="lg:col-span-4 space-y-6">
-            {/* YOUR STYLE Card */}
-            <div className="p-5 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7]">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-[#111111]" />
+            {/* Account Profile Card */}
+            <div className="p-5 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-3">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-[#111111]" />
                 <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-[#111111]">
-                  YOUR STYLE PROFILE
+                  CLIENT PROFILE
                 </h3>
               </div>
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="px-3 py-1 rounded-full bg-[#111111] text-[#F5F3EE] text-[11px] font-mono">
-                    Trending
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-[#ECE8E1] text-[#111111] text-[11px] font-mono">
-                    Minimalist
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-[#ECE8E1] text-[#111111] text-[11px] font-mono">
-                    Streetwear Heavyweight
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#737069] leading-relaxed">
-                  Tailored recommendations based on your preferences: Heavy cotton tees, dark oversized hoodies, and cargo cuts.
-                </p>
+              <div className="space-y-1.5 text-xs text-[#737069]">
+                <p><strong className="text-[#111111]">Name:</strong> {displayName}</p>
+                <p><strong className="text-[#111111]">Email:</strong> {displayEmail}</p>
+                {customer?.phone && <p><strong className="text-[#111111]">Phone:</strong> {customer.phone}</p>}
+                <p><strong className="text-[#111111]">Status:</strong> VIP Atelier Access</p>
               </div>
+            </div>
+
+            {/* Saved Delivery Address Card */}
+            <div className="p-5 bg-[#FFFFFF] rounded-2xl border border-[#E2DFD7] space-y-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#111111]" />
+                <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-[#111111]">
+                  PRIMARY ADDRESS
+                </h3>
+              </div>
+              {defaultAddress ? (
+                <div className="text-xs text-[#737069] leading-relaxed">
+                  <p className="font-bold text-[#111111]">{defaultAddress.fullName}</p>
+                  <p>{defaultAddress.addressLine}</p>
+                  <p>{defaultAddress.city}, {defaultAddress.state}</p>
+                  <p>{defaultAddress.phone}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-[#737069]">
+                  Your shipping address will be saved here automatically during your next checkout.
+                </p>
+              )}
             </div>
 
             {/* RECENTLY VIEWED Grid */}
@@ -354,7 +507,7 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[#111111]" />
                   <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-[#111111]">
-                    RECENTLY VIEWED
+                    FEATURED PIECES
                   </h3>
                 </div>
                 <button
@@ -395,3 +548,4 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
     </div>
   );
 };
+export default AccountDashboard;

@@ -1,4 +1,14 @@
-import { waitUntil } from '@vercel/functions';
+type WaitUntil = (promise: Promise<any>) => void;
+let waitUntil: WaitUntil = () => {};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const vf = require('@vercel/functions');
+  if (vf && typeof vf.waitUntil === 'function') {
+    waitUntil = vf.waitUntil;
+  }
+} catch {
+  // Environment without @vercel/functions
+}
 
 export * from './types';
 export * from './emailConfig';

@@ -385,22 +385,26 @@ model InventoryTransaction {
 // ============================================================
 
 model Customer {
-  id          String    @id @default(cuid())
-  firstName   String    @default("")
-  lastName    String    @default("")
-  email       String?   @unique  // Nullable: allow phone-only checkout
-  phone       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  supabaseUserId  String?   @unique  // Supabase auth.users UUID — null for legacy guests
+  firstName       String    @default("")
+  lastName        String    @default("")
+  email           String?   @unique  // Nullable: allow phone-only checkout
+  phone           String?
+  avatarUrl       String?            // Google / Supabase profile avatar
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   addresses   Address[]
   orders      Order[]
   carts       Cart[]
   events      AnalyticsEvent[]
   reviews     ProductReview[]
+  claims      OrderClaim[]
 
   @@index([email])
   @@index([phone])
+  @@index([supabaseUserId])
 }
 
 // ============================================================
@@ -568,6 +572,7 @@ model Order {
   events         AnalyticsEvent[]
   commissions    AffiliateCommission[]
   reviews        ProductReview[]
+  claim          OrderClaim?
 
   @@index([orderNumber])
   @@index([status])
@@ -580,6 +585,28 @@ model Order {
   @@index([needsManualReview])
   @@index([affiliateId])
   @@index([affiliateCode])
+}
+
+// ============================================================
+// ORDER CLAIM
+// Handles linking past guest orders to an authenticated customer account
+// ============================================================
+
+model OrderClaim {
+  id              String    @id @default(cuid())
+  orderId         String    @unique   // one claim per order
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId      String              // who claimed it
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  claimToken      String    @unique   // high-entropy single-use token
+  tokenExpiresAt  DateTime
+  claimedAt       DateTime?           // null = pending, non-null = confirmed
+  previousOwner   String?             // snapshot of guest email before claim
+  createdAt       DateTime  @default(now())
+
+  @@index([claimToken])
+  @@index([orderId])
+  @@index([customerId])
 }
 
 // ============================================================

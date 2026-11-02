@@ -11,13 +11,15 @@ import { WebhookService } from '../modules/payments/webhookService';
 import { InventoryService } from '../modules/inventory/inventoryService';
 import { ShippingService } from '../modules/shipping/shippingService';
 import { EventService } from '../services/eventService';
-import { AuthService } from '../services/authService';
 import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
 import { prisma } from '../db/prisma';
+import { authRouter } from '../modules/auth/auth.routes';
+import { optionalAuth } from '../middleware/authenticate';
+import { AuthService } from '../modules/auth/auth.service';
 import { getWhatsAppWebhookChallenge, isValidWhatsAppWebhookSignature } from '../security/whatsappWebhook';
 import { seoFallbackRouter } from './seoFallbackRouter';
 import {
@@ -32,8 +34,6 @@ import {
   CreateOrderSchema,
   VerifyPaymentSchema,
   TrackEventSchema,
-  RegisterUserSchema,
-  LoginUserSchema,
 } from '../schemas/commerce';
 
 export const apiRouter = Router();
@@ -41,6 +41,7 @@ export const apiRouter = Router();
 apiRouter.use('/seo', seoFallbackRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
+apiRouter.use('/auth', authRouter);
 apiRouter.use('/', reviewRouter);
 
 /** Meta WhatsApp Cloud API webhook verification and signed-event receiver. */
@@ -129,14 +130,6 @@ const getSessionId = (req: Request): string => {
   // Never share a catch-all guest session: an unidentified client gets an
   // isolated, ephemeral session instead of another customer's cart.
   return `anon_${crypto.randomUUID()}`;
-};
-
-const getAuthToken = (req: Request): string => {
-  const authHeader = req.headers['authorization'];
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7).trim();
-  }
-  return (req.headers['x-auth-token'] as string) || '';
 };
 
 export { createOrderAccessToken, verifyOrderAccessToken } from '../security/orderAccessToken';
@@ -310,7 +303,7 @@ apiRouter.post('/checkout/quote', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/orders', async (req: Request, res: Response) => {
+apiRouter.post('/orders', optionalAuth, async (req: Request, res: Response) => {
   try {
     if (!isOrderAccessTokenConfigured()) {
       return res.status(503).json({ success: false, error: 'Guest order tracking is not configured.' });
@@ -319,6 +312,18 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
     const validated = CreateOrderSchema.parse(req.body);
     if (process.env.NODE_ENV === 'production' && validated.paymentMethod === 'mock') {
       return res.status(400).json({ success: false, error: 'Mock payments are not available in production.' });
+    }
+
+    // If an authenticated user placed the order, ensure customer profile is linked
+    if (req.user) {
+      const customer = await AuthService.syncCustomer({
+        user: req.user,
+        fullName: validated.customer.fullName,
+      });
+      if (customer) {
+        // Link customer email and details
+        validated.customer.email = req.user.email;
+      }
     }
 
     const order = await CheckoutService.createOrder({
@@ -333,20 +338,37 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/orders', (_req: Request, res: Response) => {
-  res.status(404).json({ success: false, error: 'Order listing is available only to authorized administrators.' });
+apiRouter.get('/orders', optionalAuth, async (req: Request, res: Response) => {
+  if (req.user) {
+    const customerId = await AuthService.resolveCustomerId(req.user.supabaseId);
+    if (customerId) {
+      const orders = await AuthService.getCustomerOrders(customerId);
+      return res.json({ success: true, data: orders });
+    }
+  }
+  res.status(404).json({ success: false, error: 'Order listing is available only to authorized clients.' });
 });
 
-apiRouter.get('/orders/:id', async (req: Request, res: Response) => {
+apiRouter.get('/orders/:id', optionalAuth, async (req: Request, res: Response) => {
   const authorizedOrderId = getAuthorizedOrderId(req);
-  if (!authorizedOrderId) {
-    return res.status(404).json({ success: false, error: 'Order not found' });
+  const requestedId = req.params.id;
+
+  // 1. If valid guest access token matches
+  if (authorizedOrderId && authorizedOrderId === requestedId) {
+    const order = await OrderService.getPublicOrderDetail(requestedId);
+    if (order) return res.json({ success: true, data: order });
   }
-  const order = await OrderService.getPublicOrderDetail(req.params.id);
-  if (!order || order.id !== authorizedOrderId) {
-    return res.status(404).json({ success: false, error: 'Order not found' });
+
+  // 2. If authenticated customer owns this order
+  if (req.user) {
+    const customerId = await AuthService.resolveCustomerId(req.user.supabaseId);
+    const order = await OrderService.getPublicOrderDetail(requestedId);
+    if (order && (order.customerId === customerId || order.customerEmail.toLowerCase() === req.user.email.toLowerCase())) {
+      return res.json({ success: true, data: order });
+    }
   }
-  res.json({ success: true, data: order });
+
+  return res.status(404).json({ success: false, error: 'Order not found' });
 });
 
 // 5. PAYMENTS & WEBHOOKS
@@ -556,47 +578,8 @@ apiRouter.get('/analytics/overview', requireAdmin, async (_req: Request, res: Re
   }
 });
 
-// 8. AUTH
-apiRouter.post('/auth/register', async (req: Request, res: Response) => {
-  try {
-    const validated = RegisterUserSchema.parse(req.body);
-    const result = await AuthService.register(validated);
-    res.json({ success: true, data: result });
-  } catch (err: any) {
-    const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
-  }
-});
-
-apiRouter.post('/auth/login', async (req: Request, res: Response) => {
-  try {
-    const validated = LoginUserSchema.parse(req.body);
-    const result = await AuthService.login(validated);
-    res.json({ success: true, data: result });
-  } catch (err: any) {
-    const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(401).json({ success: false, error: msg });
-  }
-});
-
-apiRouter.get('/auth/me', async (req: Request, res: Response) => {
-  try {
-    const token = getAuthToken(req);
-    if (!token) {
-      return res.status(401).json({ success: false, error: 'Unauthenticated' });
-    }
-    const user = await AuthService.getUserByToken(token);
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Session expired. Please log in again.' });
-    }
-    res.json({ success: true, data: user });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-apiRouter.post('/auth/logout', (req: Request, res: Response) => {
-  const token = getAuthToken(req);
-  AuthService.logout(token);
+// 8. AUTH (Supabase-backed router mounted at /auth above)
+// Legacy endpoints return informative guidance for API backwards-compatibility
+apiRouter.post('/auth/logout', (_req: Request, res: Response) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });

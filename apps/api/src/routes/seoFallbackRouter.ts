@@ -219,7 +219,7 @@ async function renderCatalogLanding(pathname: string, template: string, res: Res
   return true;
 }
 
-const PRIVATE_ROUTE = /^\/(?:admin|affiliate|account|cart|checkout|search|track-order|order-confirmation)(?:\/|$)|^\/orders?(?:\/|$)/;
+const PRIVATE_ROUTE = /^\/(?:admin|affiliate|account|cart|checkout|search|track-order|order-confirmation|login|signin|auth)(?:\/|$)|^\/orders?(?:\/|$)/;
 
 seoFallbackRouter.get('/fallback', async (req: Request, res: Response) => {
   const pathname = normalizePath(req.query.path);

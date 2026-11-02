@@ -521,7 +521,7 @@ export class ProductService {
 
       const product = await tx.product.create({
         data: {
-          slug: productSlug,
+          slug,
           name: input.name.trim(),
           description: input.description.trim(),
           shortDescription: input.shortDescription?.trim(),

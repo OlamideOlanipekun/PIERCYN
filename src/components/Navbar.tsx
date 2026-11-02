@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
 import { ActivePageView } from '../types';
-import { Search, ShoppingBag, Menu, X } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { PiercynLogo } from './PiercynLogo';
 
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsCartOpen, 
     setIsSearchOpen,
   } = useShop();
+  const { isAuthenticated } = useAuth();
 
   const shouldReduceMotion = useReducedMotion();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -151,6 +153,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Search"
             >
               <Search className="w-5 h-5 stroke-[1.75]" />
+            </button>
+
+            {/* ATELIER ACCOUNT ICON */}
+            <button
+              id="nav-account-btn"
+              onClick={() => {
+                window.history.pushState({}, '', isAuthenticated ? '/account' : '/login');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="w-9 h-9 sm:w-10 sm:h-10 min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center text-[#F2F0EB] hover:opacity-75 transition-opacity duration-300 cursor-pointer relative"
+              aria-label={isAuthenticated ? 'Account Profile' : 'Sign In'}
+              title={isAuthenticated ? 'Atelier Account' : 'Sign In'}
+            >
+              <User className="w-5 h-5 stroke-[1.75]" />
+              {isAuthenticated && (
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              )}
             </button>
 
             {/* BAG BUTTON */}

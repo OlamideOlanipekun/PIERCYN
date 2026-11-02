@@ -72,7 +72,9 @@ export type ActivePageView =
   | 'search'
   | 'sizeGuide'
   | 'faq'
-  | 'trackOrder';
+  | 'trackOrder'
+  | 'login'
+  | 'authCallback';
 
 export interface ProductColor {
   name: string;

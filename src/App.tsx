@@ -42,6 +42,8 @@ import { LookbookModal } from './components/LookbookModal';
 import { ScrollReveal } from './components/ScrollReveal';
 import { formatProductSeoTitle, PUBLIC_PAGE_TITLES, syncClientSeo } from './utils/seo';
 import { eventTracker } from './services/eventTracker';
+import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
 
 // Lazy-loaded portals to preserve lightweight initial storefront bundle
 const AdminApp = React.lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -182,6 +184,14 @@ const MainLayout: React.FC = () => {
       setActivePage('accessories');
       setCurrentPdpProduct(null);
       document.title = PUBLIC_PAGE_TITLES.accessories;
+    } else if (rawPath === '/login' || rawPath === '/signin') {
+      setActivePage('login');
+      setCurrentPdpProduct(null);
+      document.title = 'Sign In | PIERCYN Atelier';
+    } else if (rawPath === '/auth/callback') {
+      setActivePage('authCallback');
+      setCurrentPdpProduct(null);
+      document.title = 'Authenticating… | PIERCYN';
     } else if (rawPath === '/account') {
       setActivePage('account');
       setCurrentPdpProduct(null);
@@ -536,6 +546,21 @@ const MainLayout: React.FC = () => {
         <NewArrivalsPage onSelectPage={handleSelectPage} />
       ) : activePage === 'accessories' ? (
         <AccessoriesPage onSelectPage={handleSelectPage} />
+      ) : activePage === 'login' ? (
+        <Login
+          onBackToShop={() => handleSelectPage('shop')}
+          onSuccessRedirect={(dest) => {
+            window.history.pushState({}, '', dest);
+            syncRouteFromUrl();
+          }}
+        />
+      ) : activePage === 'authCallback' ? (
+        <AuthCallback
+          onComplete={(dest) => {
+            window.history.pushState({}, '', dest);
+            syncRouteFromUrl();
+          }}
+        />
       ) : activePage === 'account' ? (
         <AccountDashboard onSelectPage={handleSelectPage} onViewProduct={handleViewProduct} />
       ) : activePage === 'collections' ? (
