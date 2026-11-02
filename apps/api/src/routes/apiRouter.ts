@@ -5,6 +5,9 @@ import { requireAdmin } from '../modules/admin/adminMiddleware';
 import { CatalogUnavailableError, ProductService } from '../modules/products/productService';
 import { CartService } from '../modules/cart/cartService';
 import { CheckoutService } from '../modules/checkout/checkoutService';
+import { checkoutRouter } from '../modules/checkout/checkoutRouter';
+import { checkoutAdminRouter } from '../modules/checkout/checkoutAdminRouter';
+import { DeliveryQuoteCron } from '../modules/checkout/quoteCron';
 import { OrderService } from '../modules/orders/orderService';
 import { PaymentService, MockPaymentProvider } from '../modules/payments/paymentService';
 import { WebhookService } from '../modules/payments/webhookService';
@@ -40,9 +43,13 @@ export const apiRouter = Router();
 
 apiRouter.use('/seo', seoFallbackRouter);
 apiRouter.use('/admin', adminRouter);
+// Checkout admin endpoints mounted under /admin (order lifecycle management)
+apiRouter.use('/admin', checkoutAdminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/', reviewRouter);
+// Authenticated checkout and order lifecycle routes
+apiRouter.use('/', checkoutRouter);
 
 /** Meta WhatsApp Cloud API webhook verification and signed-event receiver. */
 apiRouter.get('/webhooks/whatsapp', (req: Request, res: Response) => {
@@ -573,6 +580,33 @@ apiRouter.get('/internal/cron/notifications', handleNotificationCron);
 apiRouter.post('/internal/cron/notifications', handleNotificationCron);
 apiRouter.get('/cron/process-notifications', handleNotificationCron);
 apiRouter.post('/cron/process-notifications', handleNotificationCron);
+
+// ── Quote lifecycle cron (24h reminders + 48h expiry) ─────────────────────────
+const handleQuoteCron = async (req: Request, res: Response) => {
+  const configuredSecret = process.env.CRON_SECRET || '';
+  if (!configuredSecret) {
+    return res.status(503).json({ success: false, error: 'CRON_SECRET is not configured.' });
+  }
+  const auth = req.headers['authorization'] || '';
+  const supplied = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(configuredSecret);
+  if (
+    suppliedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)
+  ) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  try {
+    const result = await DeliveryQuoteCron.processQuoteLifecycle();
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error('[QUOTE_CRON_ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+apiRouter.get('/internal/cron/delivery-quotes', handleQuoteCron);
+apiRouter.post('/internal/cron/delivery-quotes', handleQuoteCron);
 
 apiRouter.get('/analytics/overview', requireAdmin, async (_req: Request, res: Response) => {
   try {

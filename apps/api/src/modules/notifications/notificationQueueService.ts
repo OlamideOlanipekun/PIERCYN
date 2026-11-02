@@ -1,10 +1,14 @@
 import { prisma } from '../../db/prisma';
 import type { PrismaClient } from '../../db/prisma';
+import type { NotificationEventType } from '@prisma/client';
 import {
   OrderCreatedPayload,
   ReceiptUploadedPayload,
   PaymentVerifiedPayload,
   ProductOutOfStockPayload,
+  QuoteNotificationPayload,
+  PaymentDecisionPayload,
+  FulfilmentNotificationPayload,
 } from './types';
 
 export class NotificationQueueService {
@@ -13,7 +17,7 @@ export class NotificationQueueService {
    * exists, the operation succeeds idempotently without throwing.
    */
   public static async queueJob(
-    eventType: 'ORDER_CREATED' | 'RECEIPT_UPLOADED' | 'PAYMENT_VERIFIED' | 'PRODUCT_OUT_OF_STOCK',
+    eventType: NotificationEventType | string,
     dedupeKey: string,
     payload: Record<string, any>,
     txClient?: any
@@ -215,5 +219,32 @@ export class NotificationQueueService {
     };
 
     return this.queueJob('PRODUCT_OUT_OF_STOCK', dedupeKey, payload, txClient);
+  }
+
+  public static async queuePaymentDecision(
+    eventType: 'PRODUCT_PAYMENT_VERIFIED' | 'PRODUCT_PAYMENT_REJECTED' | 'DELIVERY_PAYMENT_VERIFIED' | 'DELIVERY_PAYMENT_REJECTED',
+    payload: PaymentDecisionPayload,
+    txClient?: any
+  ) {
+    const dedupeKey = `${eventType.toLowerCase()}:${payload.orderId}:${payload.providerReference}`;
+    return this.queueJob(eventType as any, dedupeKey, payload, txClient);
+  }
+
+  public static async queueQuotationEvent(
+    eventType: 'DELIVERY_QUOTATION_SENT' | 'DELIVERY_QUOTATION_ACCEPTED' | 'DELIVERY_QUOTATION_REJECTED' | 'DELIVERY_QUOTATION_REMINDER' | 'DELIVERY_QUOTATION_EXPIRED',
+    payload: QuoteNotificationPayload,
+    txClient?: any
+  ) {
+    const dedupeKey = `${eventType.toLowerCase()}:${payload.orderId}:${payload.quoteId}`;
+    return this.queueJob(eventType as any, dedupeKey, payload, txClient);
+  }
+
+  public static async queueFulfilmentEvent(
+    eventType: 'ORDER_DISPATCHED' | 'ORDER_DELIVERED',
+    payload: FulfilmentNotificationPayload,
+    txClient?: any
+  ) {
+    const dedupeKey = `${eventType.toLowerCase()}:${payload.orderId}:${Date.now()}`;
+    return this.queueJob(eventType as any, dedupeKey, payload, txClient);
   }
 }

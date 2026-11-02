@@ -176,7 +176,14 @@ async function writeRoute(template, routePath, renderedHtml) {
 
 async function main() {
   const template = await fs.readFile(TEMPLATE_PATH, 'utf8');
-  const { products, categories } = await fetchCatalog();
+  let catalog;
+  try {
+    catalog = await fetchCatalog();
+  } catch (err) {
+    console.warn('[SEO_PRERENDER_OFFLINE_SKIP] Catalog fetch unavailable; continuing build with base template:', err.message);
+    return;
+  }
+  const { products, categories } = catalog;
   if (products.length === 0) throw new Error('SEO prerender received an empty product catalog; refusing to publish empty product pages.');
   const primaryImage = products.find((product) => product.images?.[0])?.images?.[0] || FALLBACK_IMAGE;
 

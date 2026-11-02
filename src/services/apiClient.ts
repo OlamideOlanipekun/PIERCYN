@@ -192,6 +192,55 @@ export const api = {
     return parseResponse(res);
   },
 
+  // ── PIERCYN Checkout System Endpoints ─────────────────────────────────────
+  async uploadProductReceipt(
+    orderId: string,
+    payload: { fileBase64: string; mimeType: 'image/jpeg' | 'image/png' | 'application/pdf' }
+  ) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/product-payment/receipt`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return parseResponse(res);
+  },
+
+  async acceptDeliveryQuote(orderId: string) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/delivery/quote/accept`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return parseResponse(res);
+  },
+
+  async rejectDeliveryQuote(orderId: string, reason?: string) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/delivery/quote/reject`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+    return parseResponse(res);
+  },
+
+  async uploadDeliveryReceipt(
+    orderId: string,
+    payload: { fileBase64: string; mimeType: 'image/jpeg' | 'image/png' | 'application/pdf' }
+  ) {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/delivery-payment/receipt`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    return parseResponse(res);
+  },
+
+  async getMyOrders() {
+    const res = await fetch(`${API_BASE}/customers/me/orders`, {
+      headers: getHeaders(),
+    });
+    return parseResponse(res);
+  },
+
   // Events & Analytics
   async trackEvent(
     eventType: string,

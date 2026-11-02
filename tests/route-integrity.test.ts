@@ -33,6 +33,8 @@ describe('PIERCYN Route & Navigation Integrity', () => {
     sizeGuide: '/size-guide',
     faq: '/faq',
     trackOrder: '/track-order',
+    login: '/login',
+    authCallback: '/auth/callback',
   };
 
   const titleMap: Record<ActivePageView, string> = {
@@ -65,6 +67,8 @@ describe('PIERCYN Route & Navigation Integrity', () => {
     sizeGuide: 'Size Guide — PIERCYN',
     faq: 'FAQ — PIERCYN',
     trackOrder: 'Track Order — PIERCYN',
+    login: 'Sign In | PIERCYN Atelier',
+    authCallback: 'Authenticating… | PIERCYN',
   };
 
   it('provides a valid and unique URL path for all primary active page views', () => {

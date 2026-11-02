@@ -67,8 +67,54 @@ export interface ProductOutOfStockPayload {
   reason?: string | null;
 }
 
+export interface QuoteNotificationPayload {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryFeeNGN: number;
+  subtotalNGN: number;
+  totalNGN: number;
+  quoteId: string;
+  expiresAt: string;
+  decisionUrl: string;
+  rejectionReason?: string | null;
+}
+
+export interface PaymentDecisionPayload {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  paymentType: 'PRODUCT' | 'DELIVERY';
+  amountNGN: number;
+  providerReference: string;
+  rejectionReason?: string | null;
+  verifiedBy?: string | null;
+  timestamp: string;
+}
+
+export interface FulfilmentNotificationPayload {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryCity: string;
+  deliveryState: string;
+  logisticsProvider?: string | null;
+  dispatchReference?: string | null;
+  timestamp: string;
+}
+
 export type AnyNotificationPayload =
   | OrderCreatedPayload
   | ReceiptUploadedPayload
   | PaymentVerifiedPayload
-  | ProductOutOfStockPayload;
+  | ProductOutOfStockPayload
+  | QuoteNotificationPayload
+  | PaymentDecisionPayload
+  | FulfilmentNotificationPayload;

@@ -3,6 +3,9 @@ import {
   ReceiptUploadedPayload,
   PaymentVerifiedPayload,
   ProductOutOfStockPayload,
+  QuoteNotificationPayload,
+  PaymentDecisionPayload,
+  FulfilmentNotificationPayload,
 } from './types';
 
 function formatNGN(amount: number): string {
@@ -264,6 +267,146 @@ Color: ${p.colour}
 Depleted At: ${p.depletedAt}
 Trigger: ${p.triggerReference || 'N/A'}
 Reason: ${p.reason || 'N/A'}
+`;
+
+  return { subject, html, text };
+}
+
+export function renderPaymentDecisionEmail(
+  p: PaymentDecisionPayload,
+  isVerified: boolean
+): { subject: string; html: string; text: string } {
+  const typeLabel = p.paymentType === 'PRODUCT' ? 'Product Payment' : 'Delivery Payment';
+  const statusLabel = isVerified ? 'VERIFIED' : 'REJECTED';
+  const subject = `[PIERCYN] ${typeLabel} ${statusLabel} - #${p.orderNumber}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">${escapeHtml(typeLabel)} • ${escapeHtml(statusLabel)}</div>
+      </div>
+      <div class="h1">
+        <span class="badge ${isVerified ? 'badge-dark' : 'badge-red'}" style="vertical-align: middle; margin-right: 6px;">
+          ${escapeHtml(statusLabel)}
+        </span>
+        Order #${escapeHtml(p.orderNumber)}
+      </div>
+      <p style="font-size: 13px; color: #55524d;">
+        ${isVerified
+          ? `Your ${typeLabel.toLowerCase()} has been verified by the PIERCYN team.`
+          : `Your ${typeLabel.toLowerCase()} could not be verified.`}
+      </p>
+
+      <table class="meta-grid">
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Amount</td><td class="meta-val">${escapeHtml(formatNGN(p.amountNGN))}</td></tr>
+        <tr><td class="meta-label">Reference</td><td class="meta-val"><code>${escapeHtml(p.providerReference)}</code></td></tr>
+        ${!isVerified && p.rejectionReason ? `<tr><td class="meta-label">Reason</td><td class="meta-val" style="color: #b91c1c;">${escapeHtml(p.rejectionReason)}</td></tr>` : ''}
+        ${p.verifiedBy ? `<tr><td class="meta-label">Reviewed By</td><td class="meta-val">${escapeHtml(p.verifiedBy)}</td></tr>` : ''}
+        <tr><td class="meta-label">Date</td><td class="meta-val">${escapeHtml(new Date(p.timestamp).toLocaleString('en-NG'))}</td></tr>
+      </table>
+    </div>
+    <div class="footer">PIERCYN Luxury Atelier</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `PIERCYN - ${typeLabel.toUpperCase()} ${statusLabel}
+Order: #${p.orderNumber}
+Customer: ${p.customerName}
+Amount: ${formatNGN(p.amountNGN)}
+Reference: ${p.providerReference}
+${!isVerified && p.rejectionReason ? `Rejection Reason: ${p.rejectionReason}\n` : ''}
+Date: ${p.timestamp}
+`;
+
+  return { subject, html, text };
+}
+
+export function renderQuoteDecisionEmail(
+  p: QuoteNotificationPayload,
+  action: 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
+): { subject: string; html: string; text: string } {
+  const subject = `[PIERCYN] Delivery Quotation ${action} - #${p.orderNumber}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">Delivery Quotation • ${escapeHtml(action)}</div>
+      </div>
+      <div class="h1">Quotation ${escapeHtml(action)} for #${escapeHtml(p.orderNumber)}</div>
+      <table class="meta-grid">
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)} (${escapeHtml(p.customerEmail)})</td></tr>
+        <tr><td class="meta-label">Quoted Delivery Fee</td><td class="meta-val">${escapeHtml(formatNGN(p.deliveryFeeNGN))}</td></tr>
+        <tr><td class="meta-label">Merchandise Subtotal</td><td class="meta-val">${escapeHtml(formatNGN(p.subtotalNGN))}</td></tr>
+        ${p.rejectionReason ? `<tr><td class="meta-label">Feedback</td><td class="meta-val">${escapeHtml(p.rejectionReason)}</td></tr>` : ''}
+      </table>
+    </div>
+    <div class="footer">PIERCYN Commercial Engine</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `PIERCYN - DELIVERY QUOTATION ${action}
+Order: #${p.orderNumber}
+Customer: ${p.customerName}
+Quoted Delivery Fee: ${formatNGN(p.deliveryFeeNGN)}
+${p.rejectionReason ? `Feedback: ${p.rejectionReason}\n` : ''}
+`;
+
+  return { subject, html, text };
+}
+
+export function renderFulfilmentEmail(
+  p: FulfilmentNotificationPayload,
+  stage: 'DISPATCHED' | 'DELIVERED'
+): { subject: string; html: string; text: string } {
+  const subject = `[PIERCYN] Your Order #${p.orderNumber} is ${stage === 'DISPATCHED' ? 'on the way' : 'delivered'}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">Order Fulfilment • ${escapeHtml(stage)}</div>
+      </div>
+      <div class="h1">Order #${escapeHtml(p.orderNumber)} ${stage === 'DISPATCHED' ? 'Dispatched' : 'Delivered'}</div>
+      <p style="font-size: 13px; color: #55524d;">
+        ${stage === 'DISPATCHED'
+          ? 'Your order has been safely packaged and handed to our logistics partner.'
+          : 'Your order has been successfully delivered. Thank you for choosing PIERCYN.'}
+      </p>
+      <table class="meta-grid">
+        <tr><td class="meta-label">Recipient</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Delivery Address</td><td class="meta-val">${escapeHtml(p.deliveryAddress)}, ${escapeHtml(p.deliveryCity)}, ${escapeHtml(p.deliveryState)}</td></tr>
+        ${p.logisticsProvider ? `<tr><td class="meta-label">Logistics Provider</td><td class="meta-val">${escapeHtml(p.logisticsProvider)}</td></tr>` : ''}
+        ${p.dispatchReference ? `<tr><td class="meta-label">Dispatch Ref</td><td class="meta-val"><code>${escapeHtml(p.dispatchReference)}</code></td></tr>` : ''}
+      </table>
+    </div>
+    <div class="footer">PIERCYN Luxury Atelier</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `PIERCYN - ORDER ${stage}
+Order: #${p.orderNumber}
+Customer: ${p.customerName}
+Delivery Address: ${p.deliveryAddress}, ${p.deliveryCity}, ${p.deliveryState}
+${p.logisticsProvider ? `Logistics: ${p.logisticsProvider}\n` : ''}
+${p.dispatchReference ? `Ref: ${p.dispatchReference}\n` : ''}
 `;
 
   return { subject, html, text };

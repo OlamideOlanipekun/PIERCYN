@@ -217,3 +217,6 @@ export const useAuthContext = (): AuthContextValue => {
   }
   return context;
 };
+
+// Convenience alias
+export const useAuth = useAuthContext;

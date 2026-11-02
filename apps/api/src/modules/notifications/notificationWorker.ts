@@ -1,17 +1,24 @@
 import crypto from 'crypto';
 import { prisma } from '../../db/prisma';
 import { getSmtpConfig, getMailTransporter, sanitizeError } from './emailConfig';
+import { WhatsAppService } from '../../services/whatsappService';
 import {
   renderOrderCreatedEmail,
   renderReceiptUploadedEmail,
   renderPaymentVerifiedEmail,
   renderOutOfStockEmail,
+  renderPaymentDecisionEmail,
+  renderQuoteDecisionEmail,
+  renderFulfilmentEmail,
 } from './emailTemplates';
 import {
   OrderCreatedPayload,
   ReceiptUploadedPayload,
   PaymentVerifiedPayload,
   ProductOutOfStockPayload,
+  QuoteNotificationPayload,
+  PaymentDecisionPayload,
+  FulfilmentNotificationPayload,
 } from './types';
 
 const STALE_LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -187,15 +194,18 @@ export class NotificationWorker {
 
     for (const job of jobs) {
       try {
-        const { subject, html, text } = this.renderEmailForJob(job.eventType, job.payload);
+        const emailResult = this.renderEmailForJob(job.eventType, job.payload);
 
-        await transporter.sendMail({
-          from: `PIERCYN Commercial Engine <${smtpConfig.user}>`,
-          to: smtpConfig.adminEmail,
-          subject,
-          html,
-          text,
-        });
+        if (emailResult !== null) {
+          const { subject, html, text } = emailResult;
+          await transporter.sendMail({
+            from: `PIERCYN Commercial Engine <${smtpConfig.user}>`,
+            to: smtpConfig.adminEmail,
+            subject,
+            html,
+            text,
+          });
+        }
 
         // Mark successfully SENT
         await prisma.notificationJob.update({
@@ -263,7 +273,7 @@ export class NotificationWorker {
   private static renderEmailForJob(
     eventType: string,
     payload: any
-  ): { subject: string; html: string; text: string } {
+  ): { subject: string; html: string; text: string } | null {
     const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
     switch (eventType) {
@@ -275,6 +285,30 @@ export class NotificationWorker {
         return renderPaymentVerifiedEmail(data as PaymentVerifiedPayload);
       case 'PRODUCT_OUT_OF_STOCK':
         return renderOutOfStockEmail(data as ProductOutOfStockPayload);
+      case 'PRODUCT_PAYMENT_VERIFIED':
+        return renderPaymentDecisionEmail(data as PaymentDecisionPayload, true);
+      case 'PRODUCT_PAYMENT_REJECTED':
+        return renderPaymentDecisionEmail(data as PaymentDecisionPayload, false);
+      case 'DELIVERY_PAYMENT_VERIFIED':
+        return renderPaymentDecisionEmail(data as PaymentDecisionPayload, true);
+      case 'DELIVERY_PAYMENT_REJECTED':
+        return renderPaymentDecisionEmail(data as PaymentDecisionPayload, false);
+      case 'DELIVERY_QUOTATION_ACCEPTED':
+        return renderQuoteDecisionEmail(data as QuoteNotificationPayload, 'ACCEPTED');
+      case 'DELIVERY_QUOTATION_REJECTED':
+        return renderQuoteDecisionEmail(data as QuoteNotificationPayload, 'REJECTED');
+      case 'DELIVERY_QUOTATION_EXPIRED':
+        return renderQuoteDecisionEmail(data as QuoteNotificationPayload, 'EXPIRED');
+      case 'ORDER_DISPATCHED':
+        return renderFulfilmentEmail(data as FulfilmentNotificationPayload, 'DISPATCHED');
+      case 'ORDER_DELIVERED':
+        return renderFulfilmentEmail(data as FulfilmentNotificationPayload, 'DELIVERED');
+      // WhatsApp-only events — no email template
+      case 'PRODUCT_RECEIPT_SUBMITTED':
+      case 'DELIVERY_RECEIPT_SUBMITTED':
+      case 'DELIVERY_QUOTATION_SENT':
+      case 'DELIVERY_QUOTATION_REMINDER':
+        return null;
       default:
         throw new Error(`Unknown eventType: ${eventType}`);
     }

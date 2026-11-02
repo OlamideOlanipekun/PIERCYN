@@ -255,8 +255,15 @@ const MainLayout: React.FC = () => {
     } else if (rawPath.startsWith('/order/success/')) {
       setRouteParam(rawPath.replace('/order/success/', ''));
       setActivePage('orderSuccess');
+    } else if (rawPath.startsWith('/account/orders/')) {
+      const sub = rawPath.replace('/account/orders/', '');
+      const orderId = sub.split('/')[0];
+      setRouteParam(orderId);
+      setActivePage('orderTracking');
     } else if (rawPath.startsWith('/orders/')) {
-      setRouteParam(rawPath.replace('/orders/', ''));
+      const sub = rawPath.replace('/orders/', '');
+      const orderId = sub.split('/')[0];
+      setRouteParam(orderId);
       setActivePage('orderTracking');
     } else if (rawPath === '/') {
       setActivePage('home');
@@ -338,6 +345,8 @@ const MainLayout: React.FC = () => {
       sizeGuide: '/size-guide',
       faq: '/faq',
       trackOrder: '/track-order',
+      login: '/login',
+      authCallback: '/auth/callback',
     };
 
     const targetUrl = pathMap[page] || '/';
@@ -377,6 +386,8 @@ const MainLayout: React.FC = () => {
       sizeGuide: PUBLIC_PAGE_TITLES.sizeGuide,
       faq: PUBLIC_PAGE_TITLES.faq,
       trackOrder: 'Track Order | PIERCYN',
+      login: 'Sign In | PIERCYN Atelier',
+      authCallback: 'Authenticating… | PIERCYN',
     };
 
     document.title = titleMap[page] || 'PIERCYN';

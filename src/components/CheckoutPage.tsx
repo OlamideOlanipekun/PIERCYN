@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
+import { useAuth } from '../contexts/AuthContext';
 import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
 import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
@@ -18,7 +19,8 @@ import {
   ChevronRight,
   Clock,
   MessageCircle,
-  Building2
+  Building2,
+  LogIn,
 } from 'lucide-react';
 
 interface CheckoutPageProps {
@@ -37,8 +39,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
     createOrder,
     showToast,
   } = useShop();
+  const { isAuthenticated, loading: authLoading, signInWithGoogle, customer: authCustomer } = useAuth();
 
-  const [customer, setCustomer] = useState<CustomerInfo>({
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
     email: '',
     phone: '',
@@ -47,6 +50,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
     address: '',
     orderNote: '',
   });
+
+  // Pre-fill form from authenticated profile
+  useEffect(() => {
+    if (authCustomer) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        fullName: prev.fullName || `${authCustomer.firstName} ${authCustomer.lastName}`.trim(),
+        email: authCustomer.email || prev.email,
+        phone: prev.phone || authCustomer.phone || '',
+      }));
+    }
+  }, [authCustomer]);
+
+  // Alias for existing code that refers to `customer` state
+  const customer = customerInfo;
+  const setCustomer = setCustomerInfo;
 
   const [whatsAppDifferent, setWhatsAppDifferent] = useState(false);
   const [whatsAppNumber, setWhatsAppNumber] = useState('');
@@ -101,14 +120,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
       const createdServerOrder = await createOrder({
         customer: { ...customer, orderNote: finalNote },
         shippingRegion: shippingMethod,
-        paymentMethod: paymentMethodChoice === 'paystack' && isLiveGateway ? 'paystack' : 'transfer',
+        paymentMethod: 'transfer',
         items: itemsPayload,
         discountCode: appliedPromoCode || undefined,
       });
 
       setIsSubmitting(false);
-      showToast('Order received! PIERCYN will contact you on WhatsApp with your delivery quote.');
-      window.history.pushState({}, '', `/order-confirmation?orderId=${createdServerOrder.id}`);
+      showToast('Order received! Please proceed to complete your merchandise payment.');
+      window.history.pushState({}, '', `/account/orders/${createdServerOrder.id}/payment`);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err: any) {
       console.error('[CHECKOUT_SUBMIT_ERROR]', err);
@@ -128,6 +147,46 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
       setIsSubmitting(false);
     }
   };
+
+  // Auth gate — must be authenticated to checkout
+  if (authLoading) {
+    return (
+      <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-[75vh] pt-28 sm:pt-36 pb-20 font-sans flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#141414] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-[#7A7771]">Loading…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-[75vh] pt-28 sm:pt-36 pb-20 font-sans">
+        <div className="piercyn-container max-w-lg mx-auto text-center">
+          <div className="w-16 h-16 rounded-full bg-[#E5E0D5] text-[#141414] flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-7 h-7 stroke-[1.5]" />
+          </div>
+          <span className="text-[11px] font-mono tracking-[0.25em] uppercase text-[#7A7771] block mb-2 font-semibold">
+            CHECKOUT
+          </span>
+          <h1 className="font-editorial text-4xl sm:text-5xl italic text-[#141414] mb-4">
+            Sign in to Continue
+          </h1>
+          <p className="text-[14px] text-[#55524D] leading-relaxed mb-8">
+            A PIERCYN account is required to complete your purchase. Sign in with Google to proceed — your bag will be waiting.
+          </p>
+          <button
+            onClick={() => signInWithGoogle('/checkout')}
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-[0.18em] hover:bg-black transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>SIGN IN WITH GOOGLE</span>
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -437,69 +496,29 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                 STEP 03
               </span>
               <h2 className="font-editorial text-2xl italic text-[#141414] mb-4">
-                Payment Option
+                Payment Method
               </h2>
 
-              <div className="space-y-3">
-                {/* Bank Transfer / WhatsApp Option */}
-                <label
-                  className={`p-4 rounded-xl border block cursor-pointer transition-all ${
-                    paymentMethodChoice === 'transfer'
-                      ? 'border-[#141414] bg-white/90 ring-1 ring-[#141414]'
-                      : 'border-[#DAD6CC] bg-white/30'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="transfer"
-                      checked={paymentMethodChoice === 'transfer'}
-                      onChange={() => setPaymentMethodChoice('transfer')}
-                      className="mt-0.5 text-[#141414]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-xs font-bold text-[#141414]">Direct Bank Transfer / WhatsApp</strong>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[9px] font-mono font-bold uppercase">
-                          RECOMMENDED
-                        </span>
-                      </div>
-                      <p className="text-[11.5px] text-[#55524D] mt-1 leading-relaxed">
-                        Reserve your pieces instantly. You'll receive our verified Lagos business account details on the confirmation page and via WhatsApp to complete payment.
-                      </p>
-                    </div>
+              <div className="p-4 rounded-xl border border-[#141414] bg-white/90 ring-1 ring-[#141414]">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#141414] text-white flex items-center justify-center shrink-0 mt-0.5">
+                    <Building2 className="w-4 h-4" />
                   </div>
-                </label>
-
-                {/* Paystack Online Gateway */}
-                <label
-                  className={`p-4 rounded-xl border block cursor-pointer transition-all ${
-                    paymentMethodChoice === 'paystack'
-                      ? 'border-[#141414] bg-white/90 ring-1 ring-[#141414]'
-                      : 'border-[#DAD6CC] bg-white/30'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="paystack"
-                      checked={paymentMethodChoice === 'paystack'}
-                      onChange={() => setPaymentMethodChoice('paystack')}
-                      className="mt-0.5 text-[#141414]"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-xs font-bold text-[#141414]">Debit Card / Paystack Online</strong>
-                        <CreditCard className="w-3.5 h-3.5 text-[#7A7771]" />
-                      </div>
-                      <p className="text-[11.5px] text-[#55524D] mt-1 leading-relaxed">
-                        Pay securely with Mastercard, Visa, Verve, Bank Transfer, or USSD via Paystack.
-                      </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-xs font-bold text-[#141414]">Direct Bank Transfer & Receipt Submission</strong>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[9px] font-mono font-bold uppercase">
+                        OFFICIAL
+                      </span>
                     </div>
+                    <p className="text-[12px] text-[#55524D] mt-1.5 leading-relaxed">
+                      Merchandise payment is made upfront via bank transfer. You will receive our verified account details and upload your transfer receipt on the next screen.
+                    </p>
+                    <p className="text-[11px] text-[#7A7771] mt-1 italic">
+                      Once verified by our team, your delivery fee will be calculated and quoted for your acceptance.
+                    </p>
                   </div>
-                </label>
+                </div>
               </div>
             </div>
 
@@ -542,10 +561,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
             </div>
 
             {/* Summary Breakdown */}
-            <div className="space-y-2.5 text-xs text-[#55524D] border-t border-[#DAD6CC] pt-4 mb-5 font-sans">
-              <div className="flex justify-between">
-                <span>Items Subtotal</span>
-                <span className="font-mono font-bold text-[#141414]">₦{cartSubtotal.toLocaleString()}</span>
+            <div className="space-y-3 text-xs text-[#55524D] border-t border-[#DAD6CC] pt-4 mb-5 font-sans">
+              <div className="flex justify-between items-center">
+                <span>Merchandise</span>
+                <span className="font-mono font-bold text-[#141414] text-sm">₦{itemsSubtotal.toLocaleString()}</span>
               </div>
 
               {promoDiscountNGN > 0 && (
@@ -557,21 +576,25 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
 
               <div className="flex justify-between items-center">
                 <div>
-                  <span className="block text-[#141414]">Delivery Charge</span>
-                  <span className="text-[10px] text-[#7A7771]">Calculated & quoted via WhatsApp</span>
+                  <span className="block text-[#141414]">Delivery</span>
                 </div>
-                <span className="font-mono text-[11px] font-semibold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                <span className="font-mono text-[11px] font-semibold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded">
                   To be confirmed
                 </span>
               </div>
 
               <div className="border-t border-[#DAD6CC] pt-3 flex justify-between items-baseline">
                 <div>
-                  <span className="font-bold text-sm text-[#141414] uppercase tracking-wider block">Total Payable</span>
-                  <span className="text-[10px] text-[#7A7771]">Items: ₦{itemsSubtotal.toLocaleString()} + Delivery</span>
+                  <span className="font-bold text-xs text-[#7A7771] uppercase tracking-wider block">Pay now</span>
                 </div>
-                <span className="font-mono text-base font-bold text-[#141414]">To be confirmed</span>
+                <span className="font-editorial italic text-2xl font-bold text-[#141414]">
+                  ₦{itemsSubtotal.toLocaleString()}
+                </span>
               </div>
+
+              <p className="text-[11px] text-[#7A7771] leading-relaxed pt-2 border-t border-[#DAD6CC]/60 italic">
+                Delivery fee will be communicated separately after merchandise payment verification.
+              </p>
             </div>
 
             {/* Submit Button */}
@@ -585,7 +608,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
                 <span>CREATING SECURE ORDER…</span>
               ) : (
                 <>
-                  <span>SUBMIT ORDER (₦{itemsSubtotal.toLocaleString()} + DELIVERY)</span>
+                  <span>PLACE ORDER & PAY NOW (₦{itemsSubtotal.toLocaleString()})</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
