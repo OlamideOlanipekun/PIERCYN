@@ -608,6 +608,46 @@ const handleQuoteCron = async (req: Request, res: Response) => {
 apiRouter.get('/internal/cron/delivery-quotes', handleQuoteCron);
 apiRouter.post('/internal/cron/delivery-quotes', handleQuoteCron);
 
+// ── Consolidated daily maintenance cron (compliant with Vercel Hobby daily limit) ──
+const handleDailyCron = async (req: Request, res: Response) => {
+  const configuredSecret = process.env.CRON_SECRET || '';
+  if (!configuredSecret) {
+    return res.status(503).json({ success: false, error: 'CRON_SECRET is not configured.' });
+  }
+  const auth = req.headers['authorization'] || '';
+  const supplied = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(configuredSecret);
+  if (
+    suppliedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)
+  ) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const [reservations, quotes, notifications] = await Promise.allSettled([
+      InventoryService.expireReservations(),
+      DeliveryQuoteCron.processQuoteLifecycle(),
+      NotificationWorker.processNotifications(20),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        reservations: reservations.status === 'fulfilled' ? reservations.value : { error: reservations.reason?.message },
+        quotes: quotes.status === 'fulfilled' ? quotes.value : { error: quotes.reason?.message },
+        notifications: notifications.status === 'fulfilled' ? notifications.value : { error: notifications.reason?.message },
+      },
+    });
+  } catch (err: any) {
+    console.error('[DAILY_CRON_ERROR]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+apiRouter.get('/internal/cron/daily', handleDailyCron);
+apiRouter.post('/internal/cron/daily', handleDailyCron);
+
 apiRouter.get('/analytics/overview', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const summary = await EventService.getAnalyticsSummary();

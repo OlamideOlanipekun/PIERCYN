@@ -326,16 +326,24 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
                         ))}
                       </div>
 
+                      {ord.quoteStatus && ord.quoteStatus !== 'ACCEPTED' && (
+                        <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] font-mono text-amber-800 font-bold">
+                          Delivery Quote: {ord.quoteStatus}
+                        </div>
+                      )}
                       <div className="pt-2 flex items-center justify-between text-xs text-[#737069]">
                         <span className="font-mono text-[11px]">
                           Delivery: {ord.deliveryState || ord.customer?.city || 'Nationwide Express'}
                         </span>
-                        <a
-                          href={`/track-order?orderNumber=${ord.orderNumber}`}
-                          className="font-mono text-[11px] font-bold text-[#111111] hover:underline flex items-center gap-1"
+                        <button
+                          onClick={() => {
+                            window.history.pushState({}, '', '/account/orders/' + ord.id);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                          }}
+                          className="font-mono text-[11px] font-bold text-[#111111] hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          Track Shipment <ExternalLink className="w-3 h-3" />
-                        </a>
+                          View Order Details <ExternalLink className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   ))

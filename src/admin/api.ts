@@ -577,6 +577,58 @@ class AdminApiClient {
     });
   }
 
+  // ── Checkout Admin Lifecycle ──────────────────────────────────────────────
+  public async verifyProductPayment(orderId: string, note?: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/product-payment/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  public async rejectProductPayment(orderId: string, reason: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/product-payment/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  public async sendDeliveryQuote(
+    orderId: string,
+    data: { deliveryFeeNGN: number; internalNote?: string }
+  ): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/delivery/quote`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async verifyDeliveryPayment(orderId: string, note?: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/delivery-payment/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  public async rejectDeliveryPayment(orderId: string, reason: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/delivery-payment/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  public async markDelivered(orderId: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/delivered`, {
+      method: 'POST',
+    });
+  }
+
+  public async openRefundReview(orderId: string, reason?: string): Promise<AdminOrder> {
+    return this.request<AdminOrder>(`/orders/${orderId}/refund-review`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   // 13. Review Management
   public async getReviews(params?: {
     page?: number;
