@@ -18,8 +18,14 @@ export const Login: React.FC<LoginProps> = ({ onBackToShop, onSuccessRedirect })
   const errorParam = searchParams.get('error');
 
   useEffect(() => {
-    if (errorParam === 'auth_failed') {
-      setErrorMessage('Google authentication could not be completed. Please try again.');
+    if (errorParam) {
+      if (errorParam === 'auth_failed') {
+        setErrorMessage('Google authentication could not be completed. Please try again.');
+      } else if (errorParam === 'auth_timeout') {
+        setErrorMessage('Authentication timed out. Please try signing in again.');
+      } else {
+        setErrorMessage(decodeURIComponent(errorParam));
+      }
     }
   }, [errorParam]);
 
