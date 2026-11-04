@@ -46,7 +46,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     toggleWishlist,
     isWishlisted,
     setIsSizeGuideOpen,
-    setIsCheckoutOpen,
     showToast,
   } = useShop();
 
@@ -166,7 +165,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     }
 
     addToCart(product, currentColor?.name, selectedSize, quantity);
-    setIsCheckoutOpen(true);
+    onSelectPage('checkout');
     eventTracker.track('buy_now_clicked', {
       productId: product.id,
       productName: product.name,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext';
+import { useAuth } from '../hooks/useAuth';
 import { processCheckoutPayment, isLivePaymentConfigured } from '../services/paymentService';
 import { api } from '../services/apiClient';
 import { SHIPPING_CONFIG, getDeliveryFee } from '../utils/shipping';
@@ -19,6 +20,7 @@ export const CheckoutModal: React.FC = () => {
     createOrder,
     showToast,
   } = useShop();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [customer, setCustomer] = useState<CustomerInfo>({
     fullName: '',
@@ -38,6 +40,13 @@ export const CheckoutModal: React.FC = () => {
   const isLiveGateway = isLivePaymentConfigured();
 
   useEffect(() => {
+    if (!isCheckoutOpen || authLoading || isAuthenticated) return;
+    setIsCheckoutOpen(false);
+    window.history.pushState({ page: 'login' }, '', `/login?next=${encodeURIComponent('/checkout')}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [isCheckoutOpen, authLoading, isAuthenticated, setIsCheckoutOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isCheckoutOpen) {
         setIsCheckoutOpen(false);
@@ -55,7 +64,7 @@ export const CheckoutModal: React.FC = () => {
     };
   }, [isCheckoutOpen, setIsCheckoutOpen]);
 
-  if (!isCheckoutOpen) return null;
+  if (!isCheckoutOpen || authLoading || !isAuthenticated) return null;
 
   const itemsSubtotal = Math.max(0, cartSubtotal - (promoDiscountNGN || 0));
 

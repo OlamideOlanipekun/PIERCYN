@@ -31,7 +31,7 @@ export const FaqPage: React.FC<FaqPageProps> = ({ onSelectPage }) => {
     {
       category: 'ordering',
       question: 'Do I need an account to place an order on PIERCYN?',
-      answer: 'No. PIERCYN is built on frictionless guest checkout. You only provide your name, phone number, and delivery address during checkout. No mandatory password or account creation is required.',
+      answer: 'Yes. You can add items to your bag without an account, but you must sign in to place an order. This keeps your order, payment, and delivery details together in your PIERCYN account.',
     },
     {
       category: 'ordering',

@@ -343,7 +343,7 @@ export const CartPage: React.FC<CartPageProps> = ({ onSelectPage, onViewProduct 
             <div className="mt-6 pt-5 border-t border-[#DAD6CC] space-y-2 text-[11px] text-[#6E6B65]">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#141414] shrink-0" />
-                <span>Guest checkout · No customer account required</span>
+                <span>Sign in is required to place your order</span>
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-[#141414] shrink-0" />

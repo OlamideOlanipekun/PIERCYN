@@ -20,7 +20,6 @@ import {
   Clock,
   MessageCircle,
   Building2,
-  LogIn,
 } from 'lucide-react';
 
 interface CheckoutPageProps {
@@ -39,7 +38,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
     createOrder,
     showToast,
   } = useShop();
-  const { isAuthenticated, loading: authLoading, signInWithGoogle, customer: authCustomer } = useAuth();
+  const { isAuthenticated, loading: authLoading, customer: authCustomer } = useAuth();
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
@@ -62,6 +61,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
       }));
     }
   }, [authCustomer]);
+
+  // Keep checkout behind sign-in and return the customer to their bag afterward.
+  useEffect(() => {
+    if (authLoading || isAuthenticated || window.location.pathname === '/login') return;
+    const loginUrl = `/login?next=${encodeURIComponent('/checkout')}`;
+    window.history.replaceState({ page: 'login' }, '', loginUrl);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [authLoading, isAuthenticated]);
 
   // Alias for existing code that refers to `customer` state
   const customer = customerInfo;
@@ -162,28 +169,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
 
   if (!isAuthenticated) {
     return (
-      <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-[75vh] pt-28 sm:pt-36 pb-20 font-sans">
-        <div className="piercyn-container max-w-lg mx-auto text-center">
-          <div className="w-16 h-16 rounded-full bg-[#E5E0D5] text-[#141414] flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-7 h-7 stroke-[1.5]" />
-          </div>
-          <span className="text-[11px] font-mono tracking-[0.25em] uppercase text-[#7A7771] block mb-2 font-semibold">
-            CHECKOUT
-          </span>
-          <h1 className="font-editorial text-4xl sm:text-5xl italic text-[#141414] mb-4">
-            Sign in to Continue
-          </h1>
-          <p className="text-[14px] text-[#55524D] leading-relaxed mb-8">
-            A PIERCYN account is required to complete your purchase. Sign in with Google to proceed — your bag will be waiting.
-          </p>
-          <button
-            onClick={() => signInWithGoogle('/checkout')}
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-[0.18em] hover:bg-black transition-all cursor-pointer shadow-sm active:scale-95"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>SIGN IN WITH GOOGLE</span>
-          </button>
-        </div>
+      <main className="w-full bg-[#F2F0EB] text-[#141414] min-h-[75vh] pt-28 sm:pt-36 pb-20 font-sans flex items-center justify-center">
+        <p className="text-sm text-[#7A7771]">Taking you to sign in…</p>
       </main>
     );
   }
@@ -230,7 +217,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
             BAG ({cartCount})
           </button>
           <ChevronRight className="w-3 h-3 text-[#DAD8D1]" />
-          <span className="text-[#141414] font-semibold">GUEST CHECKOUT</span>
+            <span className="text-[#141414] font-semibold">SECURE CHECKOUT</span>
         </nav>
 
         {/* Page Header */}
@@ -243,7 +230,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onSelectPage, onView
             Checkout
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-[#55524D]">
-            Guest checkout · Fast, secure dispatch directly to your doorstep.
+            Your PIERCYN account keeps your order and delivery details together.
           </p>
         </header>
 

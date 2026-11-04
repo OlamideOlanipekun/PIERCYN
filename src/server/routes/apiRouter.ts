@@ -249,11 +249,16 @@ apiRouter.post('/checkout/quote', (req: Request, res: Response) => {
 
 apiRouter.post('/orders', async (req: Request, res: Response) => {
   try {
+    const signedInUser = await AuthService.getUserByToken(getAuthToken(req));
+    if (!signedInUser) {
+      return res.status(401).json({ success: false, error: 'Authentication required. Please sign in to place an order.' });
+    }
     if (!orderAccessSecret) {
-      return res.status(503).json({ success: false, error: 'Guest order tracking is not configured.' });
+      return res.status(503).json({ success: false, error: 'Order access tokens are not configured.' });
     }
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
+    validated.customer.email = signedInUser.email;
 
     const order = await CheckoutService.createOrder({
       ...validated,

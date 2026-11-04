@@ -22,7 +22,7 @@ import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
 import { prisma } from '../db/prisma';
 import { authRouter } from '../modules/auth/auth.routes';
-import { optionalAuth } from '../middleware/authenticate';
+import { optionalAuth, requireAuth } from '../middleware/authenticate';
 import { AuthService } from '../modules/auth/auth.service';
 import { getWhatsAppWebhookChallenge, isValidWhatsAppWebhookSignature } from '../security/whatsappWebhook';
 import { seoFallbackRouter } from './seoFallbackRouter';
@@ -316,10 +316,10 @@ apiRouter.post('/checkout/quote', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/orders', optionalAuth, async (req: Request, res: Response) => {
+apiRouter.post('/orders', requireAuth, async (req: Request, res: Response) => {
   try {
     if (!isOrderAccessTokenConfigured()) {
-      return res.status(503).json({ success: false, error: 'Guest order tracking is not configured.' });
+      return res.status(503).json({ success: false, error: 'Order access tokens are not configured.' });
     }
     const sessionId = getSessionId(req);
     const validated = CreateOrderSchema.parse(req.body);
@@ -327,17 +327,12 @@ apiRouter.post('/orders', optionalAuth, async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Mock payments are not available in production.' });
     }
 
-    // If an authenticated user placed the order, ensure customer profile is linked
-    if (req.user) {
-      const customer = await AuthService.syncCustomer({
-        user: req.user,
-        fullName: validated.customer.fullName,
-      });
-      if (customer) {
-        // Link customer email and details
-        validated.customer.email = req.user.email;
-      }
-    }
+    // Place the order against the signed-in customer's verified identity.
+    await AuthService.syncCustomer({
+      user: req.user!,
+      fullName: validated.customer.fullName,
+    });
+    validated.customer.email = req.user!.email;
 
     const order = await CheckoutService.createOrder({
       ...validated,

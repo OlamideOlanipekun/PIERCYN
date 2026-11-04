@@ -18,7 +18,6 @@ export const CartDrawer: React.FC = () => {
     currency,
     clearCart,
     showToast,
-    setIsCheckoutOpen,
     appliedPromoCode,
     promoDiscountNGN,
     promoDescription,
@@ -66,7 +65,8 @@ export const CartDrawer: React.FC = () => {
 
   const handleProceedCheckout = () => {
     setIsCartOpen(false);
-    setIsCheckoutOpen(true);
+    window.history.pushState({ page: 'checkout' }, '', '/checkout');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   return (

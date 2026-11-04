@@ -18,7 +18,6 @@ import { CartDrawer } from './components/CartDrawer';
 import { QuickViewModal } from './components/QuickViewModal';
 import { SearchModal } from './components/SearchModal';
 import { SizeGuideModal } from './components/SizeGuideModal';
-import { CheckoutModal } from './components/CheckoutModal';
 import { OrderConfirmationModal } from './components/OrderConfirmationModal';
 import { WhatsAppButton } from './components/WhatsAppButton';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -83,7 +82,7 @@ const WhyPiercynSection: React.FC = () => (
 );
 
 const MainLayout: React.FC = () => {
-  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts, setIsCartOpen, setIsCheckoutOpen } = useShop();
+  const { products, getProductBySlug, setQuickViewProduct, setActiveLook, isLoadingProducts, catalogError, refreshProducts, setIsCartOpen } = useShop();
   const [activePage, setActivePage] = useState<ActivePageView>('home');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [currentPdpProduct, setCurrentPdpProduct] = useState<Product | null>(null);
@@ -514,7 +513,7 @@ const MainLayout: React.FC = () => {
           onViewProduct={handleViewProduct}
           onShop={() => handleSelectPage('shop')}
           onOpenCart={() => setIsCartOpen(true)}
-          onOpenCheckout={() => setIsCheckoutOpen(true)}
+          onOpenCheckout={() => handleSelectPage('checkout')}
           isLoadingProducts={isLoadingProducts}
           catalogError={catalogError}
           onRetryProducts={refreshProducts}
@@ -654,7 +653,6 @@ const MainLayout: React.FC = () => {
       <QuickViewModal />
       <SearchModal onViewProduct={handleViewProduct} />
       <SizeGuideModal />
-      <CheckoutModal />
       <OrderConfirmationModal />
       <LookbookModal />
       {isAffiliateAnnouncementOpen && (

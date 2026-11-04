@@ -124,7 +124,7 @@ export const StorefrontInfoPage: React.FC<StorefrontInfoPageProps> = ({ page, pr
   }, [products, normalizedQuery]);
 
   const pageTitle = page === 'search' ? 'Search the Catalogue' : page === 'cart' ? 'Your Shopping Bag' : page === 'checkout' ? 'Secure Checkout' : page === 'order-confirmation' ? 'Order Confirmation' : copy[page].title;
-  const eyebrow = page === 'search' ? 'FIND YOUR NEXT PIECE' : page === 'cart' ? 'YOUR SELECTION' : page === 'checkout' ? 'GUEST CHECKOUT' : page === 'order-confirmation' ? 'ORDER STATUS' : copy[page].eyebrow;
+  const eyebrow = page === 'search' ? 'FIND YOUR NEXT PIECE' : page === 'cart' ? 'YOUR SELECTION' : page === 'checkout' ? 'SIGN IN REQUIRED' : page === 'order-confirmation' ? 'ORDER STATUS' : copy[page].eyebrow;
 
   return (
     <main className="min-h-[70vh] bg-[#F2F0EB] px-0 pb-20 pt-24 text-[#141414] sm:pt-28">

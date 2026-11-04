@@ -29,7 +29,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onSelectPage }) => {
             Privacy Policy
           </h1>
           <p className="mt-4 text-[14px] sm:text-[15px] text-[#4A4844] max-w-2xl leading-relaxed">
-            At PIERCYN, we respect your privacy. This policy outlines how your information is handled during guest checkout, order fulfillment, and ongoing customer communication.
+            At PIERCYN, we respect your privacy. This policy outlines how your information is handled when you sign in, place an order, receive fulfillment, and communicate with our team.
           </p>
           <span className="text-[11px] font-mono text-[#7A7771] block mt-4">
             LAST REVISED: OCTOBER 2026 · NIGERIA DATA PROTECTION ACT (NDPA/NDPR) COMPLIANT
@@ -45,7 +45,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onSelectPage }) => {
               1. Information We Collect
             </h2>
             <p className="mb-3">
-              PIERCYN prioritizes friction-free guest checkout. We only collect details essential to assembling, billing, and delivering your order:
+              We collect details needed to secure your account, assemble your order, process payment, and deliver your pieces:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-[#4A4844]">
               <li><strong>Contact Identifiers:</strong> Your full name, email address, phone number, and WhatsApp contact number.</li>
