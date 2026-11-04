@@ -502,12 +502,12 @@ export class AffiliateService {
         order.commissions.length === 0
           ? 'NONE'
           : order.commissions.every((c) => c.status === 'PAID')
-          ? 'PAID'
-          : order.commissions.every((c) => c.status === 'REVERSED')
-          ? 'REVERSED'
-          : order.commissions.some((c) => c.status === 'AVAILABLE')
-          ? 'AVAILABLE'
-          : 'PENDING';
+            ? 'PAID'
+            : order.commissions.every((c) => c.status === 'REVERSED')
+              ? 'REVERSED'
+              : order.commissions.some((c) => c.status === 'AVAILABLE')
+                ? 'AVAILABLE'
+                : 'PENDING';
 
       return {
         id: order.id,

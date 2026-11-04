@@ -218,3 +218,4 @@ export class AffiliateNotificationService {
     return this.sendEmail(affiliate.email, 'Withdrawal Request Update', html);
   }
 }
+
