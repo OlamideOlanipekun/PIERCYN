@@ -11,7 +11,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build:client": "vite build",
     "build:server": "esbuild apps/api/src/app.ts --bundle --platform=node --format=esm --target=node20 --outfile=build/serverless.js --external:@prisma/client --external:@prisma/adapter-pg --external:pg --banner:js=\"import { createRequire } from 'module'; import { fileURLToPath } from 'node:url'; import { dirname } from 'node:path'; const require = createRequire(import.meta.url); const __dirname = dirname(fileURLToPath(import.meta.url));\" && node -e \"const fs=require('fs');fs.mkdirSync('build',{recursive:true});fs.copyFileSync('dist/index.html','build/index.html');\"",
-    "build": "npm run build:client && node scripts/prerender-seo.mjs && npm run build:server",
+    "build": "prisma generate && npm run build:client && node scripts/prerender-seo.mjs && npm run build:server",
     "postinstall": "prisma generate",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",

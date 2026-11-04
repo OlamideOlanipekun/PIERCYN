@@ -4,7 +4,7 @@
   "functions": {
     "api/[...path].ts": {
       "maxDuration": 30,
-      "includeFiles": "build/**"
+      "includeFiles": "{build/**,node_modules/.prisma/**}"
     }
   },
   "crons": [

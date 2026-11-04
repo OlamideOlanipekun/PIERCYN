@@ -23,19 +23,27 @@ if (process.env.APP_URL && !allowedOrigins.includes(process.env.APP_URL)) {
   allowedOrigins.push(process.env.APP_URL.replace(/\/$/, ''));
 }
 
+if (process.env.VERCEL_URL && !allowedOrigins.includes(`https://${process.env.VERCEL_URL}`)) {
+  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+}
+
 const isLocalDevOrigin = (origin: string) =>
   process.env.NODE_ENV !== 'production' && /^http:\/\/localhost(:\d+)?$/.test(origin);
+
+const isVercelPreviewOrigin = (origin: string) =>
+  /^https:\/\/(piercyn(-[a-z0-9-]+)?|[a-z0-9-]+-bondpierce0|[a-z0-9-]+-olamideolanipekun[a-z0-9-]*)\.vercel\.app$/.test(origin);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      // Never trust every *.vercel.app preview deployment.
-      if (allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
+      if (allowedOrigins.includes(origin) || isLocalDevOrigin(origin) || isVercelPreviewOrigin(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      const err: any = new Error('Not allowed by CORS');
+      err.status = 403;
+      return callback(err);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
