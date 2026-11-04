@@ -3,6 +3,7 @@ import { AffiliateAuthService } from './affiliateAuthService';
 import { AffiliateService } from './affiliateService';
 import { CommissionService } from './commissionService';
 import { requireAffiliate, requireAffiliateLoose, AuthenticatedAffiliateRequest } from './affiliateMiddleware';
+import { AFFILIATE_CONFIG } from '../../config/constants';
 import {
   AffiliateApplySchema,
   AffiliateLoginSchema,
@@ -14,13 +15,13 @@ import {
 
 export const affiliateRouter = Router();
 
-// Flag to pause the affiliate & creator program
-export const AFFILIATE_PROGRAM_PAUSED = true;
+// Controlled centrally via AFFILIATE_CONFIG feature flag
+export const isAffiliateProgramActive = () => AFFILIATE_CONFIG.enabled;
 
 // ─── PUBLIC TRACKING ENDPOINT ─────────────────────────────────────────────
 // POST /api/affiliate/track-click
 affiliateRouter.post('/track-click', async (req: Request, res: Response) => {
-  if (AFFILIATE_PROGRAM_PAUSED) {
+  if (!isAffiliateProgramActive()) {
     return res.json({ success: true, data: { tracked: false, paused: true } });
   }
   try {
@@ -71,7 +72,7 @@ affiliateRouter.get('/resolve/:code', async (req: Request, res: Response) => {
 
 // POST /api/affiliate/apply
 affiliateRouter.post('/apply', async (req: Request, res: Response) => {
-  if (AFFILIATE_PROGRAM_PAUSED) {
+  if (!isAffiliateProgramActive()) {
     return res.status(503).json({
       success: false,
       error: 'The PIERCYN Creator & Affiliate Program is temporarily paused. Applications are currently closed.',
@@ -218,5 +219,56 @@ affiliateRouter.put('/profile', requireAffiliate, async (req: AuthenticatedAffil
   } catch (err: any) {
     const msg = err.errors ? err.errors[0]?.message : err.message;
     res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// GET /api/affiliate/wallet
+affiliateRouter.get('/wallet', requireAffiliate, async (req: AuthenticatedAffiliateRequest, res: Response) => {
+  try {
+    const affiliateId = req.affiliate!.id;
+    const summary = await CommissionService.getCommissionSummary(affiliateId);
+    res.json({
+      success: true,
+      data: {
+        pendingKobo: summary.pendingKobo,
+        pendingNGN: summary.pendingKobo / 100,
+        availableKobo: summary.availableKobo,
+        availableNGN: summary.availableKobo / 100,
+        reservedKobo: summary.reservedKobo,
+        reservedNGN: summary.reservedKobo / 100,
+        paidKobo: summary.paidKobo,
+        paidNGN: summary.paidKobo / 100,
+        reversedKobo: summary.reversedKobo,
+        reversedNGN: summary.reversedKobo / 100,
+        totalEarnedKobo: summary.totalEarnedKobo,
+        totalEarnedNGN: summary.totalEarnedKobo / 100,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/affiliate/ledger
+affiliateRouter.get('/ledger', requireAffiliate, async (req: AuthenticatedAffiliateRequest, res: Response) => {
+  try {
+    const affiliateId = req.affiliate!.id;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    const entries = await AffiliateService.getAffiliateLedger(affiliateId, limit, offset);
+    res.json({ success: true, data: entries });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/affiliate/media
+affiliateRouter.get('/media', requireAffiliate, async (req: AuthenticatedAffiliateRequest, res: Response) => {
+  try {
+    const category = req.query.category ? (req.query.category as string) : undefined;
+    const media = await AffiliateService.getAffiliateMedia({ category, isActive: true });
+    res.json({ success: true, data: media });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });

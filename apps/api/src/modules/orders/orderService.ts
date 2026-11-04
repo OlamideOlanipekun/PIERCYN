@@ -247,10 +247,16 @@ export class OrderService {
     if (COMMERCE_CONFIG.AFFILIATE.ENABLED) {
       try {
         if (newStatus === 'PAID') {
+          // Create commission record + start 7-day cooling window
           await CommissionService.processOrderCommission(updated.id);
-        } else if (newStatus === 'DELIVERED' || newStatus === 'COMPLETED') {
+        } else if (newStatus === 'DELIVERED') {
+          // Record delivery timestamp so the cooling countdown can begin
+          await CommissionService.handleOrderDelivered(updated.id);
+        } else if (newStatus === 'COMPLETED') {
+          // Order complete with no return: immediately clear cooling period
           await CommissionService.markCommissionsAvailable(updated.id);
         } else if (['CANCELLED', 'REFUNDED', 'RETURNED'].includes(newStatus)) {
+          // Reverse any pending or available commissions
           await CommissionService.reverseCommissions(updated.id, note || `Order ${newStatus}`);
         }
       } catch (commErr: any) {

@@ -7,6 +7,8 @@ import {
   AffiliateLinkItem,
   CommissionItem,
   PayoutItem,
+  LedgerItem,
+  MediaItem,
 } from '../services/affiliateApi';
 import {
   LayoutDashboard,
@@ -26,6 +28,10 @@ import {
   ChevronRight,
   ArrowUpRight,
   RefreshCw,
+  FileText,
+  Image as ImageIcon,
+  Download,
+  Wallet,
 } from 'lucide-react';
 
 interface AffiliatePortalProps {
@@ -40,12 +46,14 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   onBackToShop,
 }) => {
   const [currentUser, setCurrentUser] = useState<AffiliateUser>(initialUser);
-  const [activeTab, setActiveTab] = useState<'overview' | 'links' | 'commissions' | 'payouts' | 'profile'>(
-    'overview'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'links' | 'commissions' | 'ledger' | 'media' | 'payouts' | 'profile'
+  >('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [links, setLinks] = useState<AffiliateLinkItem[]>([]);
   const [commissions, setCommissions] = useState<CommissionItem[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerItem[]>([]);
+  const [mediaAssets, setMediaAssets] = useState<MediaItem[]>([]);
   const [payouts, setPayouts] = useState<PayoutItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -84,12 +92,14 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   const fetchPortalData = async () => {
     setIsRefreshing(true);
     try {
-      const [dashRes, linksRes, commsRes, payoutsRes, meRes] = await Promise.all([
+      const [dashRes, linksRes, commsRes, payoutsRes, meRes, ledgerRes, mediaRes] = await Promise.all([
         AffiliateApiClient.getDashboard(),
         AffiliateApiClient.getLinks(),
         AffiliateApiClient.getCommissions(),
         AffiliateApiClient.getPayouts(),
         AffiliateApiClient.getMe(),
+        AffiliateApiClient.getLedger(),
+        AffiliateApiClient.getMedia(),
       ]);
 
       if (dashRes.success && dashRes.data) {
@@ -103,6 +113,12 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
       }
       if (payoutsRes.success && payoutsRes.data) {
         setPayouts(payoutsRes.data);
+      }
+      if (ledgerRes.success && ledgerRes.data) {
+        setLedgerEntries(ledgerRes.data);
+      }
+      if (mediaRes.success && mediaRes.data) {
+        setMediaAssets(mediaRes.data);
       }
       if (meRes.success && meRes.data) {
         setCurrentUser(meRes.data);
@@ -130,10 +146,10 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   const minimumPayoutNGN = stats?.config.minimumPayoutNGN || 0;
 
   useEffect(() => {
-    if (minimumPayoutNGN && payoutAmountNGN < minimumPayoutNGN) {
-      setPayoutAmountNGN(minimumPayoutNGN);
+    if (stats?.earnings.availableNGN && payoutAmountNGN === 0) {
+      setPayoutAmountNGN(stats.earnings.availableNGN);
     }
-  }, [minimumPayoutNGN, payoutAmountNGN]);
+  }, [stats?.earnings.availableNGN]);
 
   const handleCopyLink = (code: string) => {
     const fullUrl = `${window.location.origin}/r/${code}`;
@@ -188,7 +204,12 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
       return;
     }
 
-    if (payoutAmountNGN < minimumPayoutNGN) {
+    if (payoutAmountNGN <= 0) {
+      setPayoutError('Withdrawal amount must be greater than zero.');
+      return;
+    }
+
+    if (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN) {
       setPayoutError(`Minimum withdrawal amount is ₦${minimumPayoutNGN.toLocaleString()}.`);
       return;
     }
@@ -317,6 +338,8 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
               { id: 'overview', label: 'Overview & Earnings', icon: LayoutDashboard },
               { id: 'links', label: 'Referral Links', icon: Link2 },
               { id: 'commissions', label: 'Orders & Royalties', icon: Receipt },
+              { id: 'ledger', label: 'Financial Ledger', icon: FileText },
+              { id: 'media', label: 'Brand Kit & Media', icon: ImageIcon },
               { id: 'payouts', label: 'Payout Requests', icon: CreditCard },
               { id: 'profile', label: 'Bank & Profile', icon: User },
             ].map((tab) => {
@@ -763,6 +786,187 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
           </div>
         )}
 
+        {/* ─── TAB: FINANCIAL LEDGER ────────────────────────────────────── */}
+        {activeTab === 'ledger' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-serif text-white">Immutable Financial Ledger</h2>
+                <p className="text-xs text-[#888888] font-light mt-1">
+                  Complete, verifiable record of all wallet credits, reservations, payouts, and adjustments.
+                </p>
+              </div>
+              <button
+                onClick={fetchPortalData}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-[#333333] hover:border-[#666666] text-xs text-[#CCCCCC] transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh Ledger
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
+                      <th className="py-3 px-4 sm:px-6">Timestamp</th>
+                      <th className="py-3 px-4">Event Type</th>
+                      <th className="py-3 px-4">Description</th>
+                      <th className="py-3 px-4 text-right">Amount (₦)</th>
+                      <th className="py-3 px-4 text-right">Balance Before</th>
+                      <th className="py-3 px-4 text-right">Balance After</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1F1F1F] text-xs">
+                    {ledgerEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-[#666666] font-light">
+                          No ledger movements recorded yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      ledgerEntries.map((entry) => {
+                        const isCredit =
+                          entry.type === 'COMMISSION_EARNED' ||
+                          entry.type === 'COMMISSION_PENDING' ||
+                          entry.type === 'WITHDRAWAL_RELEASED';
+                        return (
+                          <tr key={entry.id} className="hover:bg-[#181818]/60 transition-colors">
+                            <td className="py-4 px-4 sm:px-6 text-[#AAAAAA] font-mono text-[11px]">
+                              {new Date(entry.createdAt).toLocaleString()}
+                            </td>
+                            <td className="py-4 px-4">
+                              <span
+                                className={`inline-block text-[9px] uppercase tracking-wider px-2 py-0.5 rounded font-mono ${
+                                  entry.type === 'COMMISSION_EARNED'
+                                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40'
+                                    : entry.type === 'COMMISSION_PENDING'
+                                    ? 'bg-amber-950/60 text-amber-300 border border-amber-800/40'
+                                    : entry.type === 'WITHDRAWAL_PAID'
+                                    ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40'
+                                    : entry.type === 'WITHDRAWAL_RESERVED'
+                                    ? 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
+                                    : entry.type === 'COMMISSION_REVERSED'
+                                    ? 'bg-red-950/60 text-red-300 border border-red-800/40'
+                                    : 'bg-zinc-800 text-zinc-300'
+                                }`}
+                              >
+                                {entry.type.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-[#CCCCCC] max-w-xs truncate">
+                              {entry.description || entry.referenceType || 'Financial entry'}
+                            </td>
+                            <td
+                              className={`py-4 px-4 text-right font-mono font-semibold ${
+                                isCredit ? 'text-emerald-400' : 'text-red-400'
+                              }`}
+                            >
+                              {isCredit ? '+' : '-'}₦{(entry.amountKobo / 100).toLocaleString()}
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono text-[#888888]">
+                              ₦{(entry.balanceBeforeKobo / 100).toLocaleString()}
+                            </td>
+                            <td className="py-4 px-4 text-right font-mono font-medium text-white">
+                              ₦{(entry.balanceAfterKobo / 100).toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB: BRAND KIT & MEDIA ────────────────────────────────────── */}
+        {activeTab === 'media' && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-serif text-white">Media Library & Brand Assets</h2>
+              <p className="text-xs text-[#888888] font-light mt-1">
+                Download official PIERCYN lookbooks, imagery, badges, and banners to feature in your content.
+              </p>
+            </div>
+
+            {mediaAssets.length === 0 ? (
+              <div className="p-12 text-center rounded-xl bg-[#141414] border border-[#242424]">
+                <ImageIcon className="w-10 h-10 text-[#444444] mx-auto mb-3" />
+                <h4 className="text-sm font-medium text-white mb-1">No Brand Assets Available Yet</h4>
+                <p className="text-xs text-[#777777] font-light max-w-md mx-auto">
+                  Our marketing team is curating the official media kit. Please check back soon or reach out via creator support.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {mediaAssets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden hover:border-[#C9A96E]/40 transition-colors flex flex-col"
+                  >
+                    <div className="aspect-video bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center">
+                      {asset.thumbnailUrl || asset.url ? (
+                        <img
+                          src={asset.thumbnailUrl || asset.url}
+                          alt={asset.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-[#555555]" />
+                      )}
+                      <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider px-2 py-0.5 rounded bg-black/70 backdrop-blur text-[#C9A96E] border border-[#C9A96E]/30 font-mono">
+                        {asset.category}
+                      </span>
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-sm font-serif text-white mb-1">{asset.title}</h4>
+                        {asset.description && (
+                          <p className="text-xs text-[#888888] line-clamp-2 font-light mb-3">
+                            {asset.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 text-[10px] text-[#666666] font-mono">
+                          {asset.dimensions && <span>{asset.dimensions}</span>}
+                          {asset.fileSize && <span>{asset.fileSize}</span>}
+                        </div>
+                      </div>
+
+                      <div className="pt-4 mt-4 border-t border-[#222222] flex items-center justify-between gap-3">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(asset.url);
+                            alert('Asset URL copied to clipboard!');
+                          }}
+                          className="text-[11px] uppercase tracking-wider text-[#C9A96E] hover:underline flex items-center gap-1.5"
+                        >
+                          <Copy className="w-3 h-3" />
+                          Copy Link
+                        </button>
+                        <a
+                          href={asset.downloadUrl || asset.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          download
+                          className="px-3 py-1.5 rounded bg-[#222222] hover:bg-[#333333] text-white text-xs flex items-center gap-1.5 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── TAB 4: PAYOUTS ────────────────────────────────────────────── */}
         {activeTab === 'payouts' && (
           <div className="space-y-8">
@@ -794,14 +998,18 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <input
                       type="number"
                       required
-                      min={minimumPayoutNGN}
+                      min={minimumPayoutNGN || 1}
                       max={stats?.earnings.availableNGN || 0}
                       step={100}
                       value={payoutAmountNGN}
                       onChange={(e) => setPayoutAmountNGN(parseInt(e.target.value, 10) || 0)}
                       className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white font-mono text-sm focus:border-[#C9A96E] outline-none"
                     />
-                    <span className="text-[10px] text-[#666666] mt-1 block">Minimum payout: ₦{minimumPayoutNGN.toLocaleString()}</span>
+                    <span className="text-[10px] text-[#666666] mt-1 block">
+                      {minimumPayoutNGN > 0
+                        ? `Minimum payout: ₦${minimumPayoutNGN.toLocaleString()}`
+                        : 'No minimum withdrawal limit (₦0 minimum)'}
+                    </span>
                   </div>
 
                   <div className="p-3.5 rounded bg-[#181818] border border-[#292929] text-xs">
@@ -816,7 +1024,13 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
                   <button
                     type="submit"
-                    disabled={isSubmittingPayout || !minimumPayoutNGN || (stats?.earnings.availableNGN || 0) < minimumPayoutNGN}
+                    disabled={
+                      isSubmittingPayout ||
+                      (stats?.earnings.availableNGN || 0) <= 0 ||
+                      payoutAmountNGN <= 0 ||
+                      payoutAmountNGN > (stats?.earnings.availableNGN || 0) ||
+                      (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN)
+                    }
                     className="w-full py-3 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-40 text-black text-xs uppercase tracking-widest font-semibold rounded transition-all"
                   >
                     {isSubmittingPayout ? 'Submitting Request...' : 'Submit Withdrawal Request'}

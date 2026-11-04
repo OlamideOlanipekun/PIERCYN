@@ -3,7 +3,12 @@ import { requireAdmin, AuthenticatedAdminRequest } from '../admin/adminMiddlewar
 import { AffiliateService } from './affiliateService';
 import { CommissionService } from './commissionService';
 import { prisma } from '../../db/prisma';
-import { ReviewAffiliateApplicationSchema, ProcessAffiliatePayoutSchema } from '../../schemas/affiliate';
+import {
+  ReviewAffiliateApplicationSchema,
+  ProcessAffiliatePayoutSchema,
+  CreateAffiliateMediaSchema,
+  UpdateAffiliateMediaSchema,
+} from '../../schemas/affiliate';
 
 export const affiliateAdminRouter = Router();
 
@@ -93,17 +98,131 @@ affiliateAdminRouter.get('/overview', async (_req: AuthenticatedAdminRequest, re
   }
 });
 
+// ─── ADMIN PAYOUTS MANAGEMENT (MUST precede /:id) ─────────────────────────
+
+// GET /api/admin/affiliates/payouts/all
+affiliateAdminRouter.get('/payouts/all', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { status, limit, offset } = req.query;
+    const payouts = await AffiliateService.getAllPayoutsForAdmin({
+      status: status as any,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      offset: offset ? parseInt(offset as string, 10) : undefined,
+    });
+    res.json({ success: true, count: payouts.length, data: payouts });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/affiliates/payouts/:id/process and /api/admin/affiliates/payouts/process
+affiliateAdminRouter.post(
+  ['/payouts/:id/process', '/payouts/process'],
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const validated = ProcessAffiliatePayoutSchema.parse(req.body);
+      const targetPayoutId = req.params.id || (req.body as any).payoutId;
+      if (!targetPayoutId) {
+        return res.status(400).json({ success: false, error: 'payoutId is required' });
+      }
+      const updated = await AffiliateService.processPayout(
+        targetPayoutId,
+        validated.action,
+        req.admin!.email,
+        validated.notes || validated.adminNote,
+        validated.payoutReference || validated.paymentReference
+      );
+      res.json({
+        success: true,
+        message: `Payout successfully updated to ${validated.action}.`,
+        data: updated,
+      });
+    } catch (err: any) {
+      const msg = err.errors ? err.errors[0]?.message : err.message;
+      res.status(400).json({ success: false, error: msg });
+    }
+  }
+);
+
+// ─── AUDIT LOG (MUST precede /:id) ────────────────────────────────────────
+
+// GET /api/admin/affiliates/audit-log
+affiliateAdminRouter.get('/audit-log', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { affiliateId, action, limit, offset } = req.query;
+    const logs = await AffiliateService.getAffiliateAuditLogs({
+      affiliateId: affiliateId ? (affiliateId as string) : undefined,
+      action: action ? (action as string) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      offset: offset ? parseInt(offset as string, 10) : undefined,
+    });
+    res.json({ success: true, count: logs.length, data: logs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── MEDIA ASSETS MANAGEMENT (MUST precede /:id) ──────────────────────────
+
+// GET /api/admin/affiliates/media
+affiliateAdminRouter.get('/media', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { category, isActive } = req.query;
+    const media = await AffiliateService.getAffiliateMedia({
+      category: category ? (category as string) : undefined,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    });
+    res.json({ success: true, count: media.length, data: media });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/affiliates/media
+affiliateAdminRouter.post('/media', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = CreateAffiliateMediaSchema.parse(req.body);
+    const media = await AffiliateService.createAffiliateMedia({
+      ...validated,
+      createdById: req.admin?.email,
+    });
+    res.status(201).json({ success: true, data: media });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// PATCH /api/admin/affiliates/media/:id
+affiliateAdminRouter.patch('/media/:id', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const validated = UpdateAffiliateMediaSchema.parse(req.body);
+    const updated = await AffiliateService.updateAffiliateMedia(req.params.id, validated);
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    const msg = err.errors ? err.errors[0]?.message : err.message;
+    res.status(400).json({ success: false, error: msg });
+  }
+});
+
+// DELETE /api/admin/affiliates/media/:id
+affiliateAdminRouter.delete('/media/:id', async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    await AffiliateService.deleteAffiliateMedia(req.params.id);
+    res.json({ success: true, message: 'Media asset deleted successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── AFFILIATES DIRECTORY ──────────────────────────────────────────────────
 
 // GET /api/admin/affiliates
 affiliateAdminRouter.get('/', async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { status, search, limit, offset } = req.query;
-    // Sanitize query params: treat absent, empty, or literal "undefined" string as undefined
-    const sanitizedStatus =
-      status && status !== 'undefined' ? (status as string) : undefined;
-    const sanitizedSearch =
-      search && search !== 'undefined' ? (search as string) : undefined;
+    const sanitizedStatus = status && status !== 'undefined' ? (status as string) : undefined;
+    const sanitizedSearch = search && search !== 'undefined' ? (search as string) : undefined;
     const affiliates = await AffiliateService.getAllAffiliatesForAdmin({
       status: sanitizedStatus,
       search: sanitizedSearch,
@@ -167,48 +286,5 @@ affiliateAdminRouter.post('/:id/status', async (req: AuthenticatedAdminRequest, 
     res.json({ success: true, data: updated });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
-  }
-});
-
-// ─── ADMIN PAYOUTS MANAGEMENT ──────────────────────────────────────────────
-
-// GET /api/admin/affiliates/payouts/all
-affiliateAdminRouter.get('/payouts/all', async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { status, limit, offset } = req.query;
-    const payouts = await AffiliateService.getAllPayoutsForAdmin({
-      status: status as any,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-      offset: offset ? parseInt(offset as string, 10) : undefined,
-    });
-    res.json({ success: true, count: payouts.length, data: payouts });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST /api/admin/affiliates/payouts/:id/process and /api/admin/affiliates/payouts/process
-affiliateAdminRouter.post(['/payouts/:id/process', '/payouts/process'], async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const validated = ProcessAffiliatePayoutSchema.parse(req.body);
-    const targetPayoutId = req.params.id || (req.body as any).payoutId;
-    if (!targetPayoutId) {
-      return res.status(400).json({ success: false, error: 'payoutId is required' });
-    }
-    const updated = await AffiliateService.processPayout(
-      targetPayoutId,
-      validated.action,
-      req.admin!.email,
-      validated.notes || validated.adminNote,
-      validated.payoutReference || validated.paymentReference
-    );
-    res.json({
-      success: true,
-      message: `Payout successfully updated to ${validated.action}.`,
-      data: updated,
-    });
-  } catch (err: any) {
-    const msg = err.errors ? err.errors[0]?.message : err.message;
-    res.status(400).json({ success: false, error: msg });
   }
 });

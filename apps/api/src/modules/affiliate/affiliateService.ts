@@ -43,7 +43,8 @@ export class AffiliateService {
 
   public static async apply(data: {
     email: string;
-    password: string;
+    password?: string;
+    supabaseUserId?: string;
     firstName: string;
     lastName: string;
     phone?: string;
@@ -62,12 +63,13 @@ export class AffiliateService {
       throw new Error('An affiliate account with this email already exists.');
     }
 
-    const passwordHash = await bcrypt.hash(data.password.trim(), 10);
+    const passwordHash = data.password ? await bcrypt.hash(data.password.trim(), 10) : null;
 
     const affiliate = await prisma.affiliate.create({
       data: {
         email,
         passwordHash,
+        supabaseUserId: data.supabaseUserId || null,
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         phone: data.phone?.trim() || null,
@@ -81,6 +83,11 @@ export class AffiliateService {
         isActive: false,
       },
     });
+
+    // Initialize zeroed wallet
+    await prisma.affiliateWallet.create({
+      data: { affiliateId: affiliate.id },
+    }).catch(() => null);
 
     const token = AffiliateAuthService.generateToken({
       id: affiliate.id,
@@ -576,39 +583,49 @@ export class AffiliateService {
     data: { amountNGN: number; bankName: string; accountNumber: string; accountName: string }
   ) {
     const requestedKobo = Math.round(data.amountNGN * 100);
-    if (!Number.isSafeInteger(requestedKobo) || requestedKobo < MIN_PAYOUT_KOBO) {
-      throw new Error(`Minimum withdrawal amount is ₦${(MIN_PAYOUT_KOBO / 100).toLocaleString()}.`);
+    if (!Number.isSafeInteger(requestedKobo) || requestedKobo <= 0) {
+      throw new Error('Withdrawal amount must be greater than zero.');
     }
 
     const payout = await prisma.$transaction(async (tx) => {
       const affiliate = await tx.affiliate.findUnique({ where: { id: affiliateId } });
-      if (!affiliate || affiliate.status !== 'ACTIVE') {
+      if (!affiliate || affiliate.status !== 'ACTIVE' || !affiliate.isActive) {
         throw new Error('Only active affiliates can request payouts.');
       }
 
-      const commissions = await tx.affiliateCommission.findMany({
-        where: { affiliateId, status: 'AVAILABLE', payoutId: null },
-        orderBy: { eligibleAt: 'asc' },
+      // 1. Get or initialize affiliate wallet
+      let wallet = await tx.affiliateWallet.findUnique({ where: { affiliateId } });
+      if (!wallet) {
+        const availComm = await tx.affiliateCommission.aggregate({
+          where: { affiliateId, status: 'AVAILABLE', payoutId: null },
+          _sum: { amountKobo: true },
+        });
+        const initialAvail = availComm._sum.amountKobo || 0;
+        wallet = await tx.affiliateWallet.create({
+          data: {
+            affiliateId,
+            availableKobo: initialAvail,
+            lifetimeEarnedKobo: initialAvail,
+          },
+        });
+      }
+
+      if (requestedKobo > wallet.availableKobo) {
+        throw new Error(
+          `Requested amount of ₦${(requestedKobo / 100).toLocaleString()} exceeds your available balance of ₦${(wallet.availableKobo / 100).toLocaleString()}.`
+        );
+      }
+
+      // 2. Atomically reserve funds in the wallet
+      const updatedWallet = await tx.affiliateWallet.update({
+        where: { affiliateId },
+        data: {
+          availableKobo: { decrement: requestedKobo },
+          reservedKobo: { increment: requestedKobo },
+        },
       });
-      const availableKobo = commissions.reduce((sum, commission) => sum + commission.amountKobo, 0);
-      if (requestedKobo > availableKobo) {
-        throw new Error(`Requested amount exceeds your available balance of ₦${(availableKobo / 100).toLocaleString()}.`);
-      }
 
-      // Reserve only the commission records needed for this payout request.
-      const reservedCommissionIds: string[] = [];
-      let remainingKobo = requestedKobo;
-      for (const commission of commissions) {
-        if (commission.amountKobo <= remainingKobo) {
-          reservedCommissionIds.push(commission.id);
-          remainingKobo -= commission.amountKobo;
-        }
-        if (remainingKobo === 0) break;
-      }
-      if (remainingKobo !== 0) {
-        throw new Error('Requested amount must match available commission increments.');
-      }
-
+      // 3. Create the payout request record
       const newPayout = await tx.affiliatePayout.create({
         data: {
           affiliateId,
@@ -620,14 +637,17 @@ export class AffiliateService {
         },
       });
 
-      // Link available commissions to this payout
-      await tx.affiliateCommission.updateMany({
-        where: {
-          id: { in: reservedCommissionIds },
-          payoutId: null,
-        },
+      // 4. Create immutable ledger movement for reservation
+      await tx.affiliateLedger.create({
         data: {
-          payoutId: newPayout.id,
+          affiliateId,
+          type: 'WITHDRAWAL_RESERVED',
+          amountKobo: -requestedKobo,
+          balanceBeforeKobo: wallet.availableKobo,
+          balanceAfterKobo: updatedWallet.availableKobo,
+          referenceType: 'PAYOUT',
+          referenceId: newPayout.id,
+          description: `Withdrawal reserved: ₦${(requestedKobo / 100).toLocaleString()} to ${data.bankName.trim()}`,
         },
       });
 
@@ -706,6 +726,8 @@ export class AffiliateService {
         pendingNGN: commissionSummary.pendingKobo / 100,
         availableKobo: commissionSummary.availableKobo,
         availableNGN: commissionSummary.availableKobo / 100,
+        reservedKobo: commissionSummary.reservedKobo ?? 0,
+        reservedNGN: (commissionSummary.reservedKobo ?? 0) / 100,
         paidKobo: commissionSummary.paidKobo,
         paidNGN: commissionSummary.paidKobo / 100,
         reversedKobo: commissionSummary.reversedKobo,
@@ -725,6 +747,7 @@ export class AffiliateService {
             : 0,
       },
       config: {
+        commissionPerOrderNGN: CommissionService.getCommissionPerOrderNGN(),
         commissionPerProductNGN: CommissionService.getCommissionPerProductNGN(),
         returnWindowDays: CommissionService.getReturnWindowDays(),
         attributionWindowDays: ATTRIBUTION_WINDOW_DAYS,
@@ -891,6 +914,14 @@ export class AffiliateService {
           approvedBy: adminEmail,
         },
       });
+      await prisma.affiliateAuditLog.create({
+        data: {
+          affiliateId,
+          adminEmail,
+          action: 'APPLICATION_APPROVED',
+          details: `Application approved by ${adminEmail}`,
+        },
+      }).catch((e) => console.error('Failed to log affiliate audit:', e));
       return updated;
     } else {
       const updated = await prisma.affiliate.update({
@@ -903,6 +934,14 @@ export class AffiliateService {
           rejectionReason: reason || 'Application did not meet minimum criteria',
         },
       });
+      await prisma.affiliateAuditLog.create({
+        data: {
+          affiliateId,
+          adminEmail,
+          action: 'APPLICATION_REJECTED',
+          details: `Application rejected by ${adminEmail}. Reason: ${reason || 'Application did not meet minimum criteria'}`,
+        },
+      }).catch((e) => console.error('Failed to log affiliate audit:', e));
       return updated;
     }
   }
@@ -929,6 +968,14 @@ export class AffiliateService {
           suspensionReason: reason || 'Account suspended by administrator',
         },
       });
+      await prisma.affiliateAuditLog.create({
+        data: {
+          affiliateId,
+          adminEmail,
+          action: 'AFFILIATE_SUSPENDED',
+          details: `Suspended by ${adminEmail}. Reason: ${reason || 'Account suspended by administrator'}`,
+        },
+      }).catch((e) => console.error('Failed to log affiliate audit:', e));
       return updated;
     } else {
       const updated = await prisma.affiliate.update({
@@ -940,6 +987,14 @@ export class AffiliateService {
           suspensionReason: null,
         },
       });
+      await prisma.affiliateAuditLog.create({
+        data: {
+          affiliateId,
+          adminEmail,
+          action: 'AFFILIATE_REACTIVATED',
+          details: `Reactivated by ${adminEmail}`,
+        },
+      }).catch((e) => console.error('Failed to log affiliate audit:', e));
       return updated;
     }
   }
@@ -994,7 +1049,7 @@ export class AffiliateService {
 
   public static async processPayout(
     payoutId: string,
-    action: 'PAID' | 'REJECTED' | 'APPROVED',
+    action: 'PAID' | 'REJECTED' | 'APPROVED' | 'PROCESSING' | 'FAILED',
     adminEmail: string,
     notes?: string,
     paymentReference?: string
@@ -1009,6 +1064,10 @@ export class AffiliateService {
 
     return prisma.$transaction(async (tx) => {
       if (action === 'PAID') {
+        if (!['PENDING', 'PROCESSING', 'APPROVED'].includes(payout.status)) {
+          throw new Error(`Cannot mark payout as PAID from status ${payout.status}.`);
+        }
+
         const updated = await tx.affiliatePayout.update({
           where: { id: payoutId },
           data: {
@@ -1020,37 +1079,108 @@ export class AffiliateService {
           },
         });
 
-        // Mark associated commissions as PAID
+        // Mark commissions as PAID and debit wallet permanently
         await tx.affiliateCommission.updateMany({
           where: { payoutId: payout.id },
+          data: { status: 'PAID', paidAt: now },
+        });
+
+        // Move reserved → paid in wallet
+        const walletBefore = await tx.affiliateWallet.findUnique({
+          where: { affiliateId: payout.affiliateId },
+        });
+        const walletAfter = await tx.affiliateWallet.upsert({
+          where: { affiliateId: payout.affiliateId },
+          update: {
+            reservedKobo: { decrement: payout.amountKobo },
+            paidKobo: { increment: payout.amountKobo },
+          },
+          create: {
+            affiliateId: payout.affiliateId,
+            paidKobo: payout.amountKobo,
+          },
+        });
+
+        await tx.affiliateLedger.create({
           data: {
-            status: 'PAID',
-            paidAt: now,
+            affiliateId: payout.affiliateId,
+            type: 'WITHDRAWAL_PAID',
+            amountKobo: -payout.amountKobo,
+            balanceBeforeKobo: walletBefore?.availableKobo ?? 0,
+            balanceAfterKobo: walletAfter.availableKobo,
+            referenceType: 'PAYOUT',
+            referenceId: payout.id,
+            adminId: adminEmail,
+            description: `Payout of ₦${(payout.amountKobo / 100).toLocaleString()} marked PAID by ${adminEmail}`,
           },
         });
 
         return updated;
-      } else if (action === 'REJECTED') {
+
+      } else if (action === 'REJECTED' || action === 'FAILED') {
+        const finalStatus = action === 'FAILED' ? 'PAID' : 'REJECTED'; // keep PAID enum, use 'REJECTED'
         const updated = await tx.affiliatePayout.update({
           where: { id: payoutId },
           data: {
             status: 'REJECTED',
-            adminNote: notes || 'Payout request rejected',
+            adminNote: notes || (action === 'FAILED' ? 'Payout failed during processing' : 'Payout request rejected'),
             processedBy: adminEmail,
             processedAt: now,
+          },
+        });
+
+        // Release reservation — funds return to available
+        const walletBefore = await tx.affiliateWallet.findUnique({
+          where: { affiliateId: payout.affiliateId },
+        });
+        const walletAfter = await tx.affiliateWallet.upsert({
+          where: { affiliateId: payout.affiliateId },
+          update: {
+            reservedKobo: { decrement: payout.amountKobo },
+            availableKobo: { increment: payout.amountKobo },
+          },
+          create: {
+            affiliateId: payout.affiliateId,
+            availableKobo: payout.amountKobo,
+          },
+        });
+
+        await tx.affiliateLedger.create({
+          data: {
+            affiliateId: payout.affiliateId,
+            type: 'WITHDRAWAL_RELEASED',
+            amountKobo: payout.amountKobo,
+            balanceBeforeKobo: walletBefore?.availableKobo ?? 0,
+            balanceAfterKobo: walletAfter.availableKobo,
+            referenceType: 'PAYOUT',
+            referenceId: payout.id,
+            adminId: adminEmail,
+            description: `Withdrawal reservation released (${action}) by ${adminEmail}`,
           },
         });
 
         // Unlink commissions so they become available again
         await tx.affiliateCommission.updateMany({
           where: { payoutId: payout.id },
-          data: {
-            payoutId: null,
-          },
+          data: { payoutId: null },
         });
 
         return updated;
+
+      } else if (action === 'PROCESSING') {
+        const updated = await tx.affiliatePayout.update({
+          where: { id: payoutId },
+          data: {
+            status: 'PROCESSING',
+            adminNote: notes || 'Payout is being processed',
+            processedBy: adminEmail,
+            processedAt: now,
+          },
+        });
+        return updated;
+
       } else {
+        // APPROVED
         const updated = await tx.affiliatePayout.update({
           where: { id: payoutId },
           data: {
@@ -1062,6 +1192,104 @@ export class AffiliateService {
         });
         return updated;
       }
+    });
+  }
+
+  public static async getAffiliateLedger(affiliateId: string, limit = 50, offset = 0) {
+    return prisma.affiliateLedger.findMany({
+      where: { affiliateId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+  }
+
+  public static async getAffiliateMedia(options?: { category?: string; isActive?: boolean }) {
+    return prisma.affiliateMedia.findMany({
+      where: {
+        isActive: options?.isActive !== undefined ? options.isActive : true,
+        ...(options?.category ? { category: options.category } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  public static async createAffiliateMedia(data: {
+    title: string;
+    description?: string;
+    category: string;
+    mediaType: string;
+    url: string;
+    thumbnailUrl?: string;
+    downloadUrl?: string;
+    dimensions?: string;
+    fileSize?: string;
+    isActive?: boolean;
+    createdById?: string;
+  }) {
+    return prisma.affiliateMedia.create({
+      data: {
+        title: data.title,
+        description: data.description || null,
+        category: data.category,
+        mediaType: data.mediaType,
+        url: data.url,
+        thumbnailUrl: data.thumbnailUrl || null,
+        downloadUrl: data.downloadUrl || null,
+        dimensions: data.dimensions || null,
+        fileSize: data.fileSize || null,
+        isActive: data.isActive ?? true,
+        createdById: data.createdById || null,
+      },
+    });
+  }
+
+  public static async updateAffiliateMedia(
+    id: string,
+    data: Partial<{
+      title: string;
+      description: string;
+      category: string;
+      mediaType: string;
+      url: string;
+      thumbnailUrl: string;
+      downloadUrl: string;
+      dimensions: string;
+      fileSize: string;
+      isActive: boolean;
+    }>
+  ) {
+    return prisma.affiliateMedia.update({
+      where: { id },
+      data,
+    });
+  }
+
+  public static async deleteAffiliateMedia(id: string) {
+    return prisma.affiliateMedia.delete({
+      where: { id },
+    });
+  }
+
+  public static async getAffiliateAuditLogs(options?: {
+    affiliateId?: string;
+    action?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    return prisma.affiliateAuditLog.findMany({
+      where: {
+        ...(options?.affiliateId ? { affiliateId: options.affiliateId } : {}),
+        ...(options?.action ? { action: options.action } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: options?.limit || 50,
+      skip: options?.offset || 0,
+      include: {
+        affiliate: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
   }
 }

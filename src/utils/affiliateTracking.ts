@@ -27,7 +27,7 @@ export function getOrCreateSessionId(): string {
   }
 }
 
-export const AFFILIATE_PROGRAM_ENABLED = false;
+export const AFFILIATE_PROGRAM_ENABLED = true;
 
 /**
  * Checks if the user currently has an active, unexpired affiliate attribution.

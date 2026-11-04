@@ -1,17 +1,17 @@
 {
-  "savedAt": "2026-11-02T19:45:03.793Z",
+  "savedAt": "2026-11-04T14:01:00.892Z",
   "inventory": {
     "var-pcy-oversized-tee-pit-s": {
       "id": "inv-var-pcy-oversized-tee-pit-s",
       "variantId": "var-pcy-oversized-tee-pit-s",
-      "stockQuantity": 58,
-      "availableStock": 58,
+      "stockQuantity": 83,
+      "availableStock": 83,
       "reservedStock": 0,
       "soldStock": 0,
       "damagedStock": 0,
       "returnedStock": 0,
       "reorderLevel": 3,
-      "updatedAt": "2026-11-02T19:45:03.791Z"
+      "updatedAt": "2026-11-04T14:01:00.892Z"
     },
     "var-pcy-oversized-tee-pit-m": {
       "id": "inv-var-pcy-oversized-tee-pit-m",

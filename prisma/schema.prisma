@@ -41,9 +41,21 @@ enum CommissionStatus {
 
 enum PayoutStatus {
   PENDING
+  PROCESSING
   APPROVED
   PAID
   REJECTED
+  FAILED
+}
+
+enum LedgerEntryType {
+  COMMISSION_PENDING
+  COMMISSION_AVAILABLE
+  COMMISSION_REVERSED
+  WITHDRAWAL_RESERVED
+  WITHDRAWAL_PAID
+  WITHDRAWAL_RELEASED
+  ADJUSTMENT
 }
 
 enum ProductStatus {
@@ -982,7 +994,8 @@ model NotificationJob {
 model Affiliate {
   id           String          @id @default(cuid())
   email        String          @unique
-  passwordHash String
+  passwordHash String?
+  supabaseUserId String?       @unique
   firstName    String
   lastName     String
   phone        String?
@@ -1024,9 +1037,13 @@ model Affiliate {
   commissions  AffiliateCommission[]
   payouts      AffiliatePayout[]
   orders       Order[]
+  wallet       AffiliateWallet?
+  ledger       AffiliateLedger[]
+  auditLogs    AffiliateAuditLog[]
 
   @@index([email])
   @@index([status])
+  @@index([supabaseUserId])
 }
 
 // Affiliate referral link — generates unique ?ref=CODE URLs
@@ -1109,20 +1126,21 @@ model AffiliateAttribution {
   @@index([expiresAt])
 }
 
-// Per-item commission record — idempotent via unique(affiliateId, orderItemId)
+// Per-item or per-order commission record — idempotent via unique(affiliateId, orderItemId) or code checks
 model AffiliateCommission {
   id              String           @id @default(cuid())
   affiliateId     String
   affiliate       Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
   orderId         String
   order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItemId     String
-  orderItem       OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  orderItemId     String?
+  orderItem       OrderItem?       @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   affiliateLinkId String?
   affiliateLink   AffiliateLink?   @relation(fields: [affiliateLinkId], references: [id], onDelete: SetNull)
 
-  amountKobo      Int              // Commission in Kobo (₦500 = 50000 kobo)
+  amountKobo      Int              // Commission in Kobo (₦800 = 80000 kobo for order-level, ₦500 historical)
   status          CommissionStatus @default(PENDING)
+  isOrderLevel    Boolean          @default(true)
 
   // Lifecycle timestamps
   eligibleAt      DateTime?        // When it became AVAILABLE
@@ -1137,7 +1155,7 @@ model AffiliateCommission {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  // CRITICAL: prevents duplicate commission for same item
+  // Preserved for historical per-item commissions
   @@unique([affiliateId, orderItemId])
   @@index([affiliateId])
   @@index([orderId])
@@ -1175,6 +1193,84 @@ model AffiliatePayout {
   @@index([affiliateId])
   @@index([status])
   @@index([requestedAt])
+}
+
+// Fast atomic balance projection
+model AffiliateWallet {
+  id                 String    @id @default(cuid())
+  affiliateId        String    @unique
+  affiliate          Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  pendingKobo        Int       @default(0)
+  availableKobo      Int       @default(0)
+  reservedKobo       Int       @default(0)
+  paidKobo           Int       @default(0)
+  lifetimeEarnedKobo Int       @default(0)
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([affiliateId])
+}
+
+// Immutable financial audit trail
+model AffiliateLedger {
+  id                String          @id @default(cuid())
+  affiliateId       String
+  affiliate         Affiliate       @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  type              LedgerEntryType
+  amountKobo        Int
+  balanceBeforeKobo Int
+  balanceAfterKobo  Int
+
+  referenceType     String          // "ORDER", "PAYOUT", "ADJUSTMENT"
+  referenceId       String?
+  description       String
+  adminId           String?
+  createdAt         DateTime        @default(now())
+
+  @@index([affiliateId])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
+}
+
+// Creative and promotional materials
+model AffiliateMedia {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  category     String   // "product", "campaign", "logo", "banner", "lifestyle"
+  mediaType    String   // "IMAGE", "VIDEO"
+  url          String
+  thumbnailUrl String?
+  downloadUrl  String?
+  dimensions   String?
+  fileSize     String?
+  isActive     Boolean  @default(true)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+// Administrative audit log for affiliate operations
+model AffiliateAuditLog {
+  id          String     @id @default(cuid())
+  affiliateId String?
+  affiliate   Affiliate? @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  adminId     String?
+  adminEmail  String?
+  action      String
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime   @default(now())
+
+  @@index([affiliateId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 // ============================================================

@@ -1,3 +1,34 @@
+// Central Authoritative Affiliate System Configuration
+export const AFFILIATE_CONFIG = {
+  enabled:
+    typeof process !== 'undefined' && process.env?.AFFILIATE_PROGRAM_ENABLED !== undefined
+      ? process.env.AFFILIATE_PROGRAM_ENABLED === 'true'
+      : true,
+  commissionPerOrderKobo: 80_000, // ₦800 per qualifying order (in kobo)
+  attributionWindowDays: 30, // 30-day last-valid-click attribution
+  minimumWithdrawalKobo: 0, // ₦0 minimum withdrawal restriction
+  returnWindowDays: 7, // 7-day post-delivery cooling window
+  referralCodePrefixLength: 4,
+  currency: 'NGN',
+} as const;
+
+export function validateAffiliateConfig(): void {
+  if (
+    !Number.isInteger(AFFILIATE_CONFIG.commissionPerOrderKobo) ||
+    AFFILIATE_CONFIG.commissionPerOrderKobo !== 80_000
+  ) {
+    throw new Error(
+      `[CONFIG_ERROR] Invalid affiliate commission rate. Must be 80,000 kobo (₦800), got: ${AFFILIATE_CONFIG.commissionPerOrderKobo}`
+    );
+  }
+  if (AFFILIATE_CONFIG.attributionWindowDays <= 0) {
+    throw new Error('[CONFIG_ERROR] Affiliate attribution window must be positive.');
+  }
+  if (AFFILIATE_CONFIG.minimumWithdrawalKobo < 0) {
+    throw new Error('[CONFIG_ERROR] Minimum withdrawal amount cannot be negative.');
+  }
+}
+
 export const COMMERCE_CONFIG = {
   // App Base URL
   APP_URL: process.env.APP_URL || 'https://piercyn.vercel.app',
@@ -51,13 +82,32 @@ export const COMMERCE_CONFIG = {
     { code: 'PIERCYN10', discountPercent: 10, description: '10% Welcome Discount' },
   ],
 
-  // Affiliate System Configuration (Single Source of Truth)
+  // Affiliate System Configuration (Aliased to Authoritative AFFILIATE_CONFIG)
   AFFILIATE: {
-    ENABLED: false, // Paused until attribution and payout controls are production-ready
-    COMMISSION_PER_PRODUCT_KOBO: 50000, // ₦500 = 50,000 kobo per qualifying delivered product
-    ATTRIBUTION_WINDOW_DAYS: 30,         // Days an affiliate click is valid for attribution
-    MIN_PAYOUT_KOBO: 50000,              // ₦500 minimum payout threshold (50,000 kobo)
-    RETURN_WINDOW_DAYS: 7,               // Days after delivery before commission becomes AVAILABLE
-    REFERRAL_CODE_PREFIX_LENGTH: 4,      // How many chars from name to use in code prefix
+    get ENABLED() {
+      return AFFILIATE_CONFIG.enabled;
+    },
+    get COMMISSION_PER_ORDER_KOBO() {
+      return AFFILIATE_CONFIG.commissionPerOrderKobo;
+    },
+    // Backwards compatibility alias
+    get COMMISSION_PER_PRODUCT_KOBO() {
+      return AFFILIATE_CONFIG.commissionPerOrderKobo;
+    },
+    get ATTRIBUTION_WINDOW_DAYS() {
+      return AFFILIATE_CONFIG.attributionWindowDays;
+    },
+    get MIN_PAYOUT_KOBO() {
+      return AFFILIATE_CONFIG.minimumWithdrawalKobo;
+    },
+    get RETURN_WINDOW_DAYS() {
+      return AFFILIATE_CONFIG.returnWindowDays;
+    },
+    get REFERRAL_CODE_PREFIX_LENGTH() {
+      return AFFILIATE_CONFIG.referralCodePrefixLength;
+    },
+    get CURRENCY() {
+      return AFFILIATE_CONFIG.currency;
+    },
   },
 };

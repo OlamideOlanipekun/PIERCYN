@@ -2,6 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { apiRouter } from './routes/apiRouter';
 import { checkDatabaseHealth } from './db/prisma';
+import { validateAffiliateConfig } from './config/constants';
+
+// Validate authoritative configuration at startup
+validateAffiliateConfig();
 
 export const app = express();
 

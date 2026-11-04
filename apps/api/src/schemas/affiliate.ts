@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const AffiliateApplySchema = z.object({
   email: z.string().trim().email('A valid email address is required').max(150),
-  password: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(100).optional(),
   firstName: z.string().trim().min(1, 'First name is required').max(50),
   lastName: z.string().trim().min(1, 'Last name is required').max(50),
   phone: z.string().trim().min(7, 'A valid phone number is required').max(25),
@@ -112,3 +112,31 @@ export const ProcessAffiliatePayoutSchema = z.object({
 
 export const AdminMarkPayoutPaidSchema = ProcessAffiliatePayoutSchema;
 export const AdminRejectPayoutSchema = ProcessAffiliatePayoutSchema;
+
+// ─── MEDIA ASSETS ─────────────────────────────────────────────────────────
+
+export const CreateAffiliateMediaSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200),
+  description: z.string().max(1000).optional(),
+  category: z.string().trim().min(1).default('campaign'),
+  mediaType: z.enum(['IMAGE', 'VIDEO']).default('IMAGE'),
+  url: z.string().url('A valid URL is required'),
+  thumbnailUrl: z.string().url().optional().or(z.literal('')),
+  downloadUrl: z.string().url().optional().or(z.literal('')),
+  dimensions: z.string().max(50).optional(),
+  fileSize: z.string().max(50).optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const UpdateAffiliateMediaSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().max(1000).optional(),
+  category: z.string().trim().min(1).optional(),
+  mediaType: z.enum(['IMAGE', 'VIDEO']).optional(),
+  url: z.string().url().optional(),
+  thumbnailUrl: z.string().url().optional().or(z.literal('')),
+  downloadUrl: z.string().url().optional().or(z.literal('')),
+  dimensions: z.string().max(50).optional(),
+  fileSize: z.string().max(50).optional(),
+  isActive: z.boolean().optional(),
+});

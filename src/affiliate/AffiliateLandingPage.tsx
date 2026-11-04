@@ -27,7 +27,9 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   onBackToShop,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'apply' | 'login'>('info');
-  const [itemsSoldPerMonth, setItemsSoldPerMonth] = useState<number>(100);
+  const [ordersPerMonth, setOrdersPerMonth] = useState<number>(30);
+  const itemsSoldPerMonth = ordersPerMonth;
+  const setItemsSoldPerMonth = setOrdersPerMonth;
 
   // Application form state
   const [applyForm, setApplyForm] = useState({
@@ -129,7 +131,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
     }
   };
 
-  const estimatedMonthlyIncome = itemsSoldPerMonth * 500;
+  const estimatedMonthlyIncome = ordersPerMonth * 800;
 
   return (
     <div className="affiliate-landing-shell min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
@@ -189,7 +191,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light font-serif tracking-tight text-white mb-6 leading-[1.08]">
                 Curate Modern Luxury.
                 <br />
-                <span className="italic text-[#C9A96E] font-serif">Earn ₦500 on every single piece.</span>
+                <span className="italic text-[#C9A96E] font-serif">Earn ₦800 on every qualifying order.</span>
               </h1>
               <p className="text-[#999999] text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-light">
                 Join our private circle of stylists, taste-makers, and digital creators. Share bespoke
@@ -231,9 +233,9 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="w-12 h-12 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center text-[#C9A96E] mb-6">
                     <TrendingUp className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-serif text-white mb-2">₦500 Flat Royalty / Unit</h3>
+                  <h3 className="text-lg font-serif text-white mb-2">₦800 Flat / Qualifying Order</h3>
                   <p className="text-sm text-[#888888] leading-relaxed font-light">
-                    Every piece in a customer order earns you a flat ₦500 commission. If a follower purchases a 4-piece capsule wardrobe, you earn ₦2,000 instantly.
+                    Every qualified customer order referred through your unique link earns you a flat ₦800 commission, tracked in an immutable financial ledger.
                   </p>
                 </div>
 
@@ -253,9 +255,9 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="w-12 h-12 rounded-lg bg-[#C9A96E]/10 flex items-center justify-center text-[#C9A96E] mb-6">
                     <CreditCard className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-serif text-white mb-2">Manual Bank Payouts</h3>
+                  <h3 className="text-lg font-serif text-white mb-2">Zero Minimum Withdrawal</h3>
                   <p className="text-sm text-[#888888] leading-relaxed font-light">
-                    Request a manual bank payout to your Nigerian account once your available balance reaches ₦500. PIERCYN Finance reviews and completes approved payouts.
+                    Withdraw your available earnings directly to any Nigerian bank account anytime with no minimum withdrawal restrictions (₦0 threshold).
                   </p>
                 </div>
               </div>
@@ -280,22 +282,22 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between items-center mb-3">
-                      <span className="text-sm text-[#CCCCCC]">Units Ordered by Audience / Month</span>
-                      <span className="text-xl font-mono font-medium text-white">{itemsSoldPerMonth} Pieces</span>
+                      <span className="text-sm text-[#CCCCCC]">Referral Orders / Month</span>
+                      <span className="text-xl font-mono font-medium text-white">{ordersPerMonth} Orders</span>
                     </div>
                     <input
                       type="range"
-                      min="10"
-                      max="1000"
-                      step="10"
-                      value={itemsSoldPerMonth}
-                      onChange={(e) => setItemsSoldPerMonth(parseInt(e.target.value, 10))}
+                      min="5"
+                      max="500"
+                      step="5"
+                      value={ordersPerMonth}
+                      onChange={(e) => setOrdersPerMonth(parseInt(e.target.value, 10))}
                       className="w-full h-2 bg-[#333333] rounded-lg appearance-none cursor-pointer accent-[#C9A96E]"
                     />
                     <div className="flex justify-between text-[11px] text-[#666666] mt-1 font-mono">
-                      <span>10 pieces</span>
-                      <span>500 pieces</span>
-                      <span>1,000 pieces</span>
+                      <span>5 orders</span>
+                      <span>250 orders</span>
+                      <span>500 orders</span>
                     </div>
                   </div>
 
@@ -379,11 +381,11 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   },
                   {
                     q: 'How and when do I receive payment?',
-                    a: 'Commissions become available once the customer return window (7 days) has passed. You can request a manual payout to your Nigerian bank account once your available balance reaches ₦500.',
+                    a: 'Commissions become available once the customer return cooling window (7 days) has passed. You can withdraw your available earnings directly to your Nigerian bank account anytime with no minimum withdrawal restrictions (₦0 threshold).',
                   },
                   {
                     q: 'What happens if a customer returns or cancels an order?',
-                    a: 'If a customer cancels or returns an item within the 7-day window, the corresponding unit commission is reversed to maintain honest, sustainable economics.',
+                    a: 'If a customer cancels, returns, or is refunded within the 7-day window, the pending commission is reversed to maintain honest, sustainable economics.',
                   },
                   {
                     q: 'Can I create referral links to specific products or collections?',

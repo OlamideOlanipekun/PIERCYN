@@ -40,7 +40,8 @@ export interface CommissionItem {
   id: string;
   orderId: string;
   orderNumber: string;
-  orderItemId: string;
+  orderItemId?: string | null;
+  isOrderLevel?: boolean;
   productName: string;
   sku: string;
   colour: string;
@@ -52,8 +53,53 @@ export interface CommissionItem {
   status: 'PENDING' | 'AVAILABLE' | 'PAID' | 'REVERSED';
   createdAt: string;
   eligibleAt?: string;
+  paidAt?: string;
   reversedAt?: string;
   reversalReason?: string;
+}
+
+export interface WalletSummary {
+  pendingKobo: number;
+  pendingNGN: number;
+  availableKobo: number;
+  availableNGN: number;
+  reservedKobo: number;
+  reservedNGN: number;
+  paidKobo: number;
+  paidNGN: number;
+  reversedKobo: number;
+  reversedNGN: number;
+  totalEarnedKobo: number;
+  totalEarnedNGN: number;
+}
+
+export interface LedgerItem {
+  id: string;
+  affiliateId: string;
+  type: string;
+  amountKobo: number;
+  balanceBeforeKobo: number;
+  balanceAfterKobo: number;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  adminId?: string | null;
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface MediaItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  mediaType: string;
+  url: string;
+  thumbnailUrl?: string | null;
+  downloadUrl?: string | null;
+  dimensions?: string | null;
+  fileSize?: string | null;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface PayoutItem {
@@ -77,6 +123,8 @@ export interface DashboardStats {
     pendingNGN: number;
     availableKobo: number;
     availableNGN: number;
+    reservedKobo?: number;
+    reservedNGN?: number;
     paidKobo: number;
     paidNGN: number;
     reversedKobo: number;
@@ -87,11 +135,13 @@ export interface DashboardStats {
   metrics: {
     totalClicks: number;
     totalOrders: number;
+    totalProductsSold?: number;
     activeLinksCount: number;
     conversionRatePercent: number;
     averageOrderValueNGN: number;
   };
   config: {
+    commissionPerOrderNGN?: number;
     commissionPerProductNGN: number;
     returnWindowDays: number;
     attributionWindowDays: number;
@@ -170,7 +220,7 @@ export class AffiliateApiClient {
   // Auth & Onboarding
   public static async apply(data: {
     email: string;
-    password: string;
+    password?: string;
     firstName: string;
     lastName: string;
     phone: string;
@@ -251,6 +301,25 @@ export class AffiliateApiClient {
     if (filter?.offset) params.set('offset', filter.offset.toString());
     const qs = params.toString() ? `?${params.toString()}` : '';
     return this.request<any[]>(`/orders${qs}`);
+  }
+
+  // Wallet & Ledger
+  public static async getWallet() {
+    return this.request<WalletSummary>('/wallet');
+  }
+
+  public static async getLedger(filter?: { limit?: number; offset?: number }) {
+    const params = new URLSearchParams();
+    if (filter?.limit) params.set('limit', filter.limit.toString());
+    if (filter?.offset) params.set('offset', filter.offset.toString());
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return this.request<LedgerItem[]>(`/ledger${qs}`);
+  }
+
+  // Media Library
+  public static async getMedia(category?: string) {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    return this.request<MediaItem[]>(`/media${qs}`);
   }
 
   // Payouts

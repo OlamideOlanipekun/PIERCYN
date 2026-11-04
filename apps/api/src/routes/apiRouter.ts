@@ -16,6 +16,7 @@ import { ShippingService } from '../modules/shipping/shippingService';
 import { EventService } from '../services/eventService';
 import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
+import { CommissionService } from '../modules/affiliate/commissionService';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
@@ -626,10 +627,11 @@ const handleDailyCron = async (req: Request, res: Response) => {
   }
 
   try {
-    const [reservations, quotes, notifications] = await Promise.allSettled([
+    const [reservations, quotes, notifications, matureCommissions] = await Promise.allSettled([
       InventoryService.expireReservations(),
       DeliveryQuoteCron.processQuoteLifecycle(),
       NotificationWorker.processNotifications(20),
+      CommissionService.qualifyMatureCommissions(),
     ]);
 
     res.json({
@@ -638,6 +640,7 @@ const handleDailyCron = async (req: Request, res: Response) => {
         reservations: reservations.status === 'fulfilled' ? reservations.value : { error: reservations.reason?.message },
         quotes: quotes.status === 'fulfilled' ? quotes.value : { error: quotes.reason?.message },
         notifications: notifications.status === 'fulfilled' ? notifications.value : { error: notifications.reason?.message },
+        matureCommissions: matureCommissions.status === 'fulfilled' ? matureCommissions.value : { error: matureCommissions.reason?.message },
       },
     });
   } catch (err: any) {
