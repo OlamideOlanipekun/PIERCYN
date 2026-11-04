@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { COMMERCE_CONFIG } from '../../config/constants';
 import { prisma } from '../../db/prisma';
 import { AffiliateAuthService } from './affiliateAuthService';
+import { AffiliateNotificationService } from './affiliateNotificationService';
 
 // ============================================================
 // AFFILIATE SERVICE
@@ -98,6 +99,11 @@ export class AffiliateService {
       createdAt: affiliate.createdAt,
     });
 
+    AffiliateNotificationService.notifyApplicationSubmitted({
+      email: affiliate.email,
+      firstName: affiliate.firstName,
+    }).catch(() => null);
+
     return {
       affiliate: {
         id: affiliate.id,
@@ -187,6 +193,11 @@ export class AffiliateService {
         accountName: data.accountName !== undefined ? data.accountName.trim() : undefined,
       },
     });
+
+    AffiliateNotificationService.notifyApplicationSubmitted({
+      email: affiliate.email,
+      firstName: affiliate.firstName,
+    }).catch(() => null);
 
     return {
       success: true,
@@ -396,6 +407,11 @@ export class AffiliateService {
         customerEmail: data.customerEmail || null,
       },
     });
+
+    AffiliateNotificationService.notifyApplicationSubmitted({
+      email: affiliate.email,
+      firstName: affiliate.firstName,
+    }).catch(() => null);
 
     return {
       success: true,
@@ -654,7 +670,7 @@ export class AffiliateService {
       return newPayout;
     }, { isolationLevel: 'Serializable' });
 
-    return {
+    const result = {
       id: payout.id,
       amountKobo: payout.amountKobo,
       amountNGN: requestedKobo / 100,
@@ -664,6 +680,20 @@ export class AffiliateService {
       accountName: payout.accountName,
       requestedAt: payout.requestedAt.toISOString(),
     };
+
+    prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      select: { email: true, firstName: true },
+    }).then((aff) => {
+      if (aff) {
+        AffiliateNotificationService.notifyWithdrawalRequested(
+          aff,
+          { amountNGN: requestedKobo / 100, bankName: payout.bankName, accountNumber: payout.accountNumber }
+        ).catch(() => null);
+      }
+    }).catch(() => null);
+
+    return result;
   }
 
   public static async getPayouts(affiliateId: string) {
@@ -922,6 +952,12 @@ export class AffiliateService {
           details: `Application approved by ${adminEmail}`,
         },
       }).catch((e) => console.error('Failed to log affiliate audit:', e));
+
+      AffiliateNotificationService.notifyApplicationApproved(
+        { email: affiliate.email, firstName: affiliate.firstName },
+        affiliate.defaultLinkCode
+      ).catch(() => null);
+
       return updated;
     } else {
       const updated = await prisma.affiliate.update({
@@ -942,6 +978,12 @@ export class AffiliateService {
           details: `Application rejected by ${adminEmail}. Reason: ${reason || 'Application did not meet minimum criteria'}`,
         },
       }).catch((e) => console.error('Failed to log affiliate audit:', e));
+
+      AffiliateNotificationService.notifyApplicationRejected(
+        { email: affiliate.email, firstName: affiliate.firstName },
+        reason
+      ).catch(() => null);
+
       return updated;
     }
   }
@@ -1062,7 +1104,7 @@ export class AffiliateService {
 
     const now = new Date();
 
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       if (action === 'PAID') {
         if (!['PENDING', 'PROCESSING', 'APPROVED'].includes(payout.status)) {
           throw new Error(`Cannot mark payout as PAID from status ${payout.status}.`);
@@ -1193,6 +1235,28 @@ export class AffiliateService {
         return updated;
       }
     });
+
+    // Fire-and-forget notification
+    prisma.affiliate.findUnique({
+      where: { id: payout.affiliateId },
+      select: { email: true, firstName: true },
+    }).then((aff) => {
+      if (!aff) return;
+      if (action === 'PAID') {
+        AffiliateNotificationService.notifyWithdrawalPaid(aff, {
+          amountNGN: payout.amountKobo / 100,
+          paymentReference: paymentReference || updated.paymentReference,
+        }).catch(() => null);
+      } else if (action === 'REJECTED' || action === 'FAILED') {
+        AffiliateNotificationService.notifyWithdrawalRejected(
+          aff,
+          { amountNGN: payout.amountKobo / 100 },
+          notes
+        ).catch(() => null);
+      }
+    }).catch(() => null);
+
+    return updated;
   }
 
   public static async getAffiliateLedger(affiliateId: string, limit = 50, offset = 0) {
