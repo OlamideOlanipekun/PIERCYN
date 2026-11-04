@@ -18,17 +18,38 @@ import {
   Ban,
   Check,
   Eye,
+  Image,
+  FileText,
+  Plus,
+  Trash2,
+  Edit,
+  ExternalLink as LinkIcon,
 } from 'lucide-react';
 
 export const AffiliatesView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'applications' | 'directory' | 'payouts'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'directory' | 'payouts' | 'media' | 'audit'>('applications');
   const [overview, setOverview] = useState<any>(null);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Media Modal State
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [editingMedia, setEditingMedia] = useState<any | null>(null);
+  const [mediaTitle, setMediaTitle] = useState('');
+  const [mediaDescription, setMediaDescription] = useState('');
+  const [mediaCategory, setMediaCategory] = useState('campaign');
+  const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState('');
+  const [mediaDimensions, setMediaDimensions] = useState('');
+  const [mediaFileSize, setMediaFileSize] = useState('');
+  const [isSubmittingMedia, setIsSubmittingMedia] = useState(false);
 
   // Detail Modal State
   const [selectedAffiliate, setSelectedAffiliate] = useState<any | null>(null);
@@ -57,18 +78,22 @@ export const AffiliatesView: React.FC = () => {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const [overviewData, affiliatesData, payoutsData] = await Promise.all([
+      const [overviewData, affiliatesData, payoutsData, mediaData, auditData] = await Promise.all([
         AdminApi.getAffiliateOverview(),
         AdminApi.getAffiliates({
           status: statusFilter !== 'ALL' ? statusFilter : undefined,
           search: searchQuery || undefined,
         }),
         AdminApi.getAffiliatePayouts(),
+        AdminApi.getAffiliateMedia().catch(() => []),
+        AdminApi.getAffiliateAuditLogs({ limit: 50 }).catch(() => []),
       ]);
 
       setOverview(overviewData);
       setAffiliates(affiliatesData || []);
       setPayouts(payoutsData || []);
+      setMediaList(mediaData || []);
+      setAuditLogs(auditData || []);
     } catch (err: any) {
       showNotification('error', err.message || 'Failed to load affiliate operations data.');
     } finally {
@@ -315,6 +340,31 @@ export const AffiliatesView: React.FC = () => {
               {pendingPayoutsList.length}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('media')}
+          className={`py-3 text-xs uppercase tracking-widest font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'media'
+              ? 'border-[#C9A96E] text-[#C9A96E]'
+              : 'border-transparent text-[#888888] hover:text-white'
+          }`}
+        >
+          Brand Assets
+          <span className="px-1.5 py-0.5 rounded-full bg-[#2A2A2A] text-[#888888] text-[10px] font-mono">
+            {mediaList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('audit')}
+          className={`py-3 text-xs uppercase tracking-widest font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'audit'
+              ? 'border-[#C9A96E] text-[#C9A96E]'
+              : 'border-transparent text-[#888888] hover:text-white'
+          }`}
+        >
+          Audit Log
         </button>
       </div>
 
@@ -613,6 +663,175 @@ export const AffiliatesView: React.FC = () => {
         </div>
       )}
 
+      {/* ─── TAB 4: BRAND MEDIA ASSETS ──────────────────────────────────── */}
+      {activeTab === 'media' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Affiliate Brand Kit & Media Assets</h3>
+              <p className="text-xs text-[#777777]">Logos, banners, and marketing creatives available to creators in their portal.</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingMedia(null);
+                setMediaTitle('');
+                setMediaDescription('');
+                setMediaCategory('campaign');
+                setMediaType('IMAGE');
+                setMediaUrl('');
+                setMediaThumbnailUrl('');
+                setMediaDimensions('');
+                setMediaFileSize('');
+                setIsMediaModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Media Asset
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mediaList.length === 0 ? (
+              <div className="col-span-full p-12 text-center rounded-xl bg-[#141414] border border-[#242424]">
+                <Image className="w-8 h-8 text-[#555] mx-auto mb-3" />
+                <h4 className="text-sm font-medium text-white mb-1">No Media Assets</h4>
+                <p className="text-xs text-[#777]">Upload banners and logos for affiliates to download and share.</p>
+              </div>
+            ) : (
+              mediaList.map((media) => (
+                <div key={media.id} className="p-4 rounded-xl bg-[#141414] border border-[#242424] space-y-3">
+                  <div className="aspect-video w-full rounded-lg bg-[#0E0E0E] overflow-hidden flex items-center justify-center border border-[#1E1E1E]">
+                    {media.mediaType === 'IMAGE' || media.thumbnailUrl ? (
+                      <img
+                        src={media.thumbnailUrl || media.url}
+                        alt={media.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as any).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <Image className="w-8 h-8 text-[#444]" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wider font-mono px-2 py-0.5 rounded bg-[#1F1F1F] text-[#C9A96E]">
+                        {media.category}
+                      </span>
+                      <span className="text-[10px] font-mono text-[#666]">
+                        {media.dimensions || media.fileSize || media.mediaType}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-medium text-white mt-2 truncate">{media.title}</h4>
+                    {media.description && (
+                      <p className="text-xs text-[#777] line-clamp-2 mt-1">{media.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-[#1F1F1F]">
+                    <a
+                      href={media.downloadUrl || media.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#888] hover:text-[#C9A96E] flex items-center gap-1 font-mono"
+                    >
+                      <LinkIcon className="w-3 h-3" /> View Asset
+                    </a>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingMedia(media);
+                          setMediaTitle(media.title);
+                          setMediaDescription(media.description || '');
+                          setMediaCategory(media.category || 'campaign');
+                          setMediaType(media.mediaType || 'IMAGE');
+                          setMediaUrl(media.url);
+                          setMediaThumbnailUrl(media.thumbnailUrl || '');
+                          setMediaDimensions(media.dimensions || '');
+                          setMediaFileSize(media.fileSize || '');
+                          setIsMediaModalOpen(true);
+                        }}
+                        className="p-1.5 text-[#777] hover:text-white rounded hover:bg-[#1F1F1F] transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete media asset "${media.title}"?`)) return;
+                          try {
+                            await AdminApi.deleteAffiliateMedia(media.id);
+                            showNotification('success', 'Media asset removed.');
+                            loadData();
+                          } catch (err: any) {
+                            showNotification('error', err.message || 'Failed to delete asset.');
+                          }
+                        }}
+                        className="p-1.5 text-[#777] hover:text-red-400 rounded hover:bg-[#1F1F1F] transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 5: AUDIT LOG ────────────────────────────────────────────── */}
+      {activeTab === 'audit' && (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
+                    <th className="py-3 px-4 sm:px-6">Timestamp</th>
+                    <th className="py-3 px-4">Admin</th>
+                    <th className="py-3 px-4">Action</th>
+                    <th className="py-3 px-4">Partner</th>
+                    <th className="py-3 px-4">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F1F1F]">
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-[#666666]">
+                        No affiliate audit entries found.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs.map((log: any) => (
+                      <tr key={log.id} className="hover:bg-[#181818]/60 transition-colors">
+                        <td className="py-4 px-4 sm:px-6 text-[#888888] font-mono whitespace-nowrap">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </td>
+                        <td className="py-4 px-4 font-mono text-[#AAAAAA]">
+                          {log.adminEmail || 'System'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider bg-[#202020] text-[#C9A96E] border border-[#333]">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-white">
+                          {log.affiliate ? `${log.affiliate.firstName} ${log.affiliate.lastName}` : (log.affiliateId || '—')}
+                        </td>
+                        <td className="py-4 px-4 text-[#888888] max-w-xs truncate">
+                          {log.details || '—'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── REVIEW APPLICATION DIALOG MODAL ─────────────────────────────── */}
       {reviewAffiliateId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4">
@@ -819,6 +1038,182 @@ export const AffiliatesView: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MEDIA ASSET CREATE / EDIT MODAL ─────────────────────────────── */}
+      {isMediaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4">
+          <div className="bg-[#161616] w-full max-w-lg rounded-2xl border border-[#2F2F2F] p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-serif text-white">
+              {editingMedia ? 'Edit Brand Asset' : 'New Brand Asset'}
+            </h3>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={mediaTitle}
+                  onChange={(e) => setMediaTitle(e.target.value)}
+                  placeholder="e.g. PIERCYN Monogram Gold Transparent"
+                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs focus:border-[#C9A96E] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={mediaDescription}
+                  onChange={(e) => setMediaDescription(e.target.value)}
+                  placeholder="Recommended usage for this asset..."
+                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs focus:border-[#C9A96E] outline-none resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    value={mediaCategory}
+                    onChange={(e) => setMediaCategory(e.target.value)}
+                    placeholder="e.g. logos, banners, lookbook"
+                    className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs focus:border-[#C9A96E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                    Media Type
+                  </label>
+                  <select
+                    value={mediaType}
+                    onChange={(e) => setMediaType(e.target.value as 'IMAGE' | 'VIDEO')}
+                    className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs focus:border-[#C9A96E] outline-none"
+                  >
+                    <option value="IMAGE">Image</option>
+                    <option value="VIDEO">Video</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                  Asset File URL *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  placeholder="https://piercyn.com/assets/banner.png"
+                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs font-mono focus:border-[#C9A96E] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                  Thumbnail URL (optional)
+                </label>
+                <input
+                  type="url"
+                  value={mediaThumbnailUrl}
+                  onChange={(e) => setMediaThumbnailUrl(e.target.value)}
+                  placeholder="https://piercyn.com/assets/banner-thumb.png"
+                  className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs font-mono focus:border-[#C9A96E] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                    Dimensions
+                  </label>
+                  <input
+                    type="text"
+                    value={mediaDimensions}
+                    onChange={(e) => setMediaDimensions(e.target.value)}
+                    placeholder="1080x1920 or 1200x630"
+                    className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs font-mono focus:border-[#C9A96E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
+                    File Size
+                  </label>
+                  <input
+                    type="text"
+                    value={mediaFileSize}
+                    onChange={(e) => setMediaFileSize(e.target.value)}
+                    placeholder="2.4 MB"
+                    className="w-full px-3 py-2 bg-[#1E1E1E] border border-[#333333] rounded text-white text-xs font-mono focus:border-[#C9A96E] outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsMediaModalOpen(false)}
+                className="px-4 py-2 text-xs text-[#888888] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingMedia || !mediaTitle.trim() || !mediaUrl.trim()}
+                onClick={async () => {
+                  setIsSubmittingMedia(true);
+                  try {
+                    if (editingMedia) {
+                      await AdminApi.updateAffiliateMedia(editingMedia.id, {
+                        title: mediaTitle.trim(),
+                        description: mediaDescription.trim() || undefined,
+                        category: mediaCategory.trim() || undefined,
+                        mediaType,
+                        url: mediaUrl.trim(),
+                        thumbnailUrl: mediaThumbnailUrl.trim() || undefined,
+                        dimensions: mediaDimensions.trim() || undefined,
+                        fileSize: mediaFileSize.trim() || undefined,
+                      });
+                      showNotification('success', 'Media asset updated.');
+                    } else {
+                      await AdminApi.createAffiliateMedia({
+                        title: mediaTitle.trim(),
+                        description: mediaDescription.trim() || undefined,
+                        category: mediaCategory.trim() || 'campaign',
+                        mediaType,
+                        url: mediaUrl.trim(),
+                        thumbnailUrl: mediaThumbnailUrl.trim() || undefined,
+                        dimensions: mediaDimensions.trim() || undefined,
+                        fileSize: mediaFileSize.trim() || undefined,
+                        isActive: true,
+                      });
+                      showNotification('success', 'Media asset created.');
+                    }
+                    setIsMediaModalOpen(false);
+                    loadData();
+                  } catch (err: any) {
+                    showNotification('error', err.message || 'Failed to save media asset.');
+                  } finally {
+                    setIsSubmittingMedia(false);
+                  }
+                }}
+                className="px-5 py-2 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs font-semibold rounded transition-all disabled:opacity-50"
+              >
+                {isSubmittingMedia ? 'Saving...' : editingMedia ? 'Update Asset' : 'Create Asset'}
+              </button>
             </div>
           </div>
         </div>

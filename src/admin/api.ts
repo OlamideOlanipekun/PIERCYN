@@ -577,6 +577,71 @@ class AdminApiClient {
     });
   }
 
+  // Affiliate Media Management
+  public async getAffiliateMedia(params?: { category?: string }): Promise<any[]> {
+    const qs = params?.category ? `?category=${encodeURIComponent(params.category)}` : '';
+    return this.request(`/affiliates/media${qs}`);
+  }
+
+  public async createAffiliateMedia(data: {
+    title: string;
+    description?: string;
+    category?: string;
+    mediaType?: 'IMAGE' | 'VIDEO';
+    url: string;
+    thumbnailUrl?: string;
+    downloadUrl?: string;
+    dimensions?: string;
+    fileSize?: string;
+    isActive?: boolean;
+  }): Promise<any> {
+    return this.request('/affiliates/media', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async updateAffiliateMedia(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      category?: string;
+      mediaType?: 'IMAGE' | 'VIDEO';
+      url?: string;
+      thumbnailUrl?: string;
+      downloadUrl?: string;
+      dimensions?: string;
+      fileSize?: string;
+      isActive?: boolean;
+    }
+  ): Promise<any> {
+    return this.request(`/affiliates/media/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async deleteAffiliateMedia(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/affiliates/media/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Affiliate Audit Log
+  public async getAffiliateAuditLogs(params?: {
+    affiliateId?: string;
+    action?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    const filtered = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(filtered as any).toString();
+    return this.request<any[]>(`/affiliates/audit-log${qs ? `?${qs}` : ''}`);
+  }
+
   // ── Checkout Admin Lifecycle ──────────────────────────────────────────────
   public async verifyProductPayment(orderId: string, note?: string): Promise<AdminOrder> {
     return this.request<AdminOrder>(`/orders/${orderId}/product-payment/verify`, {

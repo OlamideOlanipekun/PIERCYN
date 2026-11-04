@@ -7,8 +7,13 @@ import { eventTracker } from '../../services/eventTracker';
 import { ProductGallery } from './ProductGallery';
 import { ProductDetailsAccordion } from './ProductDetailsAccordion';
 import { ProductCard } from '../ProductCard';
+import { ReviewsSection } from '../reviews/ReviewsSection';
+import { StarRatingDisplay } from '../reviews/StarRating';
+import { findProductVariant, usesSizeOnlyOptions } from '../../utils/variants';
+import { formatProductSeoTitle } from '../../utils/seo';
 import {
   Plus,
+  Minus,
   Heart,
   Ruler,
   Truck,
@@ -25,12 +30,14 @@ interface ProductDetailsPageProps {
   product: Product | null;
   onSelectPage: (page: ActivePageView) => void;
   onViewProduct: (product: Product) => void;
+  onReviewSubmitted?: () => void;
 }
 
 export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   onSelectPage,
   onViewProduct,
+  onReviewSubmitted,
 }) => {
   const {
     products,
@@ -45,21 +52,28 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
+  const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
 
   // Initialize variant selection & analytics
   useEffect(() => {
     if (product) {
       setSelectedColorIdx(0);
+      setQuantity(1);
       if (product.sizes && product.sizes.length > 0) {
-        setSelectedSize(product.sizes[0]);
+        const firstAvailableSize = product.sizes.find((size) => {
+          const variant = findProductVariant(product, product.colors?.[0]?.name, size);
+          return Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+        });
+        setSelectedSize(firstAvailableSize || product.sizes[0]);
       } else {
         setSelectedSize('');
       }
       setSizeError(false);
+      setQuantity(1);
 
       // Dynamic Title & SEO
-      document.title = `${product.name} — PIERCYN Lagos`;
+      document.title = formatProductSeoTitle(product.name);
 
       // Track analytics
       eventTracker.track('product_view', {
@@ -100,11 +114,31 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     );
   }
 
+  const isSizeOnlyProduct = usesSizeOnlyOptions(product);
+  const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'XXL'];
+  const sizeOptions = isSizeOnlyProduct
+    ? [...new Set([...product.sizes, 'XL', '2XL', '3XL'])].sort((a, b) => {
+        const aIndex = sizeOrder.indexOf(a);
+        const bIndex = sizeOrder.indexOf(b);
+        return (aIndex < 0 ? sizeOrder.length : aIndex) - (bIndex < 0 ? sizeOrder.length : bIndex);
+      })
+    : product.sizes;
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
-  const isSoldOut = product.isSoldOut || product.stock === 0;
+  const hasVariants = Boolean(product.variants?.length);
+  const selectedVariant = findProductVariant(product, currentColor?.name, selectedSize);
+  const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
+  const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
+  const isSoldOut = product.isSoldOut || (hasVariants
+    ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
+    : typeof selectedStock !== 'number' || selectedStock <= 0);
   const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
+
+  const maxAvailableQuantity =
+    product.availabilityType === 'available_to_order'
+      ? 10
+      : Math.max(1, Math.min(10, product.stock !== undefined ? product.stock : 10));
 
   const handleAddToCart = () => {
     if (product.sizes.length > 0 && !selectedSize) {
@@ -113,12 +147,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     eventTracker.track('add_to_cart', {
       productId: product.id,
       productName: product.name,
       color: currentColor?.name,
       size: selectedSize,
+      quantity,
       priceNGN: product.priceNGN,
     });
   };
@@ -130,13 +165,14 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, 1);
+    addToCart(product, currentColor?.name, selectedSize, quantity);
     setIsCheckoutOpen(true);
     eventTracker.track('buy_now_clicked', {
       productId: product.id,
       productName: product.name,
       color: currentColor?.name,
       size: selectedSize,
+      quantity,
       priceNGN: product.priceNGN,
     });
   };
@@ -202,6 +238,25 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 {product.name}
               </h1>
 
+              {/* Star Rating Badge Anchor */}
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById('product-reviews')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="mt-2.5 inline-flex items-center gap-2 group cursor-pointer focus:outline-none"
+                aria-label={`Jump to reviews for ${product.name}`}
+              >
+                <StarRatingDisplay
+                  rating={product.ratingSummary?.averageRating ?? null}
+                  reviewCount={product.ratingSummary?.totalReviews ?? 0}
+                  size="sm"
+                />
+                <span className="text-[11px] font-mono text-[#7A7771] group-hover:underline">
+                  ({product.ratingSummary?.totalReviews ?? 0} {(product.ratingSummary?.totalReviews ?? 0) === 1 ? 'review' : 'reviews'})
+                </span>
+              </button>
+
               <div className="mt-3 flex items-baseline gap-3">
                 <span className="font-mono text-2xl sm:text-3xl font-bold text-[#141414]">
                   {formatPrice(product, currency)}
@@ -210,13 +265,17 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-red-100 text-red-800">
                     SOLD OUT
                   </span>
+                ) : product.availabilityType === 'available_to_order' ? (
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    AVAILABLE TO ORDER · 5–7 DAYS
+                  </span>
                 ) : isAlmostGone ? (
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                    ALMOST GONE
+                    ALMOST GONE ({product.stock} LEFT)
                   </span>
                 ) : (
                   <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900">
-                    IN STOCK
+                    IN STOCK · DISPATCH 24–48H
                   </span>
                 )}
               </div>
@@ -227,7 +286,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </div>
 
             {/* COLOR SELECTOR */}
-            {product.colors && product.colors.length > 0 && (
+            {!isSizeOnlyProduct && product.colors && product.colors.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-[#DAD8D1]">
                 <div className="flex items-center justify-between text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
                   <span>COLOR: <strong className="font-bold">{currentColor?.name}</strong></span>
@@ -264,9 +323,96 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             )}
 
 
+            {isSizeOnlyProduct && (
+              <section className="space-y-2 border-t border-[#DAD8D1] pt-3" aria-label="Choose size">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">SIZE</span>
+                  <button type="button" onClick={() => setIsSizeGuideOpen(true)} className="text-[10px] font-mono uppercase underline underline-offset-2 text-[#62605B]">Size guide</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((size) => {
+                    const variant = findProductVariant(product, currentColor?.name, size);
+                    const inStock = Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={!inStock}
+                        aria-pressed={selectedSize === size}
+                        aria-label={`${size}${inStock ? '' : ', unavailable'}`}
+                        title={inStock ? size : 'Unavailable — currently out of stock'}
+                        onClick={() => { setSelectedSize(size); setSizeError(false); setQuantity(1); }}
+                        className={`relative min-w-12 h-11 rounded-md border px-3 text-xs font-mono font-semibold transition-colors ${
+                          !inStock
+                            ? 'cursor-not-allowed border-[#DAD8D1] bg-[#E8E6E1] text-[#99958E] line-through'
+                            : selectedSize === size
+                              ? 'border-[#141414] bg-[#141414] text-white'
+                              : 'border-[#B9B6AF] bg-white text-[#141414] hover:border-[#141414]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-[#77736C]">Unavailable sizes are crossed out. Stock is checked again when adding to bag and at checkout.</p>
+                {sizeError && <p role="alert" className="text-xs text-red-700">Please select an available size.</p>}
+              </section>
+            )}
+
+            {/* QUANTITY SELECTOR */}
+            {!isSoldOut && (
+              <div className="flex items-center justify-between pt-3 border-t border-[#DAD8D1]">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
+                    QUANTITY:
+                  </span>
+                  {product.availabilityType === 'in_stock' && product.stock !== undefined && product.stock <= 5 && (
+                    <span className="text-[10px] font-mono text-amber-800 font-semibold">
+                      Only {product.stock} left in physical stock
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center border border-[#141414] rounded-full bg-white/30 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="w-8 h-8 flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-8 text-center font-mono text-xs font-bold text-[#141414]">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(maxAvailableQuantity, q + 1))}
+                    disabled={quantity >= maxAvailableQuantity}
+                    className="w-8 h-8 flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* PURCHASE ACTION BUTTONS */}
             <div className="space-y-2.5 pt-2">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between gap-4">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-[#7A7771]">QUANTITY</span>
+              <div className="inline-flex h-11 items-center rounded-full border border-[#DAD8D1] bg-white">
+                <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-l-full disabled:opacity-30"><Minus className="h-4 w-4" /></button>
+                <span aria-live="polite" className="min-w-8 text-center text-sm font-semibold">{quantity}</span>
+                <button type="button" aria-label="Increase quantity" disabled={quantity >= maxPurchaseQuantity} onClick={() => setQuantity((value) => Math.min(maxPurchaseQuantity, value + 1))} className="flex h-11 w-11 items-center justify-center rounded-r-full disabled:opacity-30"><Plus className="h-4 w-4" /></button>
+              </div>
+              <span className="text-[10px] text-[#7A7771]">Max 10 per order</span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
                 <button
                   onClick={handleAddToCart}
                   disabled={isSoldOut}
@@ -364,6 +510,13 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </div>
           </section>
         )}
+
+        {/* RATINGS & REVIEWS SECTION */}
+        <ReviewsSection
+          productId={product.id}
+          productName={product.name}
+          onReviewSubmitted={onReviewSubmitted}
+        />
 
       </div>
 

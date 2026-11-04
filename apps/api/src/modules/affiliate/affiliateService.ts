@@ -935,6 +935,29 @@ export class AffiliateService {
     const now = new Date();
 
     if (action === 'APPROVE') {
+      // Find or create default referral link for the approved creator
+      let defaultLink = await prisma.affiliateLink.findFirst({
+        where: { affiliateId, isActive: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (!defaultLink) {
+        const referralCode = await generateUniqueReferralCode(
+          affiliate.firstName,
+          affiliate.lastName
+        );
+        defaultLink = await prisma.affiliateLink.create({
+          data: {
+            affiliateId,
+            name: 'Default Link',
+            referralCode,
+            destination: '/',
+            destinationType: 'storefront',
+            isActive: true,
+          },
+        });
+      }
+
       const updated = await prisma.affiliate.update({
         where: { id: affiliateId },
         data: {
@@ -955,7 +978,7 @@ export class AffiliateService {
 
       AffiliateNotificationService.notifyApplicationApproved(
         { email: affiliate.email, firstName: affiliate.firstName },
-        affiliate.defaultLinkCode
+        defaultLink.referralCode
       ).catch(() => null);
 
       return updated;
