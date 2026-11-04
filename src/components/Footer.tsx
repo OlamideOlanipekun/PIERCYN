@@ -6,11 +6,12 @@ import { ActivePageView } from '../types';
 interface FooterProps {
   onNavigateSection: (sectionId: string) => void;
   onSelectPage?: (page: ActivePageView) => void;
+  onOpenAffiliate?: () => void;
 }
 
 type FooterGroup = 'shop' | 'help' | 'follow' | 'legal';
 
-export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSection, onSelectPage }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSection, onSelectPage, onOpenAffiliate }) => {
   const [openGroups, setOpenGroups] = useState<Record<FooterGroup, boolean>>({
     shop: false, help: false, follow: false, legal: false,
   });
@@ -109,6 +110,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               >
                 CONTACT US
               </button>
+              <button
+                id="footer-affiliate"
+                onClick={onOpenAffiliate}
+                className="min-h-[36px] flex items-center text-left text-[#141414]/80 hover:text-[#141414] transition-colors editorial-link cursor-pointer"
+              >
+                CREATOR & AFFILIATE PROGRAM
+              </button>
             </div>
           </div>
           <div className="min-w-0">
@@ -189,6 +197,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigateSection: _onNavigateSe
               <button onClick={() => selectPage('shipping')} className={footerLinkClass}>SHIPPING & DELIVERY</button>
               <button onClick={() => selectPage('returns')} className={footerLinkClass}>RETURNS & EXCHANGES</button>
               <button onClick={() => selectPage('contact')} className={footerLinkClass}>CONTACT US</button>
+              <button onClick={onOpenAffiliate} className={footerLinkClass}>CREATOR & AFFILIATE PROGRAM</button>
             </nav></div>
           </section>
           <section>

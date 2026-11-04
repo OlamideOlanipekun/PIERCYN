@@ -214,16 +214,9 @@ export const AffiliatesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Program Status Banner */}
-      <div className="p-4 rounded-lg bg-[#C9A96E]/10 border border-[#C9A96E]/30 text-xs text-[#E8D9B5] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="px-2 py-0.5 rounded bg-[#C9A96E]/20 text-[#C9A96E] font-mono text-[10px] uppercase font-bold tracking-wider">
-            STATUS: PAUSED
-          </span>
-          <span>
-            Public announcements, popup modal, storefront navigation links, and visitor click tracking are currently paused.
-          </span>
-        </div>
+      {/* Program availability and referral attribution are controlled server-side. */}
+      <div className="p-4 rounded-lg bg-[#C9A96E]/10 border border-[#C9A96E]/30 text-xs text-[#E8D9B5]">
+        Program availability and referral attribution are controlled by the server&apos;s AFFILIATE_PROGRAM_ENABLED setting.
       </div>
 
       {/* Notification Toast */}

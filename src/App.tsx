@@ -29,6 +29,8 @@ import { NotFoundPage } from './components/NotFoundPage';
 import { AdminDrawer } from './components/AdminDrawer';
 import { Toast } from './components/Toast';
 import { initAffiliateTracking } from './utils/affiliateTracking';
+import { AffiliateApp } from './affiliate/AffiliateApp';
+import { AffiliateAnnouncementModal } from './components/AffiliateAnnouncementModal';
 import { catalogService } from './services/catalogService';
 import { StorefrontInfoPage, StorefrontPageKey } from './components/StorefrontInfoPage';
 import { CartPage } from './components/CartPage';
@@ -89,11 +91,35 @@ const MainLayout: React.FC = () => {
   const [routeParam, setRouteParam] = useState<string>('');
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isAffiliateView, setIsAffiliateView] = useState<boolean>(false);
+  const [isAffiliateAnnouncementOpen, setIsAffiliateAnnouncementOpen] = useState<boolean>(false);
   const [storefrontPage, setStorefrontPage] = useState<StorefrontPageKey | null>(null);
 
   // Initialize affiliate click tracking (checks pause flag)
   useEffect(() => {
     initAffiliateTracking();
+  }, []);
+
+  // Show the creator-program announcement once per browser tab, on the home page only.
+  useEffect(() => {
+    const seenKey = 'piercyn_affiliate_announcement_seen';
+    try {
+      if (sessionStorage.getItem(seenKey)) return;
+    } catch {
+      // Continue without persistence when storage is unavailable.
+    }
+
+    const timer = window.setTimeout(() => {
+      if (window.location.pathname === '/') {
+        setIsAffiliateAnnouncementOpen(true);
+        try {
+          sessionStorage.setItem(seenKey, '1');
+        } catch {
+          // The dialog remains dismissible even when storage is unavailable.
+        }
+      }
+    }, 8000);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Compute deduplicated homepage products from real backend catalog
@@ -460,29 +486,13 @@ const MainLayout: React.FC = () => {
 
   if (isAffiliateView) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex flex-col items-center justify-center p-6 text-center select-none">
-        <div className="max-w-md w-full border border-[#2B2B2B] bg-[#141414] p-8 sm:p-10 rounded-sm">
-          <span className="font-mono text-[10px] tracking-[0.25em] text-[#C9A96E] uppercase block mb-3">
-            Program Notice
-          </span>
-          <h1 className="font-editorial italic text-2xl sm:text-3xl text-white mb-4">
-            Creator & Affiliate Program
-          </h1>
-          <p className="text-[#888888] text-xs sm:text-sm leading-relaxed mb-8">
-            The PIERCYN Creator & Affiliate Program is currently paused for upgrades. Please check back later or follow our social channels for announcements.
-          </p>
-          <button
-            onClick={() => {
-              setIsAffiliateView(false);
-              window.history.pushState({}, '', '/');
-              document.title = PUBLIC_PAGE_TITLES.home;
-            }}
-            className="w-full py-3 bg-[#F2F0EB] text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold hover:bg-white transition-colors"
-          >
-            Return to Store
-          </button>
-        </div>
-      </div>
+      <AffiliateApp
+        onBackToShop={() => {
+          window.history.pushState({}, '', '/');
+          syncRouteFromUrl();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
     );
   }
 
@@ -623,7 +633,15 @@ const MainLayout: React.FC = () => {
       )}
 
       {/* Global Footer */}
-      <Footer onNavigateSection={handleNavigateSection} onSelectPage={handleSelectPage} />
+      <Footer
+        onNavigateSection={handleNavigateSection}
+        onSelectPage={handleSelectPage}
+        onOpenAffiliate={() => {
+          window.history.pushState({ page: 'affiliate' }, '', '/affiliate');
+          syncRouteFromUrl();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav activePage={activePage} onSelectPage={handleSelectPage} />
@@ -639,6 +657,17 @@ const MainLayout: React.FC = () => {
       <CheckoutModal />
       <OrderConfirmationModal />
       <LookbookModal />
+      {isAffiliateAnnouncementOpen && (
+        <AffiliateAnnouncementModal
+          onClose={() => setIsAffiliateAnnouncementOpen(false)}
+          onJoin={() => {
+            setIsAffiliateAnnouncementOpen(false);
+            window.history.pushState({ page: 'affiliate' }, '', '/affiliate');
+            syncRouteFromUrl();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
       <AdminDrawer />
       <Toast />
     </div>

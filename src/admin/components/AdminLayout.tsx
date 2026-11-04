@@ -139,7 +139,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'reviews', label: 'Reviews', icon: Star },
-    { id: 'affiliates', label: 'Affiliates (Paused)', icon: TrendingUp },
+    { id: 'affiliates', label: 'Affiliates', icon: TrendingUp },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'audit', label: 'Audit Log', icon: History },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -180,8 +180,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         };
       case 'affiliates':
         return {
-          title: 'Creator & Affiliate Program (Paused)',
-          subtitle: 'Public announcements, applications, modals and click tracking are currently paused',
+          title: 'Creator & Affiliate Program',
+          subtitle: 'Manage creator applications, referral links, commissions and payouts',
         };
       case 'analytics':
         return {
