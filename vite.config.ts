@@ -50,6 +50,12 @@ export default defineConfig(({ command }) => {
             if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
               return 'vendor-react';
             }
+            if (id.includes('/src/admin/')) {
+              return 'admin-portal';
+            }
+            if (id.includes('/src/affiliate/')) {
+              return 'affiliate-portal';
+            }
           },
         },
       },

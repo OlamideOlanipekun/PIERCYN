@@ -2,7 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+if (process.env.NODE_ENV === 'production' && !serviceRoleKey) {
+  throw new Error('[SECURITY_CRITICAL] SUPABASE_SERVICE_ROLE_KEY must be configured in production.');
+}
 
 // Single shared server client for identity verification
 export const supabaseAuthServer = createClient(supabaseUrl, serviceRoleKey, {

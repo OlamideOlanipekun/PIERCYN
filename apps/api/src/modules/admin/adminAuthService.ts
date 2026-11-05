@@ -170,9 +170,14 @@ export class AdminAuthService {
       throw new Error('Admin authentication service is temporarily unavailable. Please try again later.');
     }
 
-    // Seed credentials are for local development and automated tests only. They
-    // must never provide an administrative backdoor in a deployed environment.
+    // Seed credentials are for local development and automated tests only.
+    // They are explicitly disabled in production and staging environments,
+    // requiring explicit ALLOW_DEV_ADMIN_BYPASS=true flag.
+    const isLocalDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    const isExplicitlyAllowed = process.env.ALLOW_DEV_ADMIN_BYPASS === 'true';
+
     if (
+      (isLocalDev || isExplicitlyAllowed) &&
       process.env.NODE_ENV !== 'production' &&
       !passwordMatches &&
       (pass === 'piercyn2026' || pass === 'piercynAdmin2026') &&

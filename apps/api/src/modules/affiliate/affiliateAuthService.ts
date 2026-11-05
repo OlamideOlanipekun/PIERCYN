@@ -27,8 +27,6 @@ if (process.env.NODE_ENV === 'production' && !HMAC_SECRET) {
   throw new Error('[SECURITY_CRITICAL] AFFILIATE_JWT_SECRET or JWT_SECRET must be configured in production.');
 }
 
-const revokedTokens = new Set<string>();
-const affiliateSessions = new Map<string, { affiliate: AffiliateUserResponse; expiresAt: Date }>();
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function generateSignedToken(affiliate: AffiliateUserResponse): string {
@@ -51,12 +49,7 @@ function generateSignedToken(affiliate: AffiliateUserResponse): string {
 export class AffiliateAuthService {
   /** Public wrapper — generates a signed token for a given affiliate record. */
   public static generateToken(affiliate: AffiliateUserResponse): string {
-    const token = generateSignedToken(affiliate);
-    affiliateSessions.set(token, {
-      affiliate,
-      expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
-    });
-    return token;
+    return generateSignedToken(affiliate);
   }
 
   /**
@@ -100,10 +93,6 @@ export class AffiliateAuthService {
     });
 
     const token = generateSignedToken(affiliateRecord);
-    affiliateSessions.set(token, {
-      affiliate: affiliateRecord,
-      expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
-    });
 
     return { affiliate: affiliateRecord, token };
   }
@@ -190,24 +179,15 @@ export class AffiliateAuthService {
             }
           }
         } catch {
-          // Fallback to in-memory check
+          return null;
         }
       }
     }
 
-    // 3. In-memory session fallback (for tests and short sessions)
-    const session = affiliateSessions.get(token);
-    if (!session) return null;
-    if (session.expiresAt < new Date()) {
-      affiliateSessions.delete(token);
-      return null;
-    }
-
-    return session.affiliate;
+    return null;
   }
 
-  public static logout(token: string): void {
-    revokedTokens.add(token);
-    affiliateSessions.delete(token);
+  public static logout(_token: string): void {
+    // Stateless session termination: client discards token on logout
   }
 }

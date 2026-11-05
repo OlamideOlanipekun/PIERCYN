@@ -26,6 +26,7 @@ import { optionalAuth, requireAuth } from '../middleware/authenticate';
 import { AuthService } from '../modules/auth/auth.service';
 import { getWhatsAppWebhookChallenge, isValidWhatsAppWebhookSignature } from '../security/whatsappWebhook';
 import { seoFallbackRouter } from './seoFallbackRouter';
+import { COMMERCE_CONFIG } from '../config/constants';
 import {
   createOrderAccessToken,
   isOrderAccessTokenConfigured,
@@ -460,6 +461,19 @@ apiRouter.post('/orders/:id/payment-receipt', async (req: Request, res: Response
     const msg = err.errors ? err.errors[0].message : err.message;
     res.status(400).json({ success: false, error: msg });
   }
+});
+
+apiRouter.get('/payments/bank-instructions', (_req: Request, res: Response) => {
+  const bank = COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER;
+  res.json({
+    success: true,
+    data: {
+      bankName: bank.BANK_NAME,
+      accountName: bank.ACCOUNT_NAME,
+      accountNumber: bank.ACCOUNT_NUMBER,
+      reviewWindowHours: bank.REVIEW_WINDOW_HOURS,
+    },
+  });
 });
 
 apiRouter.post('/payments/webhook', async (req: Request, res: Response) => {

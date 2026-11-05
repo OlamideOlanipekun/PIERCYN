@@ -1,13 +1,47 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { apiRouter } from './routes/apiRouter';
 import { checkDatabaseHealth } from './db/prisma';
 import { validateAffiliateConfig } from './config/constants';
+import { globalRateLimiter } from './middleware/rateLimiters';
 
 // Validate authoritative configuration at startup
 validateAffiliateConfig();
 
 export const app = express();
+
+// Security Headers via Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://js.paystack.co", "'unsafe-inline'"],
+        connectSrc: [
+          "'self'",
+          "https://api.paystack.co",
+          "https://*.supabase.co",
+          "https://fiyuiplqkmcwqugzusyx.supabase.co",
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://*.supabase.co",
+          "https://images.unsplash.com",
+        ],
+        frameSrc: ["https://js.paystack.co"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// Apply Global Rate Limiting
+app.use(globalRateLimiter);
 
 // Allowed Origins for CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS

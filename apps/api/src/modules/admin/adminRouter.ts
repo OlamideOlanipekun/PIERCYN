@@ -255,8 +255,10 @@ const RestockAllSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 });
 
+import { authRateLimiter } from '../../middleware/rateLimiters';
+
 // 1. AUTH
-adminRouter.post('/auth/login', async (req: Request, res: Response) => {
+adminRouter.post('/auth/login', authRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = AdminLoginSchema.parse(req.body);
     const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'global';

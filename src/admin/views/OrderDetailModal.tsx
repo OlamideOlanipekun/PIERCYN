@@ -1253,10 +1253,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         Customer has accepted the delivery quote. Send the official Kuda bank-transfer payment instructions via WhatsApp.
                       </p>
                       <div className="p-2.5 rounded-lg bg-black/40 border border-purple-700/30 font-mono text-[11px] text-purple-100 space-y-0.5">
-                        <div><span className="text-purple-400">Bank:</span> Kuda</div>
-                        <div><span className="text-purple-400">Account Name:</span> Adedeji Taiwo</div>
-                        <div><span className="text-purple-400">Account No:</span> 2072114942</div>
                         <div><span className="text-purple-400">Total Payable:</span> <strong className="text-white">₦{(order.quoteAcceptedTotalNGN ?? order.quoteTotalNGN ?? order.totalNGN ?? 0).toLocaleString()}</strong></div>
+                        <div className="text-[10px] text-purple-300/80">Account details populated from server store configuration.</div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button

@@ -25,6 +25,15 @@ interface OrderPageProps {
 
 export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode = 'tracking', onShop }) => {
   const [order, setOrder] = useState<any>(null);
+  const [bankInfo, setBankInfo] = useState<{
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+  }>({
+    bankName: 'Verified Bank',
+    accountName: 'PIERCYN Store',
+    accountNumber: '',
+  });
   const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [copiedBank, setCopiedBank] = useState(false);
 
@@ -97,6 +106,20 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
   };
 
   useEffect(() => {
+    // Fetch dynamic bank instructions from server
+    fetch('/api/payments/bank-instructions')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setBankInfo({
+            bankName: json.data.bankName,
+            accountName: json.data.accountName,
+            accountNumber: json.data.accountNumber,
+          });
+        }
+      })
+      .catch(() => {});
+
     loadOrder();
 
     // Auto-poll order status every 10s
@@ -108,9 +131,9 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
   }, [effectiveOrderId]);
 
   const bank = {
-    bankName: 'Kuda Bank',
-    accountName: 'Adedeji Taiwo',
-    accountNumber: '2072114942',
+    bankName: bankInfo.bankName,
+    accountName: bankInfo.accountName,
+    accountNumber: bankInfo.accountNumber,
     narration: order?.orderNumber || '',
   };
 

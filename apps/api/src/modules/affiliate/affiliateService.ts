@@ -195,8 +195,8 @@ export class AffiliateService {
     });
 
     AffiliateNotificationService.notifyApplicationSubmitted({
-      email: affiliate.email,
-      firstName: affiliate.firstName,
+      email: updated.email,
+      firstName: updated.firstName,
     }).catch(() => null);
 
     return {
@@ -407,11 +407,6 @@ export class AffiliateService {
         customerEmail: data.customerEmail || null,
       },
     });
-
-    AffiliateNotificationService.notifyApplicationSubmitted({
-      email: affiliate.email,
-      firstName: affiliate.firstName,
-    }).catch(() => null);
 
     return {
       success: true,

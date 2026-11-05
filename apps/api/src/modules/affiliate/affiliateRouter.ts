@@ -13,6 +13,8 @@ import {
   TrackAffiliateClickSchema,
 } from '../../schemas/affiliate';
 
+import { authRateLimiter } from '../../middleware/rateLimiters';
+
 export const affiliateRouter = Router();
 
 // Controlled centrally via AFFILIATE_CONFIG feature flag
@@ -71,7 +73,7 @@ affiliateRouter.get('/resolve/:code', async (req: Request, res: Response) => {
 // ─── AUTHENTICATION & ONBOARDING ──────────────────────────────────────────
 
 // POST /api/affiliate/apply
-affiliateRouter.post('/apply', async (req: Request, res: Response) => {
+affiliateRouter.post('/apply', authRateLimiter, async (req: Request, res: Response) => {
   if (!isAffiliateProgramActive()) {
     return res.status(503).json({
       success: false,
@@ -96,7 +98,7 @@ affiliateRouter.post('/apply', async (req: Request, res: Response) => {
 });
 
 // POST /api/affiliate/login
-affiliateRouter.post('/login', async (req: Request, res: Response) => {
+affiliateRouter.post('/login', authRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = AffiliateLoginSchema.parse(req.body);
     const result = await AffiliateAuthService.login(validated.email, validated.password);
