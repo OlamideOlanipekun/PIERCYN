@@ -115,7 +115,7 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
   // If user is not authenticated, show welcoming Google Sign-In state
   if (!authLoading && !isAuthenticated) {
     return (
-      <div className="flex min-h-[80vh] min-h-[100svh] items-center justify-center bg-[#0A0A0A] px-4 py-8 text-[#F2F0EB] sm:py-16">
+      <div className="flex min-h-[80vh] min-h-[100svh] items-center justify-center bg-[#0A0A0A] px-4 pb-8 pt-[88px] text-[#F2F0EB] sm:pb-16 sm:pt-[92px]">
         <div className="w-full max-w-md border border-[#262626] bg-[#121212] p-5 text-center shadow-2xl min-[360px]:p-6 sm:p-10">
           <span className="mb-2 block text-[10px] font-mono uppercase tracking-[0.22em] text-[#A8A59D] min-[360px]:tracking-[0.3em]">
             CLIENT PORTAL
@@ -148,7 +148,7 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
   }
 
   return (
-    <div className="min-h-[80vh] overflow-x-hidden bg-[#F5F3EE] py-7 text-[#111111] sm:py-10 lg:py-16">
+    <div className="min-h-[80vh] overflow-x-hidden bg-[#F5F3EE] pb-7 pt-[88px] text-[#111111] sm:pb-10 sm:pt-[92px] lg:pb-16 lg:pt-24">
       <div className="piercyn-container max-w-6xl">
         {/* Welcome Header */}
         <div className="flex flex-col gap-4 border-b border-[#E2DFD7] pb-6 sm:flex-row sm:items-center sm:justify-between sm:pb-8">
