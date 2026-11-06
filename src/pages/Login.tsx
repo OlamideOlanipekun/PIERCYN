@@ -41,12 +41,15 @@ export const Login: React.FC<LoginProps> = ({ onBackToShop, onSuccessRedirect })
   }, [isAuthenticated, nextParam, onSuccessRedirect]);
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A] text-[#F2F0EB] flex flex-col justify-center items-center px-4 sm:px-6 py-20 relative selection:bg-[#F2F0EB] selection:text-[#0A0A0A]">
+    <main className="relative flex min-h-screen min-h-[100svh] flex-col items-center justify-center overflow-x-hidden bg-[#0A0A0A] px-4 py-8 text-[#F2F0EB] selection:bg-[#F2F0EB] selection:text-[#0A0A0A] sm:px-6 sm:py-12">
       {/* Background ambient gradient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-amber-500/5 via-neutral-500/5 to-transparent blur-[120px] pointer-events-none" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/4 h-[min(100vw,500px)] w-[min(100vw,500px)] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-tr from-amber-500/5 via-neutral-500/5 to-transparent blur-[min(24vw,120px)]"
+      />
 
       {/* Navigation Return */}
-      <div className="w-full max-w-md mb-8">
+      <div className="relative mb-5 w-full max-w-md sm:mb-8">
         <button
           type="button"
           onClick={() => {
@@ -57,38 +60,38 @@ export const Login: React.FC<LoginProps> = ({ onBackToShop, onSuccessRedirect })
               window.dispatchEvent(new PopStateEvent('popstate'));
             }
           }}
-          className="inline-flex items-center gap-2 text-xs font-mono tracking-widest text-[#888888] hover:text-[#F2F0EB] transition-colors uppercase cursor-pointer"
+          className="inline-flex min-h-11 items-center gap-2 py-2 pr-3 text-xs font-mono tracking-widest text-[#888888] uppercase transition-colors hover:text-[#F2F0EB] cursor-pointer"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           <span>Return to Store</span>
         </button>
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-[#121212] border border-[#262626] p-8 sm:p-10 relative shadow-2xl">
+      <div className="relative w-full min-w-0 max-w-md border border-[#262626] bg-[#121212] p-5 shadow-2xl [overflow-wrap:anywhere] min-[360px]:p-6 sm:p-10">
         {/* Brand Header */}
-        <div className="text-center mb-8">
-          <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#A8A59D] block mb-2">
+        <div className="mb-6 text-center sm:mb-8">
+          <span className="mb-2 block text-[10px] font-mono uppercase tracking-[0.22em] text-[#A8A59D] min-[360px]:tracking-[0.3em]">
             CLIENT PORTAL
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-sans text-white mb-3">
+          <h1 className="mb-3 break-words font-sans text-2xl font-extrabold tracking-tight text-white min-[360px]:text-[1.7rem] sm:text-3xl">
             PIERCYN ATELIER
           </h1>
-          <p className="text-xs text-[#8E8B82] leading-relaxed">
+          <p className="mx-auto max-w-[34rem] text-xs leading-relaxed text-[#8E8B82] sm:text-[13px]">
             Sign in with your verified Google account to track orders, manage addresses, and access VIP drops.
           </p>
         </div>
 
         {/* Error message notification */}
         {errorMessage && (
-          <div className="mb-6 p-3.5 bg-red-950/40 border border-red-800/60 rounded flex items-start gap-2.5 text-red-300 text-xs">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+          <div role="alert" className="mb-5 flex min-w-0 items-start gap-2.5 rounded border border-red-800/60 bg-red-950/40 p-3.5 text-xs text-red-300 sm:mb-6">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{errorMessage}</span>
           </div>
         )}
 
         {/* Primary Google Auth Action */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <GoogleSignInButton
             redirectTo={nextParam}
             label="Sign in with Google"
@@ -97,38 +100,38 @@ export const Login: React.FC<LoginProps> = ({ onBackToShop, onSuccessRedirect })
         </div>
 
         {/* Security & Experience Pillars */}
-        <div className="mt-8 pt-8 border-t border-[#222222] space-y-3.5">
-          <div className="flex items-center gap-3 text-left">
-            <ShieldCheck className="w-4 h-4 text-[#A8A59D] flex-shrink-0" />
-            <span className="text-[11px] text-[#A8A59D] font-sans">
+        <div className="mt-6 space-y-3.5 border-t border-[#222222] pt-6 min-[360px]:mt-8 min-[360px]:pt-8">
+          <div className="flex min-w-0 items-start gap-3 text-left sm:items-center">
+            <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#A8A59D] sm:mt-0" />
+            <span className="min-w-0 font-sans text-[11px] leading-relaxed text-[#A8A59D]">
               Encrypted, passwordless identity powered by Supabase Auth
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-left">
-            <Package className="w-4 h-4 text-[#A8A59D] flex-shrink-0" />
-            <span className="text-[11px] text-[#A8A59D] font-sans">
+          <div className="flex min-w-0 items-start gap-3 text-left sm:items-center">
+            <Package className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#A8A59D] sm:mt-0" />
+            <span className="min-w-0 font-sans text-[11px] leading-relaxed text-[#A8A59D]">
               Instant sync with past guest purchases made with your email
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-left">
-            <Sparkles className="w-4 h-4 text-[#A8A59D] flex-shrink-0" />
-            <span className="text-[11px] text-[#A8A59D] font-sans">
+          <div className="flex min-w-0 items-start gap-3 text-left sm:items-center">
+            <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#A8A59D] sm:mt-0" />
+            <span className="min-w-0 font-sans text-[11px] leading-relaxed text-[#A8A59D]">
               Fast 1-click checkout with stored shipping addresses
             </span>
           </div>
         </div>
 
         {/* Footer Policy Note */}
-        <div className="mt-8 text-center">
-          <p className="text-[10px] text-[#555555] font-mono leading-relaxed">
+        <div className="mt-6 text-center min-[360px]:mt-8">
+          <p className="font-mono text-[10px] leading-relaxed text-[#77736B]">
             By signing in, you agree to PIERCYN’s{' '}
-            <a href="/terms" className="underline hover:text-[#888888] transition-colors">
+            <a href="/terms" className="underline transition-colors hover:text-[#888888]">
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="/privacy" className="underline hover:text-[#888888] transition-colors">
+            <a href="/privacy" className="underline transition-colors hover:text-[#888888]">
               Privacy Policy
             </a>
             .
