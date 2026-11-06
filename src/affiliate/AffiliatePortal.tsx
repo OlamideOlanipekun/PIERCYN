@@ -264,16 +264,16 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   const isSuspended = currentUser.status === 'SUSPENDED';
 
   return (
-    <div className="affiliate-portal-shell min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
+    <div className="affiliate-portal-shell min-h-screen bg-[#0A0A0A] text-[#F2F0EB] font-sans antialiased selection:bg-[#A48B71] selection:text-[#0A0A0A]">
       {/* Top Bar */}
       <header className="border-b border-[#222222] bg-[#111111]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2 cursor-pointer" onClick={onBackToShop}>
-              <span className="font-serif tracking-[0.25em] text-xl font-light text-white hover:text-[#C9A96E] transition-colors">
+              <span className="font-serif tracking-[0.25em] text-xl font-light text-[#F2F0EB] hover:text-[#A48B71] transition-colors">
                 PIERCYN
               </span>
-              <span className="text-[9px] uppercase tracking-widest px-2 py-0.5 border border-[#C9A96E]/40 text-[#C9A96E] rounded-full">
+              <span className="text-[9px] uppercase tracking-widest px-2 py-0.5 border border-[#A48B71]/40 text-[#A48B71] rounded-full">
                 PARTNER PORTAL
               </span>
             </div>
@@ -283,10 +283,10 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
             <button
               onClick={fetchPortalData}
               disabled={isRefreshing}
-              className="p-2 text-[#888888] hover:text-white rounded border border-[#2B2B2B] hover:border-[#444444] transition-colors"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded border border-[#2B2B2B] p-2 text-[#888888] transition-colors hover:border-[#444444] hover:text-[#F2F0EB]"
               title="Refresh Analytics"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#C9A96E]' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#A48B71]' : ''}`} />
             </button>
 
             <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-[#181818] border border-[#2B2B2B] rounded">
@@ -298,7 +298,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
             <button
               onClick={onLogout}
-              className="px-3 py-1.5 text-xs text-[#888888] hover:text-white border border-[#2B2B2B] hover:border-red-900/60 rounded flex items-center gap-1.5 transition-colors"
+              className="flex min-h-11 items-center gap-1.5 rounded border border-[#2B2B2B] px-3 py-1.5 text-xs text-[#888888] transition-colors hover:border-red-900/60 hover:text-[#F2F0EB]"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -309,9 +309,9 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
       {/* Account Status Notice Banner (if Pending or Suspended) */}
       {isPendingReview && (
-        <div className="bg-[#C9A96E]/10 border-b border-[#C9A96E]/30 px-4 py-3 text-center">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-xs text-[#E6C98F]">
-            <Clock className="w-4 h-4 shrink-0 text-[#C9A96E]" />
+        <div className="bg-[#A48B71]/10 border-b border-[#A48B71]/30 px-4 py-3 text-center">
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-xs text-[#D4C2AE]">
+            <Clock className="w-4 h-4 shrink-0 text-[#A48B71]" />
             <span>
               <strong>Application Under Review:</strong> Your partner profile is currently being reviewed by our editorial team. You will be activated within 24 hours.
             </span>
@@ -333,7 +333,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
       {/* Navigation Tabs */}
       <div className="border-b border-[#222222] bg-[#111111]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8 overflow-x-auto no-scrollbar">
+          <nav className="flex gap-2 overflow-x-auto no-scrollbar sm:gap-5">
             {[
               { id: 'overview', label: 'Overview & Earnings', icon: LayoutDashboard },
               { id: 'links', label: 'Referral Links', icon: Link2 },
@@ -351,8 +351,8 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`flex items-center gap-2 py-4 border-b-2 text-xs uppercase tracking-widest font-medium whitespace-nowrap transition-colors ${
                     isActive
-                      ? 'border-[#C9A96E] text-[#C9A96E]'
-                      : 'border-transparent text-[#888888] hover:text-white hover:border-[#444444]'
+                      ? 'border-[#A48B71] text-[#A48B71]'
+                      : 'border-transparent text-[#888888] hover:text-[#F2F0EB] hover:border-[#444444]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -381,7 +381,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-3xl font-serif text-white mb-1">
+                <div className="text-3xl font-serif text-[#F2F0EB] mb-1">
                   ₦{(stats?.earnings.availableNGN || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-[#777777] font-light">
@@ -399,7 +399,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <Clock className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-3xl font-serif text-white mb-1">
+                <div className="text-3xl font-serif text-[#F2F0EB] mb-1">
                   ₦{(stats?.earnings.pendingNGN || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-[#777777] font-light">
@@ -413,11 +413,11 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                   <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">
                     Lifetime Royalties
                   </span>
-                  <div className="p-2 rounded bg-[#C9A96E]/10 text-[#C9A96E] border border-[#C9A96E]/30">
+                  <div className="p-2 rounded bg-[#A48B71]/10 text-[#A48B71] border border-[#A48B71]/30">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-3xl font-serif text-[#C9A96E] mb-1">
+                <div className="text-3xl font-serif text-[#A48B71] mb-1">
                   ₦{(stats?.earnings.totalEarnedNGN || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-[#777777] font-light">
@@ -435,7 +435,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <ArrowUpRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-3xl font-serif text-white mb-1">
+                <div className="text-3xl font-serif text-[#F2F0EB] mb-1">
                   {stats?.metrics.totalOrders || 0} Orders
                 </div>
                 <div className="text-[11px] text-[#777777] font-light">
@@ -449,19 +449,19 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
               <div className="p-6 rounded-xl bg-gradient-to-r from-[#171717] to-[#121212] border border-[#2B2B2B]">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] font-semibold block mb-1">
+                    <span className="text-[10px] uppercase tracking-widest text-[#A48B71] font-semibold block mb-1">
                       YOUR PRIMARY REFERRAL LINK
                     </span>
-                    <h3 className="text-lg font-serif text-white">{links[0].name}</h3>
+                    <h3 className="text-lg font-serif text-[#F2F0EB]">{links[0].name}</h3>
                     <p className="text-xs text-[#888888] font-mono mt-1">
                       {window.location.origin}/r/{links[0].referralCode}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                     <button
                       onClick={() => handleCopyLink(links[0].referralCode)}
-                      className="px-5 py-2.5 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all shadow-md"
+                      className="px-5 py-2.5 bg-[#A48B71] hover:bg-[#C2A98F] text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all shadow-md"
                     >
                       {copiedCode === links[0].referralCode ? (
                         <>
@@ -477,7 +477,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     </button>
                     <button
                       onClick={() => setActiveTab('links')}
-                      className="px-4 py-2.5 border border-[#333333] hover:border-white/40 text-white text-xs uppercase tracking-widest font-medium rounded transition-colors"
+                      className="px-4 py-2.5 border border-[#333333] hover:border-white/40 text-[#F2F0EB] text-xs uppercase tracking-widest font-medium rounded transition-colors"
                     >
                       Manage Links
                     </button>
@@ -491,10 +491,10 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
               {/* Recent Commissions */}
               <div className="p-6 rounded-xl bg-[#141414] border border-[#242424]">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-base font-serif text-white">Recent Royalties</h3>
+                  <h3 className="text-base font-serif text-[#F2F0EB]">Recent Royalties</h3>
                   <button
                     onClick={() => setActiveTab('commissions')}
-                    className="text-xs text-[#C9A96E] hover:underline"
+                    className="text-xs text-[#A48B71] hover:underline"
                   >
                     View All →
                   </button>
@@ -509,17 +509,17 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     {commissions.slice(0, 5).map((comm) => (
                       <div
                         key={comm.id}
-                        className="p-3.5 rounded bg-[#181818] border border-[#262626] flex items-center justify-between"
+                        className="flex min-w-0 flex-col items-start gap-2 rounded border border-[#262626] bg-[#181818] p-3.5 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <div className="text-xs font-medium text-white">{comm.productName}</div>
+                          <div className="text-xs font-medium text-[#F2F0EB]">{comm.productName}</div>
                           <div className="text-[10px] text-[#777777] font-mono mt-0.5">
                             Order {comm.orderNumber} • Qty: {comm.quantity} • {new Date(comm.createdAt).toLocaleDateString()}
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <div className="text-xs font-mono font-semibold text-[#C9A96E]">
+                          <div className="text-xs font-mono font-semibold text-[#A48B71]">
                             +₦{comm.amountNGN.toLocaleString()}
                           </div>
                           <span
@@ -545,7 +545,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
               {/* Recent Click Activity */}
               <div className="p-6 rounded-xl bg-[#141414] border border-[#242424]">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-base font-serif text-white">Live Click Tracking</h3>
+                  <h3 className="text-base font-serif text-[#F2F0EB]">Live Click Tracking</h3>
                   <span className="text-xs text-[#888888]">Last 30 days</span>
                 </div>
 
@@ -554,10 +554,10 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     {stats.recentClicks.slice(0, 5).map((click) => (
                       <div
                         key={click.id}
-                        className="p-3.5 rounded bg-[#181818] border border-[#262626] flex items-center justify-between"
+                        className="flex min-w-0 flex-col items-start gap-2 rounded border border-[#262626] bg-[#181818] p-3.5 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <div className="text-xs text-white">{click.linkName}</div>
+                          <div className="text-xs text-[#F2F0EB]">{click.linkName}</div>
                           <div className="text-[10px] text-[#777777] truncate max-w-[200px] mt-0.5">
                             Landing: {click.landingPage || '/shop'}
                           </div>
@@ -583,7 +583,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-serif text-white">Referral Link Suite</h2>
+                <h2 className="text-2xl font-serif text-[#F2F0EB]">Referral Link Suite</h2>
                 <p className="text-xs text-[#888888] font-light mt-1">
                   Create tailored links for different campaigns, lookbooks, or social bio placements.
                 </p>
@@ -591,7 +591,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
               <button
                 onClick={() => setIsCreatingLink(!isCreatingLink)}
-                className="px-4 py-2.5 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all self-start sm:self-auto"
+                className="px-4 py-2.5 bg-[#A48B71] hover:bg-[#C2A98F] text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4" />
                 Create New Link
@@ -600,8 +600,8 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
             {/* Create Link Drawer / Inline Form */}
             {isCreatingLink && (
-              <div className="p-6 rounded-xl bg-[#171717] border border-[#C9A96E]/30 animate-in fade-in">
-                <h3 className="text-base font-serif text-white mb-4">Generate Campaign Referral Link</h3>
+              <div className="p-6 rounded-xl bg-[#171717] border border-[#A48B71]/30 animate-in fade-in">
+                <h3 className="text-base font-serif text-[#F2F0EB] mb-4">Generate Campaign Referral Link</h3>
 
                 {linkError && (
                   <div className="mb-4 p-3 rounded bg-red-950/40 border border-red-800 text-red-300 text-xs">
@@ -621,7 +621,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                         value={newLinkName}
                         onChange={(e) => setNewLinkName(e.target.value)}
                         placeholder="e.g. Instagram Bio, December Lookbook"
-                        className="w-full px-4 py-2 bg-[#1F1F1F] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                        className="w-full px-4 py-2 bg-[#1F1F1F] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                       />
                     </div>
 
@@ -632,7 +632,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                       <select
                         value={newLinkDestination}
                         onChange={(e) => setNewLinkDestination(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-[#1F1F1F] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                        className="w-full px-4 py-2.5 bg-[#1F1F1F] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                       >
                         <option value="/shop">Shop All Collections (/shop)</option>
                         <option value="/men">Men's Collection (/men)</option>
@@ -646,14 +646,14 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsCreatingLink(false)}
-                      className="px-4 py-2 text-xs text-[#888888] hover:text-white"
+                      className="px-4 py-2 text-xs text-[#888888] hover:text-[#F2F0EB]"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmittingLink}
-                      className="px-5 py-2 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-50 text-black text-xs uppercase tracking-widest font-semibold rounded"
+                      className="px-5 py-2 bg-[#A48B71] hover:bg-[#C2A98F] disabled:opacity-50 text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold rounded"
                     >
                       {isSubmittingLink ? 'Generating...' : 'Generate Link'}
                     </button>
@@ -665,7 +665,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
             {/* Links Table */}
             <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[640px] text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
                       <th className="py-3 px-4 sm:px-6">Campaign & Link</th>
@@ -679,18 +679,18 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     {links.map((link) => (
                       <tr key={link.id} className="hover:bg-[#181818]/60 transition-colors">
                         <td className="py-4 px-4 sm:px-6">
-                          <div className="font-medium text-white">{link.name}</div>
-                          <div className="text-[11px] font-mono text-[#C9A96E] mt-0.5 flex items-center gap-1.5">
+                          <div className="font-medium text-[#F2F0EB]">{link.name}</div>
+                          <div className="text-[11px] font-mono text-[#A48B71] mt-0.5 flex items-center gap-1.5">
                             <span>/r/{link.referralCode}</span>
                           </div>
                         </td>
                         <td className="py-4 px-4 font-mono text-[#888888]">{link.destination}</td>
-                        <td className="py-4 px-4 text-center font-mono text-white">{link.clickCount}</td>
-                        <td className="py-4 px-4 text-center font-mono text-white">{link.orderCount}</td>
+                        <td className="py-4 px-4 text-center font-mono text-[#F2F0EB]">{link.clickCount}</td>
+                        <td className="py-4 px-4 text-center font-mono text-[#F2F0EB]">{link.orderCount}</td>
                         <td className="py-4 px-4 text-right">
                           <button
                             onClick={() => handleCopyLink(link.referralCode)}
-                            className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] text-[#CCCCCC] hover:text-white rounded border border-[#333333] text-[11px] inline-flex items-center gap-1.5 transition-colors"
+                            className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] text-[#CCCCCC] hover:text-[#F2F0EB] rounded border border-[#333333] text-[11px] inline-flex items-center gap-1.5 transition-colors"
                           >
                             {copiedCode === link.referralCode ? (
                               <>
@@ -718,7 +718,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         {activeTab === 'commissions' && (
           <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-serif text-white">Order & Royalty Ledger</h2>
+              <h2 className="text-2xl font-serif text-[#F2F0EB]">Order & Royalty Ledger</h2>
               <p className="text-xs text-[#888888] font-light mt-1">
                 Itemized breakdown of every garment purchase attributed to your creator links.
               </p>
@@ -726,7 +726,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
             <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[760px] text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
                       <th className="py-3 px-4 sm:px-6">Date</th>
@@ -750,15 +750,15 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                           <td className="py-4 px-4 sm:px-6 text-[#888888] font-mono">
                             {new Date(comm.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="py-4 px-4 font-mono font-medium text-white">{comm.orderNumber}</td>
+                          <td className="py-4 px-4 font-mono font-medium text-[#F2F0EB]">{comm.orderNumber}</td>
                           <td className="py-4 px-4">
-                            <div className="text-white font-medium">{comm.productName}</div>
+                            <div className="text-[#F2F0EB] font-medium">{comm.productName}</div>
                             <div className="text-[10px] text-[#777777] font-mono mt-0.5">
                               {comm.colour} • Size {comm.size} • SKU: {comm.sku}
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-center font-mono text-white">{comm.quantity}</td>
-                          <td className="py-4 px-4 text-right font-mono font-semibold text-[#C9A96E]">
+                          <td className="py-4 px-4 text-center font-mono text-[#F2F0EB]">{comm.quantity}</td>
+                          <td className="py-4 px-4 text-right font-mono font-semibold text-[#A48B71]">
                             ₦{comm.amountNGN.toLocaleString()}
                           </td>
                           <td className="py-4 px-4 text-center">
@@ -791,7 +791,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-serif text-white">Immutable Financial Ledger</h2>
+                <h2 className="text-2xl font-serif text-[#F2F0EB]">Immutable Financial Ledger</h2>
                 <p className="text-xs text-[#888888] font-light mt-1">
                   Complete, verifiable record of all wallet credits, reservations, payouts, and adjustments.
                 </p>
@@ -808,7 +808,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
             <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[880px] text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
                       <th className="py-3 px-4 sm:px-6">Timestamp</th>
@@ -847,7 +847,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                                     : entry.type === 'WITHDRAWAL_PAID'
                                     ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40'
                                     : entry.type === 'WITHDRAWAL_RESERVED'
-                                    ? 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
+                                    ? 'bg-[#A48B71]/15 text-[#D4C2AE] border border-[#A48B71]/40'
                                     : entry.type === 'COMMISSION_REVERSED'
                                     ? 'bg-red-950/60 text-red-300 border border-red-800/40'
                                     : 'bg-zinc-800 text-zinc-300'
@@ -869,7 +869,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                             <td className="py-4 px-4 text-right font-mono text-[#888888]">
                               ₦{(entry.balanceBeforeKobo / 100).toLocaleString()}
                             </td>
-                            <td className="py-4 px-4 text-right font-mono font-medium text-white">
+                            <td className="py-4 px-4 text-right font-mono font-medium text-[#F2F0EB]">
                               ₦{(entry.balanceAfterKobo / 100).toLocaleString()}
                             </td>
                           </tr>
@@ -887,7 +887,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         {activeTab === 'media' && (
           <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-serif text-white">Media Library & Brand Assets</h2>
+              <h2 className="text-2xl font-serif text-[#F2F0EB]">Media Library & Brand Assets</h2>
               <p className="text-xs text-[#888888] font-light mt-1">
                 Download official PIERCYN lookbooks, imagery, badges, and banners to feature in your content.
               </p>
@@ -896,7 +896,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
             {mediaAssets.length === 0 ? (
               <div className="p-12 text-center rounded-xl bg-[#141414] border border-[#242424]">
                 <ImageIcon className="w-10 h-10 text-[#444444] mx-auto mb-3" />
-                <h4 className="text-sm font-medium text-white mb-1">No Brand Assets Available Yet</h4>
+                <h4 className="text-sm font-medium text-[#F2F0EB] mb-1">No Brand Assets Available Yet</h4>
                 <p className="text-xs text-[#777777] font-light max-w-md mx-auto">
                   Our marketing team is curating the official media kit. Please check back soon or reach out via creator support.
                 </p>
@@ -906,7 +906,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                 {mediaAssets.map((asset) => (
                   <div
                     key={asset.id}
-                    className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden hover:border-[#C9A96E]/40 transition-colors flex flex-col"
+                    className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden hover:border-[#A48B71]/40 transition-colors flex flex-col"
                   >
                     <div className="aspect-video bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center">
                       {asset.thumbnailUrl || asset.url ? (
@@ -919,13 +919,13 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                       ) : (
                         <ImageIcon className="w-8 h-8 text-[#555555]" />
                       )}
-                      <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider px-2 py-0.5 rounded bg-black/70 backdrop-blur text-[#C9A96E] border border-[#C9A96E]/30 font-mono">
+                      <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider px-2 py-0.5 rounded bg-black/70 backdrop-blur text-[#A48B71] border border-[#A48B71]/30 font-mono">
                         {asset.category}
                       </span>
                     </div>
                     <div className="p-5 flex-1 flex flex-col justify-between">
                       <div>
-                        <h4 className="text-sm font-serif text-white mb-1">{asset.title}</h4>
+                        <h4 className="text-sm font-serif text-[#F2F0EB] mb-1">{asset.title}</h4>
                         {asset.description && (
                           <p className="text-xs text-[#888888] line-clamp-2 font-light mb-3">
                             {asset.description}
@@ -943,7 +943,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                             navigator.clipboard.writeText(asset.url);
                             alert('Asset URL copied to clipboard!');
                           }}
-                          className="text-[11px] uppercase tracking-wider text-[#C9A96E] hover:underline flex items-center gap-1.5"
+                          className="text-[11px] uppercase tracking-wider text-[#A48B71] hover:underline flex items-center gap-1.5"
                         >
                           <Copy className="w-3 h-3" />
                           Copy Link
@@ -953,7 +953,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                           target="_blank"
                           rel="noreferrer"
                           download
-                          className="px-3 py-1.5 rounded bg-[#222222] hover:bg-[#333333] text-white text-xs flex items-center gap-1.5 transition-colors"
+                          className="px-3 py-1.5 rounded bg-[#222222] hover:bg-[#333333] text-[#F2F0EB] text-xs flex items-center gap-1.5 transition-colors"
                         >
                           <Download className="w-3.5 h-3.5" />
                           Download
@@ -973,9 +973,9 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Request Payout Card */}
               <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] lg:col-span-1">
-                <h3 className="text-lg font-serif text-white mb-2">Request Bank Payout</h3>
+                <h3 className="text-lg font-serif text-[#F2F0EB] mb-2">Request Bank Payout</h3>
                 <p className="text-xs text-[#888888] font-light mb-6">
-                  Available Balance: <strong className="text-white">₦{(stats?.earnings.availableNGN || 0).toLocaleString()}</strong>
+                  Available Balance: <strong className="text-[#F2F0EB]">₦{(stats?.earnings.availableNGN || 0).toLocaleString()}</strong>
                 </p>
 
                 {payoutError && (
@@ -1003,7 +1003,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                       step={100}
                       value={payoutAmountNGN}
                       onChange={(e) => setPayoutAmountNGN(parseInt(e.target.value, 10) || 0)}
-                      className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white font-mono text-sm focus:border-[#C9A96E] outline-none"
+                      className="w-full px-4 py-2.5 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] font-mono text-sm focus:border-[#A48B71] outline-none"
                     />
                     <span className="text-[10px] text-[#666666] mt-1 block">
                       {minimumPayoutNGN > 0
@@ -1016,7 +1016,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                     <span className="text-[10px] uppercase tracking-wider text-[#888888] block mb-1">
                       Destination Account
                     </span>
-                    <div className="text-white font-medium">{currentUser.bankName || 'No bank saved'}</div>
+                    <div className="text-[#F2F0EB] font-medium">{currentUser.bankName || 'No bank saved'}</div>
                     <div className="text-xs font-mono text-[#AAAAAA] mt-0.5">
                       {currentUser.accountNumber || '••••••••••'} • {currentUser.accountName || 'Not Set'}
                     </div>
@@ -1031,7 +1031,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                       payoutAmountNGN > (stats?.earnings.availableNGN || 0) ||
                       (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN)
                     }
-                    className="w-full py-3 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-40 text-black text-xs uppercase tracking-widest font-semibold rounded transition-all"
+                    className="w-full py-3 bg-[#A48B71] hover:bg-[#C2A98F] disabled:opacity-40 text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold rounded transition-all"
                   >
                     {isSubmittingPayout ? 'Submitting Request...' : 'Submit Withdrawal Request'}
                   </button>
@@ -1041,11 +1041,11 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
               {/* Payout History Ledger */}
               <div className="rounded-xl bg-[#141414] border border-[#242424] lg:col-span-2 overflow-hidden">
                 <div className="p-4 sm:p-6 border-b border-[#242424]">
-                  <h3 className="text-lg font-serif text-white">Withdrawal History</h3>
+                  <h3 className="text-lg font-serif text-[#F2F0EB]">Withdrawal History</h3>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full min-w-[660px] text-left border-collapse">
                     <thead>
                       <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
                         <th className="py-3 px-4 sm:px-6">Requested Date</th>
@@ -1067,7 +1067,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                             <td className="py-4 px-4 sm:px-6 text-[#888888] font-mono">
                               {new Date(p.requestedAt).toLocaleDateString()}
                             </td>
-                            <td className="py-4 px-4 font-mono font-medium text-white">
+                            <td className="py-4 px-4 font-mono font-medium text-[#F2F0EB]">
                               ₦{p.amountNGN.toLocaleString()}
                             </td>
                             <td className="py-4 px-4 font-mono text-[#888888]">
@@ -1103,7 +1103,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         {activeTab === 'profile' && (
           <div className="max-w-2xl mx-auto space-y-8">
             <div className="bg-[#141414] p-8 rounded-2xl border border-[#242424]">
-              <h2 className="text-2xl font-serif text-white mb-2">Banking & Creator Profile</h2>
+              <h2 className="text-2xl font-serif text-[#F2F0EB] mb-2">Banking & Creator Profile</h2>
               <p className="text-xs text-[#888888] font-light mb-6">
                 Update your Nigerian settlement account and creator socials for campaign matching.
               </p>
@@ -1122,7 +1122,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
 
               <form onSubmit={handleSaveProfile} className="space-y-5">
                 <div>
-                  <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] block mb-3 font-semibold">
+                  <span className="text-[10px] uppercase tracking-widest text-[#A48B71] block mb-3 font-semibold">
                     SETTLEMENT BANK DETAILS
                   </span>
 
@@ -1137,7 +1137,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                         value={profileForm.bankName}
                         onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
                         placeholder="e.g. GTBank, Access Bank, Zenith Bank, Kuda"
-                        className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                        className="w-full px-4 py-2.5 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                       />
                     </div>
 
@@ -1153,7 +1153,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                           value={profileForm.accountNumber}
                           onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
                           placeholder="0123456789"
-                          className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white font-mono text-sm focus:border-[#C9A96E] outline-none"
+                          className="w-full px-4 py-2.5 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] font-mono text-sm focus:border-[#A48B71] outline-none"
                         />
                       </div>
 
@@ -1167,7 +1167,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                           value={profileForm.accountName}
                           onChange={(e) => setProfileForm({ ...profileForm, accountName: e.target.value })}
                           placeholder="Kelvin Adeyemi"
-                          className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                          className="w-full px-4 py-2.5 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                         />
                       </div>
                     </div>
@@ -1175,7 +1175,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                 </div>
 
                 <div className="pt-4 border-t border-[#242424]">
-                  <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] block mb-3 font-semibold">
+                  <span className="text-[10px] uppercase tracking-widest text-[#A48B71] block mb-3 font-semibold">
                     CREATOR SOCIALS
                   </span>
 
@@ -1189,7 +1189,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                         value={profileForm.instagram}
                         onChange={(e) => setProfileForm({ ...profileForm, instagram: e.target.value })}
                         placeholder="@yourhandle"
-                        className="w-full px-4 py-2 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                        className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                       />
                     </div>
                     <div>
@@ -1201,7 +1201,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                         value={profileForm.tiktok}
                         onChange={(e) => setProfileForm({ ...profileForm, tiktok: e.target.value })}
                         placeholder="@yourhandle"
-                        className="w-full px-4 py-2 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
+                        className="w-full px-4 py-2 bg-[#1A1A1A] border border-[#333333] rounded text-[#F2F0EB] text-sm focus:border-[#A48B71] outline-none"
                       />
                     </div>
                   </div>
@@ -1210,7 +1210,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
                 <button
                   type="submit"
                   disabled={isSavingProfile}
-                  className="w-full py-3 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-50 text-black text-xs uppercase tracking-widest font-semibold rounded transition-all mt-4"
+                  className="w-full py-3 bg-[#A48B71] hover:bg-[#C2A98F] disabled:opacity-50 text-[#0A0A0A] text-xs uppercase tracking-widest font-semibold rounded transition-all mt-4"
                 >
                   {isSavingProfile ? 'Saving Details...' : 'Save Bank & Profile Information'}
                 </button>
