@@ -13,6 +13,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { requireAdmin } from '../admin/adminMiddleware';
 import { prisma } from '../../db/prisma';
+import { InventoryService } from '../inventory/inventoryService';
 import { WhatsAppService } from '../../services/whatsappService';
 import {
   NotificationQueueService,
@@ -60,13 +61,34 @@ checkoutAdminRouter.post('/orders/:id/product-payment/verify', requireAdmin, asy
     const now = new Date();
 
     await prisma.$transaction(async (tx) => {
+      // Lock the order so concurrent admin approvals cannot finalize inventory twice.
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE
+      `;
+      if (!locked.length) throw new Error('Order disappeared during payment verification.');
+
+      // Payment verification and stock finalization are one transaction. If a
+      // reservation expired or stock is no longer available, roll back payment
+      // verification and require staff reconciliation instead of overselling.
+      for (const item of order.items) {
+        const finalized = await InventoryService.finalizeSale(
+          item.variantId,
+          item.quantity,
+          order.orderNumber,
+          tx
+        );
+        if (!finalized.finalized) {
+          throw new Error(`Stock reconciliation required for ${item.variantId}; shortfall ${finalized.shortfall}.`);
+        }
+      }
+
       await tx.payment.update({
         where: { id: productPayment.id },
         data: { status: 'VERIFIED', verifiedAt: now, verifiedBy: adminId, verificationNote: note },
       });
       await tx.order.update({
         where: { id: order.id },
-        data: { paymentStatus: 'PAID', status: 'PAID', paidAt: now },
+        data: { paymentStatus: 'PAID', status: 'PAID', paidAt: now, needsManualReview: false, manualReviewReason: null },
       });
       await tx.orderStatusHistory.create({
         data: { orderId: order.id, fromStatus: order.status, toStatus: 'PAID', changedBy: adminId, note: 'Product payment verified by admin' },
