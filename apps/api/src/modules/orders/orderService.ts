@@ -170,6 +170,15 @@ export class OrderService {
     note?: string,
     updatedBy: string = 'ADMIN'
   ) {
+    // Financial states must only be reached through their dedicated workflows.
+    // Generic status editing cannot verify a payment or prove a refund occurred.
+    if (newStatus === 'PAID') {
+      throw new Error('Payment status cannot be changed manually. Use the payment verification workflow.');
+    }
+    if (newStatus === 'REFUNDED') {
+      throw new Error('Refund status cannot be changed manually. Complete and record an actual refund first.');
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       // Serialize status changes with payment finalization for the same order.
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
