@@ -24,6 +24,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('Database seeding is disabled in production. Use reviewed migrations and controlled inventory adjustments.');
+}
+
 // ─── Prisma setup (uses direct connection for seeding) ───────
 const rawConnectionString =
   process.env.DATABASE_URL_NON_POOLING ||
@@ -65,22 +69,28 @@ function estimateCostPrice(priceNGN: number): number {
 async function main() {
   console.log('\n🌱 PIERCYN V1 — Seeding database...\n');
 
+  const seedAdminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedAdminEmail || !seedAdminPassword || seedAdminPassword.length < 16) {
+    throw new Error('Set SEED_ADMIN_EMAIL and a SEED_ADMIN_PASSWORD of at least 16 characters for non-production seeding.');
+  }
+
   // ══════════════════════════════════════════════════════════
   // 1. ADMIN USER(S)
   // ══════════════════════════════════════════════════════════
   console.log('  → Seeding admin accounts...');
 
-  const adminPasswordHash = await bcrypt.hash('piercyn2026', 12);
+  const adminPasswordHash = await bcrypt.hash(seedAdminPassword, 12);
 
   await prisma.admin.upsert({
-    where: { email: 'admin@piercyn.com' },
+    where: { email: seedAdminEmail },
     update: {
       name: 'PIERCYN Admin',
       passwordHash: adminPasswordHash,
       isActive: true,
     },
     create: {
-      email: 'admin@piercyn.com',
+      email: seedAdminEmail,
       passwordHash: adminPasswordHash,
       name: 'PIERCYN Admin',
       role: 'ADMIN',
@@ -88,7 +98,7 @@ async function main() {
     },
   });
 
-  console.log('  ✓ Admin: admin@piercyn.com');
+  console.log('  ✓ Admin seed account configured (email omitted)');
 
   // ══════════════════════════════════════════════════════════
   // 2. SHIPPING CONFIGURATIONS
@@ -285,13 +295,7 @@ async function main() {
             });
           }
         } else {
-          // Update existing — only update stock if it's still the default seed value
-          await prisma.inventory.update({
-            where: { variantId: variant.id },
-            data: {
-              stockQuantity: initialStock,
-            },
-          });
+          // Existing inventory is operational data. Never rewrite it from a seed.
         }
 
         variantCount++;
@@ -306,10 +310,7 @@ async function main() {
   // SUMMARY
   // ══════════════════════════════════════════════════════════
   console.log('\n✅ PIERCYN V1 database seeded successfully.');
-  console.log('\n  Admin login:');
-  console.log('    Email:    admin@piercyn.com');
-  console.log('    Password: piercyn2026');
-  console.log('\n  ⚠️  Change the admin password immediately after first login in production.\n');
+  console.log('\n  Seed admin account configured from environment variables.\n');
 }
 
 main()
