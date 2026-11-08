@@ -255,6 +255,17 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/verify', requireAdmin, as
     if (!deliveryPayment) return res.status(400).json({ success: false, error: 'No delivery payment obligation found.' });
     if (deliveryPayment.status === 'VERIFIED') return res.status(409).json({ success: false, error: 'Delivery payment already verified.' });
     if (deliveryPayment.status !== 'SUBMITTED') return res.status(400).json({ success: false, error: 'Delivery payment receipt has not been submitted yet.' });
+    if (order.status === 'CANCELLED' || order.needsManualReview) {
+      return res.status(409).json({ success: false, error: 'This order is cancelled or under manual review.' });
+    }
+    const productPayment = order.payments.find(p => p.paymentType === 'PRODUCT');
+    const acceptedQuote = order.deliveryQuotes.find(q => q.status === 'ACCEPTED');
+    if (productPayment?.status !== 'VERIFIED' || !acceptedQuote) {
+      return res.status(409).json({ success: false, error: 'Product payment and customer-accepted delivery quotation are required before verifying delivery payment.' });
+    }
+    if (deliveryPayment.amountDueNGN !== acceptedQuote.amountNGN) {
+      return res.status(409).json({ success: false, error: 'Delivery payment amount does not match the accepted quotation. Reconcile manually.' });
+    }
 
     const note = typeof req.body.note === 'string' ? req.body.note : '';
     const now = new Date();
@@ -361,6 +372,9 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
     const acceptedQuote = order.deliveryQuotes.find(q => q.status === 'ACCEPTED');
 
     const prereqErrors: string[] = [];
+    if (order.status !== 'READY_FOR_DISPATCH') prereqErrors.push(`Order is not READY_FOR_DISPATCH (current: ${order.status}).`);
+    if (order.needsManualReview) prereqErrors.push('Order is flagged for manual review.');
+    if (order.status === 'CANCELLED' || order.status === 'DELIVERED' || order.status === 'DISPATCHED') prereqErrors.push('Order is in a terminal or already-dispatched state.');
     if (productPayment?.status !== 'VERIFIED') prereqErrors.push('Product payment is not verified.');
     if (!acceptedQuote) prereqErrors.push('Delivery quotation has not been accepted by the customer.');
     if (deliveryPayment?.status !== 'VERIFIED') prereqErrors.push('Delivery payment is not verified.');
