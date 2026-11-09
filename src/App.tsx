@@ -142,7 +142,7 @@ const MainLayout: React.FC = () => {
     if (rawPath.startsWith('/affiliate')) {
       setIsAffiliateView(true);
       setIsAdminView(false);
-      document.title = 'PIERCYN Creator & Affiliate Portal';
+      document.title = 'PIERCYN Affiliate Program | Earn ₦800 Per Qualifying Order';
       return;
     }
 
@@ -491,6 +491,7 @@ const MainLayout: React.FC = () => {
           syncRouteFromUrl();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        onNavigatePage={handleSelectPage}
       />
     );
   }

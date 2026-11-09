@@ -124,6 +124,12 @@ const STATIC_PAGES = {
     heading: 'Nigerian streetwear made for everywhere',
     intro: 'PIERCYN makes modern, elevated clothing for a generation that values style and knows the value of money. Explore heavyweight tees, denim, and everyday essentials, born in Lagos and built for everywhere.',
   },
+  '/affiliate': {
+    title: 'PIERCYN Affiliate Program | Earn ₦800 Per Qualifying Order',
+    description: 'Join the PIERCYN Affiliate Program for free. Share a Lagos-born streetwear brand, earn ₦800 per qualifying order, and track your referrals in a dedicated affiliate portal. ₦5,000 minimum withdrawal.',
+    heading: 'Join the PIERCYN Affiliate Program',
+    intro: 'Apply for free without a PIERCYN customer account. Share your affiliate link, earn ₦800 per qualifying order, and track your referrals in the partner portal. A ₦5,000 minimum withdrawal applies.',
+  },
   '/shop': {
     title: 'Shop All Clothing | PIERCYN Lagos',
     description: 'Explore the full PIERCYN clothing collection: heavyweight tees, jeans, polos and modern everyday essentials, designed in Lagos and priced to make sense.',
@@ -150,6 +156,9 @@ const STATIC_PAGES = {
 };
 
 function publicPageBody(page, products, categories, routePath) {
+  if (routePath === '/affiliate') {
+    return `<main><h1>${escapeHtml(page.heading)}</h1><p>${escapeHtml(page.intro)}</p><p><strong>₦800 per qualifying order · 30-day attribution · 7-day return window · ₦5,000 minimum withdrawal</strong></p><p><a href="/affiliate?mode=apply">Apply to the PIERCYN Affiliate Program</a> · <a href="/affiliate?mode=login">Affiliate portal sign in</a></p></main>`;
+  }
   const collectionLinks = categories.map((category) => `<li><a href="/category/${encodeURIComponent(category.slug)}">${escapeHtml(category.name)}</a></li>`).join('');
   const isArrivals = ['/new', '/new-in', '/new-arrivals'].includes(routePath);
   const selectedProducts = routePath === '/shop' ? products
@@ -223,7 +232,7 @@ async function main() {
     await writeRoute(template, routePath, makePage(template, { title, description, path: routePath, image: matches.find((product) => product.images?.[0])?.images?.[0] || primaryImage, body }));
   }
 
-  const privateRoutes = ['/account', '/cart', '/checkout', '/search', '/track-order', '/order-confirmation', '/admin', '/affiliate', '/login', '/signin', '/auth/callback'];
+  const privateRoutes = ['/account', '/cart', '/checkout', '/search', '/track-order', '/order-confirmation', '/admin', '/login', '/signin', '/auth/callback'];
   for (const routePath of privateRoutes) {
     const name = routePath.slice(1).replaceAll('-', ' ');
     const rendered = makePage(template, { title: `${name.replace(/\b\w/g, (letter) => letter.toUpperCase())} | PIERCYN`, description: 'This PIERCYN store page is intended for customer use.', path: routePath, noindex: true, image: primaryImage, body: `<main><h1>${escapeHtml(name)}</h1></main>` });

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { AffiliateApiClient, AffiliateUser } from '../services/affiliateApi';
 import { AffiliateLandingPage } from './AffiliateLandingPage';
 import { AffiliatePortal } from './AffiliatePortal';
+import type { ActivePageView } from '../types';
 
 interface AffiliateAppProps {
   onBackToShop: () => void;
+  onNavigatePage: (page: ActivePageView) => void;
 }
 
-export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop }) => {
+export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop, onNavigatePage }) => {
   const [currentUser, setCurrentUser] = useState<AffiliateUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -57,6 +59,7 @@ export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop }) => {
       <AffiliateLandingPage
         onGoToPortal={(user) => setCurrentUser(user)}
         onBackToShop={onBackToShop}
+        onNavigatePage={onNavigatePage}
       />
     );
   }
