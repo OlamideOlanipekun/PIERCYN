@@ -125,19 +125,25 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
+  const isInactive = product.status === 'archived' || product.status === 'inactive';
+  const isSupplierFulfilled = product.availabilityType === 'available_to_order';
   const hasVariants = Boolean(product.variants?.length);
   const selectedVariant = findProductVariant(product, currentColor?.name, selectedSize);
   const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
-  const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
-  const isSoldOut = product.isSoldOut || (hasVariants
-    ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
-    : typeof selectedStock !== 'number' || selectedStock <= 0);
-  const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
-  const maxAvailableQuantity =
-    product.availabilityType === 'available_to_order'
-      ? 10
-      : Math.max(1, Math.min(10, product.stock !== undefined ? product.stock : 10));
+  const isSoldOut = isInactive || Boolean(product.isSoldOut) || (
+    isSupplierFulfilled
+      ? product.supplierVerified === false
+      : (hasVariants
+          ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
+          : typeof selectedStock !== 'number' || selectedStock <= 0)
+  );
+
+  const isAlmostGone = !isSupplierFulfilled && product.stock !== undefined && product.stock > 0 && product.stock <= 5;
+
+  const maxAvailableQuantity = isSupplierFulfilled
+    ? 10
+    : (typeof selectedStock === 'number' ? Math.max(1, Math.min(10, selectedStock)) : 1);
 
   const handleAddToCart = () => {
     if (product.sizes.length > 0 && !selectedSize) {
@@ -331,7 +337,9 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 <div className="flex flex-wrap gap-2">
                   {sizeOptions.map((size) => {
                     const variant = findProductVariant(product, currentColor?.name, size);
-                    const inStock = Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+                    const inStock = isSupplierFulfilled
+                      ? product.supplierVerified !== false && (!variant || variant.active !== false)
+                      : Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
                     return (
                       <button
                         key={size}

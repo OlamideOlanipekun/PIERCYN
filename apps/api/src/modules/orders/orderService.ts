@@ -35,6 +35,9 @@ export class OrderService {
           orderBy: { createdAt: 'asc' },
         },
         payments: true,
+        deliveryQuotes: {
+          orderBy: { version: 'desc' },
+        },
         shipment: true,
       },
     });
@@ -408,20 +411,6 @@ export class OrderService {
         ? `Payment received but stock could not be fully allocated: ${shortfalls.join('; ')}. Do not fulfil until reviewed.`
         : null;
 
-      // Auto-reconcile quote status: if the order has no accepted quote yet,
-      // snapshot the agreed delivery fee at time of payment so the customer
-      // page displays authoritative figures instead of "To be confirmed".
-      const quoteReconcile: Record<string, any> = {};
-      if (order.quoteStatus !== 'ACCEPTED') {
-        const agreedFee = order.quoteDeliveryFeeNGN ?? order.deliveryFeeNGN ?? 0;
-        const agreedTotal = order.quoteTotalNGN ?? order.totalNGN;
-        quoteReconcile.quoteStatus = 'ACCEPTED';
-        quoteReconcile.quoteAcceptedAt = now;
-        quoteReconcile.quoteAcceptedByAdmin = 'SYSTEM';
-        quoteReconcile.quoteAcceptedFeeNGN = agreedFee;
-        quoteReconcile.quoteAcceptedTotalNGN = agreedTotal;
-      }
-
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -431,7 +420,6 @@ export class OrderService {
           paymentSubmittedAt: order.paymentSubmittedAt ?? now,
           needsManualReview,
           manualReviewReason,
-          ...quoteReconcile,
         },
         include: { items: true },
       });

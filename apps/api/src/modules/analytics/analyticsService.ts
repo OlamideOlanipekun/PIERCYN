@@ -15,8 +15,10 @@ export interface AtelierAnalyticsSummary {
   paidOrders: number;
   pendingOrders: number;
   cancelledOrders: number;
+  cancelledPaidOrders?: number;
   unitsSold: number;
   revenueNGN: number;
+  productRevenueNGN?: number;
   cogsNGN: number;
   grossProfitNGN: number;
   grossMarginPercent: number;
@@ -177,43 +179,57 @@ export class AnalyticsService {
       { sku: string; productName: string; size: string; colour: string; units: number; revenue: number }
     >();
 
+    const toLagosDateString = (d: Date): string => {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Lagos',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    };
+
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = toLagosDateString(now);
 
     const last7DaysMap = new Map<string, TrendDataPoint>();
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = toLagosDateString(d);
+      const label = d.toLocaleDateString('en-US', { timeZone: 'Africa/Lagos', weekday: 'short', month: 'short', day: 'numeric' });
       last7DaysMap.set(key, { date: key, label, revenueNGN: 0, orders: 0, unitsSold: 0 });
     }
 
     const last30DaysMap = new Map<string, TrendDataPoint>();
     for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = toLagosDateString(d);
+      const label = d.toLocaleDateString('en-US', { timeZone: 'Africa/Lagos', month: 'short', day: 'numeric' });
       last30DaysMap.set(key, { date: key, label, revenueNGN: 0, orders: 0, unitsSold: 0 });
     }
 
     let todayRevenue = 0;
     let todayOrdersCount = 0;
     let todayUnits = 0;
+    let cancelledPaidOrders = 0;
+    let productRevenueNGN = 0;
 
     for (const ord of orders) {
       totalOrders++;
       if (ord.status === 'CANCELLED') {
         cancelledOrders++;
-        continue;
+        if (ord.paymentStatus === 'PAID') {
+          cancelledPaidOrders++;
+        } else {
+          continue;
+        }
       }
 
-      const orderDateStr = ord.createdAt.toISOString().slice(0, 10);
+      const orderDateStr = toLagosDateString(ord.createdAt);
 
       if (ord.paymentStatus === 'PAID') {
         paidOrders++;
         revenueNGN += ord.totalNGN;
+        productRevenueNGN += Math.max(0, ord.subtotalNGN - ord.discountNGN);
         deliveryRevenueNGN += ord.deliveryFeeNGN;
         discountTotalNGN += ord.discountNGN;
 
@@ -409,8 +425,10 @@ export class AnalyticsService {
       paidOrders,
       pendingOrders,
       cancelledOrders,
+      cancelledPaidOrders,
       unitsSold,
       revenueNGN,
+      productRevenueNGN,
       cogsNGN,
       grossProfitNGN,
       grossMarginPercent,

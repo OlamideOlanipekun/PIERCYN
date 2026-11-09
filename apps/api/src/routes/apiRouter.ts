@@ -20,6 +20,9 @@ import { CommissionService } from '../modules/affiliate/commissionService';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
+import { telegramWebhookRouter } from '../modules/telegram/telegramRouter';
+import { marketingRouter } from '../modules/marketing/marketingRouter';
+import { internalJobsRouter } from '../modules/jobs/internalJobsRouter';
 import { prisma } from '../db/prisma';
 import { authRouter } from '../modules/auth/auth.routes';
 import { optionalAuth, requireAuth } from '../middleware/authenticate';
@@ -44,11 +47,14 @@ import {
 export const apiRouter = Router();
 
 apiRouter.use('/seo', seoFallbackRouter);
-apiRouter.use('/admin', adminRouter);
-// Checkout admin endpoints mounted under /admin (order lifecycle management)
+// Mount checkoutAdminRouter first so canonical order lifecycle takes precedence over legacy handlers
 apiRouter.use('/admin', checkoutAdminRouter);
+apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/auth', authRouter);
+apiRouter.use('/webhooks/telegram', telegramWebhookRouter);
+apiRouter.use('/marketing', marketingRouter);
+apiRouter.use('/internal', internalJobsRouter);
 apiRouter.use('/', reviewRouter);
 // Authenticated checkout and order lifecycle routes
 apiRouter.use('/', checkoutRouter);
@@ -643,8 +649,19 @@ const handleDailyCron = async (req: Request, res: Response) => {
       CommissionService.qualifyMatureCommissions(),
     ]);
 
-    res.json({
-      success: true,
+    const hasFailures = [reservations, quotes, notifications, matureCommissions].some(r => r.status === 'rejected');
+    if (hasFailures) {
+      console.error('[DAILY_CRON_PARTIAL_FAILURE]', {
+        reservations: reservations.status === 'rejected' ? reservations.reason : null,
+        quotes: quotes.status === 'rejected' ? quotes.reason : null,
+        notifications: notifications.status === 'rejected' ? notifications.reason : null,
+        matureCommissions: matureCommissions.status === 'rejected' ? matureCommissions.reason : null,
+      });
+    }
+
+    res.status(hasFailures ? 207 : 200).json({
+      success: !hasFailures,
+      hasFailures,
       data: {
         reservations: reservations.status === 'fulfilled' ? reservations.value : { error: reservations.reason?.message },
         quotes: quotes.status === 'fulfilled' ? quotes.value : { error: quotes.reason?.message },

@@ -27,6 +27,14 @@ function getDatabaseConnectionString(): string {
     return testUrl;
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    const prodUrl = process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING;
+    if (!prodUrl) {
+      throw new Error('[DATABASE_FATAL] DATABASE_URL or DATABASE_URL_NON_POOLING must be set in production.');
+    }
+    return prodUrl;
+  }
+
   return process.env.DATABASE_URL || process.env.DATABASE_URL_NON_POOLING || 'postgresql://postgres:postgres@localhost:5432/piercyn';
 }
 
@@ -84,7 +92,40 @@ export function getPrismaClient(): PrismaClient {
   return client;
 }
 
-export const prisma = getPrismaClient();
+export const prisma: PrismaClient = new Proxy(Object.create(PrismaClient.prototype), {
+  get(target, prop) {
+    if (prop in target) {
+      return (target as any)[prop];
+    }
+    const client = getPrismaClient();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+  set(target, prop, value) {
+    (target as any)[prop] = value;
+    return true;
+  },
+  has(target, prop) {
+    if (prop in target) return true;
+    return true;
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    if (prop in target) {
+      return Object.getOwnPropertyDescriptor(target, prop);
+    }
+    const client = getPrismaClient();
+    const val = (client as any)[prop];
+    return {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: typeof val === 'function' ? val.bind(client) : val,
+    };
+  },
+});
 
 export async function checkDatabaseHealth(): Promise<{ ok: boolean; message: string; latencyMs?: number }> {
   const start = Date.now();

@@ -531,9 +531,6 @@ export class PaymentService {
     if (order.paymentStatus === 'PAID') {
       throw new Error('This order is already marked paid.');
     }
-    if (order.quoteStatus !== 'ACCEPTED') {
-      throw new Error('Payment cannot be approved until the delivery quotation has been confirmed and accepted.');
-    }
     if (order.status !== 'AWAITING_PAYMENT_VERIFICATION') {
       throw new Error('Only orders awaiting payment verification can be approved.');
     }

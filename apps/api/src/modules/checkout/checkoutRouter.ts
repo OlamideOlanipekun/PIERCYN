@@ -17,16 +17,18 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../../middleware/authenticate';
+import { requireAuth, optionalAuth } from '../../middleware/authenticate';
 import { AuthService } from '../auth/auth.service';
 import { CheckoutService } from './checkoutService';
 import { PaymentService } from '../payments/paymentService';
 import { decodeReceiptBase64, validateReceiptBuffer, uploadReceipt } from '../payments/receiptStorage';
 import { prisma } from '../../db/prisma';
+import { verifyOrderAccessToken } from '../../security/orderAccessToken';
 import {
   NotificationQueueService,
   triggerNotificationProcessingAsync,
 } from '../notifications';
+import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
 import { WhatsAppService } from '../../services/whatsappService';
 
 export const checkoutRouter = Router();
@@ -45,18 +47,50 @@ async function resolveCustomerFromReq(req: Request) {
 }
 
 /**
- * Verify the authenticated customer owns the given order.
- * Returns the order or null if not found / unauthorized.
+ * Verify access to an order via either:
+ * 1. Valid cryptographic order access token (x-order-access-token)
+ * 2. Authenticated customer ownership (matching customerId or email)
+ * Returns the loaded order with relations or null if unauthorized.
  */
-async function getOwnedOrder(orderId: string, customerId: string) {
-  return prisma.order.findFirst({
-    where: { id: orderId, customerId },
-    include: {
-      items: true,
-      payments: { orderBy: { createdAt: 'asc' } },
-      deliveryQuotes: { orderBy: { version: 'desc' } },
-    },
-  });
+async function getOrderForCustomerOrToken(req: Request, orderId: string) {
+  const token = req.headers['x-order-access-token'];
+  if (typeof token === 'string') {
+    const verified = verifyOrderAccessToken(token);
+    if (verified && verified.orderId === orderId) {
+      return prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          payments: { orderBy: { createdAt: 'asc' } },
+          deliveryQuotes: { orderBy: { version: 'desc' } },
+          refundReviews: { orderBy: { createdAt: 'desc' } },
+          statusHistory: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+    }
+  }
+
+  if (req.user) {
+    const customerId = await resolveCustomerFromReq(req);
+    return prisma.order.findFirst({
+      where: {
+        id: orderId,
+        OR: [
+          ...(customerId ? [{ customerId }] : []),
+          { customerEmail: { equals: req.user.email, mode: 'insensitive' as const } },
+        ],
+      },
+      include: {
+        items: true,
+        payments: { orderBy: { createdAt: 'asc' } },
+        deliveryQuotes: { orderBy: { version: 'desc' } },
+        refundReviews: { orderBy: { createdAt: 'desc' } },
+        statusHistory: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+  }
+
+  return null;
 }
 
 // ── POST /checkout ─────────────────────────────────────────────────────────────
@@ -179,14 +213,11 @@ checkoutRouter.get('/customers/me/orders', requireAuth, async (req: Request, res
   }
 });
 
-// ── GET /orders/:id (customer-owned) ──────────────────────────────────────────
+// ── GET /orders/:id ───────────────────────────────────────────────────────────
 
-checkoutRouter.get('/orders/:id', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.get('/orders/:id', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await getOwnedOrder(req.params.id, customerId);
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     return res.json({ success: true, data: order });
@@ -197,12 +228,9 @@ checkoutRouter.get('/orders/:id', requireAuth, async (req: Request, res: Respons
 
 // ── GET /orders/:id/events ─────────────────────────────────────────────────────
 
-checkoutRouter.get('/orders/:id/events', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.get('/orders/:id/events', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await prisma.order.findFirst({ where: { id: req.params.id, customerId }, select: { id: true } });
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     const events = await prisma.orderStatusHistory.findMany({
@@ -223,12 +251,9 @@ const ReceiptSchema = z.object({
   mimeType: z.enum(['image/jpeg', 'image/png', 'application/pdf']),
 });
 
-checkoutRouter.post('/orders/:id/product-payment/receipt', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.post('/orders/:id/product-payment/receipt', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await getOwnedOrder(req.params.id, customerId);
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     const productPayment = order.payments.find(p => p.paymentType === 'PRODUCT');
@@ -248,24 +273,51 @@ checkoutRouter.post('/orders/:id/product-payment/receipt', requireAuth, async (r
 
     const receiptPath = await uploadReceipt(order.id, buffer, validated.mimeType);
 
-    // Update the typed Payment record
-    await prisma.payment.update({
-      where: { id: productPayment.id },
-      data: {
-        status: 'SUBMITTED',
-        submittedAt: new Date(),
-        receiptPath,
-        receiptMimeType: validated.mimeType,
-        receiptUploadedAt: new Date(),
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      // Update the typed Payment record
+      await tx.payment.update({
+        where: { id: productPayment.id },
+        data: {
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+          receiptPath,
+          receiptMimeType: validated.mimeType,
+          receiptUploadedAt: new Date(),
+        },
+      });
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentStatus: 'AWAITING_VERIFICATION',
-        status: 'AWAITING_PAYMENT_VERIFICATION',
-      },
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: 'AWAITING_VERIFICATION',
+          status: 'AWAITING_PAYMENT_VERIFICATION',
+        },
+      });
+
+      // Immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'RECEIPT_UPLOADED',
+          title: 'Product Payment Receipt Uploaded',
+          description: `Customer uploaded transfer receipt for ₦${(productPayment.amountDueNGN / 100).toLocaleString()}`,
+          actorType: 'CUSTOMER',
+          metadata: { receiptPath },
+        },
+      });
+
+      // Outbox event
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:product-receipt:uploaded:v1`,
+        eventType: PIERCYN_EVENTS.RECEIPT_UPLOADED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          totalNGN: productPayment.amountDueNGN,
+        },
+      });
     });
 
     // Notify admin
@@ -297,12 +349,9 @@ checkoutRouter.post('/orders/:id/product-payment/receipt', requireAuth, async (r
 
 // ── POST /orders/:id/delivery/quote/accept ─────────────────────────────────────
 
-checkoutRouter.post('/orders/:id/delivery/quote/accept', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.post('/orders/:id/delivery/quote/accept', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await getOwnedOrder(req.params.id, customerId);
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     const activeQuote = order.deliveryQuotes.find(q => q.status === 'SENT');
@@ -358,8 +407,33 @@ checkoutRouter.post('/orders/:id/delivery/quote/accept', requireAuth, async (req
           orderId: order.id,
           fromStatus: order.status,
           toStatus: order.status,
-          changedBy: customerId,
+          changedBy: order.customerId || 'CUSTOMER',
           note: `Customer accepted delivery quotation of ${formatNGN(activeQuote.amountNGN)}`,
+        },
+      });
+
+      // Immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'DELIVERY_QUOTE_ACCEPTED',
+          title: 'Delivery Quote Accepted',
+          description: `Customer accepted delivery quotation of ${formatNGN(activeQuote.amountNGN)}`,
+          actorType: 'CUSTOMER',
+          metadata: { amountNGN: activeQuote.amountNGN },
+        },
+      });
+
+      // Outbox event
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:quote-accepted:v${activeQuote.version}`,
+        eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_ACCEPTED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          deliveryFeeNGN: activeQuote.amountNGN,
         },
       });
     });
@@ -391,12 +465,9 @@ checkoutRouter.post('/orders/:id/delivery/quote/accept', requireAuth, async (req
 
 // ── POST /orders/:id/delivery/quote/reject ─────────────────────────────────────
 
-checkoutRouter.post('/orders/:id/delivery/quote/reject', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.post('/orders/:id/delivery/quote/reject', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await getOwnedOrder(req.params.id, customerId);
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     const activeQuote = order.deliveryQuotes.find(q => q.status === 'SENT');
@@ -421,7 +492,7 @@ checkoutRouter.post('/orders/:id/delivery/quote/reject', requireAuth, async (req
           orderId: order.id,
           fromStatus: order.status,
           toStatus: order.status,
-          changedBy: customerId,
+          changedBy: order.customerId || 'CUSTOMER',
           note: `Customer rejected delivery quotation. Reason: ${rejectionReason || 'Not provided'}`,
         },
       });
@@ -440,12 +511,9 @@ checkoutRouter.post('/orders/:id/delivery/quote/reject', requireAuth, async (req
 
 // ── POST /orders/:id/delivery-payment/receipt ──────────────────────────────────
 
-checkoutRouter.post('/orders/:id/delivery-payment/receipt', requireAuth, async (req: Request, res: Response) => {
+checkoutRouter.post('/orders/:id/delivery-payment/receipt', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const customerId = await resolveCustomerFromReq(req);
-    if (!customerId) return res.status(401).json({ success: false, error: 'Unauthorized' });
-
-    const order = await getOwnedOrder(req.params.id, customerId);
+    const order = await getOrderForCustomerOrToken(req, req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
     const activeQuote = order.deliveryQuotes.find(q => q.status === 'ACCEPTED');

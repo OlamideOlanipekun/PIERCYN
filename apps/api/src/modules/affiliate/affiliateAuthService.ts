@@ -103,7 +103,6 @@ export class AffiliateAuthService {
    */
   public static async verifyToken(token: string): Promise<AffiliateUserResponse | null> {
     if (!token) return null;
-    if (revokedTokens.has(token)) return null;
 
     // 1. Supabase OAuth JWT verification (standard JWT starts with eyJ)
     if (token.startsWith('eyJ')) {

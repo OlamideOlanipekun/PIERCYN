@@ -593,13 +593,14 @@ export class InventoryService {
     type: 'PURCHASE' | 'SALE' | 'RESERVATION' | 'RELEASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE' | 'RESTOCK' | 'SET_EXACT',
     reference: string,
     reason?: string,
-    adminId?: string
+    adminId?: string,
+    txPrisma?: any
   ): Promise<boolean> {
     if (!Number.isFinite(quantity) || !Number.isInteger(quantity)) {
       throw new Error('Stock adjustment quantity must be a whole integer.');
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const execute = async (tx: any) => {
       const inv = await tx.inventory.findUnique({
         where: { variantId },
       });
@@ -614,6 +615,9 @@ export class InventoryService {
       if (type === 'ADJUSTMENT' || type === 'SET_EXACT') {
         if (quantity < 0) {
           throw new Error('Stock quantity must be a non-negative integer.');
+        }
+        if (quantity < inv.reservedQuantity) {
+          throw new Error(`Cannot set exact stock to ${quantity}. There are currently ${inv.reservedQuantity} unit(s) reserved for pending orders.`);
         }
         newStock = quantity;
         delta = newStock - inv.stockQuantity;
@@ -696,9 +700,11 @@ export class InventoryService {
       }
 
       return true;
-    });
+    };
 
-    if (result) {
+    const result = txPrisma ? await execute(txPrisma) : await prisma.$transaction(execute);
+
+    if (result && !txPrisma) {
       triggerNotificationProcessingAsync();
     }
 
@@ -780,6 +786,21 @@ export class InventoryService {
             resultingAvailableStock: 0,
             valid: false,
             error: 'Stock quantity must be non-negative',
+          };
+        }
+        if (item.quantity < inv.reservedQuantity) {
+          return {
+            variantId: item.variantId,
+            sku: inv.variant.sku,
+            productName: inv.variant.product?.name || 'Unknown',
+            previousStockQuantity: prevStock,
+            previousAvailableStock: Math.max(0, inv.stockQuantity - inv.reservedQuantity),
+            adjustmentQuantity: item.quantity,
+            type: item.type,
+            resultingStockQuantity: 0,
+            resultingAvailableStock: 0,
+            valid: false,
+            error: `Exact stock (${item.quantity}) cannot be less than reserved stock (${inv.reservedQuantity})`,
           };
         }
         resultingStock = item.quantity;
@@ -888,7 +909,8 @@ export class InventoryService {
           item.type,
           item.reference || batchRef,
           item.reason || 'Bulk inventory adjustment',
-          adminId
+          adminId,
+          tx
         );
         const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
         if (inv) {

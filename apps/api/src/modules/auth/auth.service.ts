@@ -1,5 +1,6 @@
 import { prisma } from '../../db/prisma';
 import type { AuthenticatedUser } from '../../middleware/authenticate';
+import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
 
 export interface SyncInput {
   user: AuthenticatedUser;
@@ -30,6 +31,20 @@ export class AuthService {
     });
 
     if (customer) {
+      // Record regular sign-in audit without triggering registration email or Telegram spam
+      try {
+        await prisma.customerAuthEvent.create({
+          data: {
+            userId: customer.id,
+            eventType: 'CUSTOMER_SIGNED_IN',
+            provider: 'google',
+            metadata: { email: user.email },
+          },
+        });
+      } catch (e) {
+        // Non-blocking telemetry
+      }
+
       // Update with latest avatar or names if changed
       customer = await prisma.customer.update({
         where: { id: customer.id },
@@ -91,19 +106,47 @@ export class AuthService {
     }
 
     // 3. New customer creation
-    customer = await prisma.customer.create({
-      data: {
-        supabaseUserId: user.supabaseId,
-        email: user.email || null,
-        firstName,
-        lastName,
-        avatarUrl: avatarUrl || null,
-      },
-      include: {
-        addresses: {
-          orderBy: { isDefault: 'desc' },
+    customer = await prisma.$transaction(async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          supabaseUserId: user.supabaseId,
+          email: user.email || null,
+          firstName,
+          lastName,
+          avatarUrl: avatarUrl || null,
         },
-      },
+        include: {
+          addresses: {
+            orderBy: { isDefault: 'desc' },
+          },
+        },
+      });
+
+      // Audit registration event
+      await tx.customerAuthEvent.create({
+        data: {
+          userId: created.id,
+          eventType: 'CUSTOMER_REGISTERED',
+          provider: 'google',
+          metadata: { email: user.email, firstName, lastName },
+        },
+      });
+
+      // Emit transactional CUSTOMER_REGISTERED event for welcome email & Telegram fan-out
+      await recordEvent(tx, {
+        eventKey: `customer:${created.id}:registered:v1`,
+        eventType: PIERCYN_EVENTS.CUSTOMER_REGISTERED,
+        payload: {
+          customerId: created.id,
+          supabaseUserId: user.supabaseId,
+          email: user.email || '',
+          firstName,
+          lastName,
+          registeredAt: new Date().toISOString(),
+        },
+      });
+
+      return created;
     });
 
     // Check if there are past guest orders matching this new customer's email

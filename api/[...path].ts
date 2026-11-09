@@ -33,9 +33,12 @@ export default async function handler(req: any, res: any) {
       JSON.stringify({
         success: false,
         error: 'SERVERLESS_INVOCATION_FAILED',
-        message: err?.message || String(err),
-        name: err?.name,
-        code: err?.code,
+        message:
+          process.env.NODE_ENV === 'production'
+            ? 'A secure server error occurred. Please try again or contact support.'
+            : (err?.message || String(err)),
+        name: process.env.NODE_ENV === 'production' ? undefined : err?.name,
+        code: process.env.NODE_ENV === 'production' ? undefined : err?.code,
         stack: process.env.NODE_ENV === 'production' ? undefined : err?.stack,
       })
     );

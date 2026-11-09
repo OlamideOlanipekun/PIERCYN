@@ -10,6 +10,7 @@ import {
   NotificationQueueService,
   triggerNotificationProcessingAsync,
 } from '../notifications';
+import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
 
 export interface CheckoutQuote {
   cart: CalculatedCart;
@@ -241,10 +242,23 @@ export class CheckoutService {
               }),
             },
           },
+          payments: {
+            create: {
+              paymentType: 'PRODUCT',
+              amountDueNGN: quote.totalNGN,
+              amountNGN: quote.totalNGN,
+              amountReceivedNGN: 0,
+              provider: paymentMethodLabel === 'MOCK' ? 'MOCK' : 'DIRECT_TRANSFER',
+              providerReference: `TRF-PROD-${orderNumber}`,
+              currency: 'NGN',
+              status: 'PENDING',
+            },
+          },
         },
         include: {
           items: true,
           statusHistory: true,
+          payments: true,
         },
       });
 
@@ -255,7 +269,41 @@ export class CheckoutService {
         });
       }
 
-      // Atomically queue ORDER_CREATED notification job in the same transaction
+      // Atomically append immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'ORDER_CREATED',
+          title: 'Order Placed',
+          description: `Order ${orderNumber} placed for ₦${(quote.totalNGN / 100).toLocaleString()}`,
+          actorType: 'CUSTOMER',
+          actorId: customer.id,
+          metadata: {
+            itemCount: quote.cart.items.length,
+            totalNGN: quote.totalNGN,
+          },
+        },
+      });
+
+      // Atomically emit ORDER_CREATED event for multi-channel outbox
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:created:v1`,
+        eventType: PIERCYN_EVENTS.ORDER_CREATED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          deliveryAddress: order.deliveryAddress,
+          deliveryCity: order.deliveryCity,
+          deliveryState: order.deliveryState,
+          totalNGN: order.totalNGN,
+          itemCount: order.items.length,
+        },
+      });
+
+      // Atomically queue legacy ORDER_CREATED notification job in the same transaction
       await NotificationQueueService.queueOrderCreated(
         order,
         order.items,

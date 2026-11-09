@@ -100,16 +100,16 @@ export const CheckoutModal: React.FC = () => {
       const createdServerOrder = await createOrder({
         customer,
         shippingRegion: shippingMethod,
-        paymentMethod: paymentMethodChoice === 'paystack' && isLiveGateway ? 'paystack' : 'transfer',
+        paymentMethod: 'transfer',
         items: itemsPayload,
         discountCode: appliedPromoCode || undefined,
       });
 
       setIsSubmitting(false);
       setIsCheckoutOpen(false);
-      window.history.pushState({}, '', `/order/success/${createdServerOrder.id}`);
+      window.history.pushState({}, '', `/account/orders/${createdServerOrder.id}/payment`);
       window.dispatchEvent(new PopStateEvent('popstate'));
-      showToast('Order received! PIERCYN will contact you on WhatsApp with your delivery quote.');
+      showToast('Order received! Please complete your bank transfer payment.');
     } catch (err: any) {
       console.error('[CHECKOUT_SUBMIT_ERROR]', err);
       const rawMsg = err?.message || '';
@@ -360,25 +360,6 @@ export const CheckoutModal: React.FC = () => {
                       RECOMMENDED
                     </span>
                   </label>
-
-                  {isLiveGateway && (
-                    <label
-                      onClick={() => setPaymentMethodChoice('paystack')}
-                      className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
-                        paymentMethodChoice === 'paystack'
-                          ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
-                          : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Lock className="w-4 h-4" />
-                        <div>
-                          <p className="text-xs font-bold uppercase">PAYSTACK DEBIT CARD</p>
-                          <p className="text-[10px] opacity-75">Mastercard, Visa, Verve</p>
-                        </div>
-                      </div>
-                    </label>
-                  )}
                 </div>
               </div>
 

@@ -6,26 +6,14 @@ interface HeroSectionProps {
 }
 
 // Configurable Vercel Blob URLs
-const HERO_VIDEO_DESKTOP = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Models_showcasing_streetwear_fas%E2%80%A6_20261006164607.mp4';
-const HERO_POSTER_IMAGE = 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1200&auto=format&fit=crop';
+const HERO_VIDEO_DESKTOP = 'https://pl0borck44uqlgua.public.blob.vercel-storage.com/Streetwear_product_commercial_vi%E2%80%A6_d9ea596e.mp4';
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 60);
-    
-    // Check user accessibility preference for reduced motion
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-    mediaQuery.addEventListener('change', handler);
-
-    return () => {
-      clearTimeout(timer);
-      mediaQuery.removeEventListener('change', handler);
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -35,25 +23,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onExplore }) => {
     >
       {/* Layer 1: Responsive Background */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-[#141414]">
-        {prefersReducedMotion ? (
-          <img
-            src={HERO_POSTER_IMAGE}
-            alt="PIERCYN Campaign"
-            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.88] contrast-[1.05]"
-          />
-        ) : (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster={HERO_POSTER_IMAGE}
-            className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.85] contrast-[1.05]"
-          >
-            <source src={HERO_VIDEO_DESKTOP} type="video/mp4" />
-          </video>
-        )}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="w-full h-full object-cover object-[center_20%] sm:object-center filter brightness-[0.85] contrast-[1.05]"
+        >
+          <source src={HERO_VIDEO_DESKTOP} type="video/mp4" />
+        </video>
       </div>
 
       {/* Top Navbar Protection */}

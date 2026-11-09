@@ -136,7 +136,7 @@ export const AdminDrawer: React.FC = () => {
                   </div>
                   <div className="text-right font-mono">
                     <span className="text-[10px] text-[#141414]/60 uppercase block">STOCK</span>
-                    <span className="font-bold text-sm">{prod.stock || 25} UNITS</span>
+                    <span className="font-bold text-sm">{prod.stock ?? 0} UNITS</span>
                   </div>
                 </div>
               ))}

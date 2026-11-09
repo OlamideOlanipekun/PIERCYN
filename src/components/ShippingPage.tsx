@@ -48,19 +48,19 @@ export const ShippingPage: React.FC<ShippingPageProps> = ({ onSelectPage }) => {
                 Lagos Doorstep
               </h2>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="font-mono text-2xl font-bold text-[#141414]">
-                  ₦{SHIPPING_CONFIG.lagosDeliveryFeeNGN.toLocaleString()}
+                <span className="font-mono text-xl font-bold text-[#141414]">
+                  Quoted on WhatsApp
                 </span>
-                <span className="text-xs text-[#6E6B65]">flat rate</span>
+                <span className="text-xs text-[#6E6B65]">per exact location</span>
               </div>
               <ul className="space-y-2 text-xs text-[#4A4844] mb-6">
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
-                  <span><strong>{SHIPPING_CONFIG.lagosTimeframe}</strong> average delivery window.</span>
+                  <span><strong>24–48 Hours</strong> average delivery window upon quotation acceptance.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
-                  <span>Orders confirmed before 12:00 PM dispatch same business day.</span>
+                  <span>Merchandise payment verified first; delivery fee quoted separately.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
@@ -68,8 +68,8 @@ export const ShippingPage: React.FC<ShippingPageProps> = ({ onSelectPage }) => {
                 </li>
               </ul>
             </div>
-            <div className="pt-4 border-t border-[#DAD6CC] text-[11px] font-mono text-emerald-800 font-semibold">
-              FREE for orders above ₦{SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()}
+            <div className="pt-4 border-t border-[#DAD6CC] text-[11px] font-mono text-neutral-600 font-semibold">
+              Calculated based on your exact doorstep address
             </div>
           </div>
 
@@ -86,28 +86,28 @@ export const ShippingPage: React.FC<ShippingPageProps> = ({ onSelectPage }) => {
                 Nationwide Nigeria
               </h2>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="font-mono text-2xl font-bold text-[#141414]">
-                  ₦{SHIPPING_CONFIG.nationwideDeliveryFeeNGN.toLocaleString()}
+                <span className="font-mono text-xl font-bold text-[#141414]">
+                  Quoted on WhatsApp
                 </span>
-                <span className="text-xs text-[#6E6B65]">flat rate</span>
+                <span className="text-xs text-[#6E6B65]">per state / city</span>
               </div>
               <ul className="space-y-2 text-xs text-[#4A4844] mb-6">
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
-                  <span><strong>{SHIPPING_CONFIG.nationwideTimeframe}</strong> door delivery.</span>
+                  <span><strong>2–4 Business Days</strong> door delivery after quotation acceptance.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
-                  <span>Dispatched via GIG Logistics, DHL, and Fez Delivery.</span>
+                  <span>Dispatched via verified interstate logistics partners.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#141414] font-bold">✓</span>
-                  <span>Includes tracking number and SMS delivery dispatch notice.</span>
+                  <span>Includes live tracking number and WhatsApp dispatch notification.</span>
                 </li>
               </ul>
             </div>
-            <div className="pt-4 border-t border-[#DAD6CC] text-[11px] font-mono text-emerald-800 font-semibold">
-              FREE for orders above ₦{SHIPPING_CONFIG.freeShippingThresholdNGN.toLocaleString()}
+            <div className="pt-4 border-t border-[#DAD6CC] text-[11px] font-mono text-neutral-600 font-semibold">
+              Quotation sent directly for your acceptance before dispatch
             </div>
           </div>
         </section>

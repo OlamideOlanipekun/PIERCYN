@@ -13,11 +13,13 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { requireAdmin } from '../admin/adminMiddleware';
 import { prisma } from '../../db/prisma';
+import { InventoryService } from '../inventory/inventoryService';
 import { WhatsAppService } from '../../services/whatsappService';
 import {
   NotificationQueueService,
   triggerNotificationProcessingAsync,
 } from '../notifications';
+import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
 
 export const checkoutAdminRouter = Router();
 
@@ -59,17 +61,95 @@ checkoutAdminRouter.post('/orders/:id/product-payment/verify', requireAdmin, asy
     const note = typeof req.body.note === 'string' ? req.body.note : '';
     const now = new Date();
 
+    // Aggregate by variant to finalize sales
+    const shortfalls: string[] = [];
+    const requiredByVariant = new Map<string, number>();
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      requiredByVariant.set(
+        item.variantId,
+        (requiredByVariant.get(item.variantId) || 0) + item.quantity
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
+      for (const [variantId, quantity] of requiredByVariant) {
+        const result = await InventoryService.finalizeSale(
+          variantId,
+          quantity,
+          order.orderNumber,
+          tx
+        );
+        if (!result.finalized) {
+          shortfalls.push(`${variantId}: short by ${result.shortfall} unit(s)`);
+        }
+      }
+
+      const needsManualReview = shortfalls.length > 0;
+      const manualReviewReason = needsManualReview
+        ? `Payment verified but stock could not be fully allocated: ${shortfalls.join('; ')}. Do not fulfil until reviewed.`
+        : null;
+
       await tx.payment.update({
         where: { id: productPayment.id },
-        data: { status: 'VERIFIED', verifiedAt: now, verifiedBy: adminId, verificationNote: note },
+        data: {
+          status: 'VERIFIED',
+          verifiedAt: now,
+          verifiedBy: adminId,
+          verificationNote: note,
+          amountReceivedNGN: productPayment.amountDueNGN,
+        },
       });
+
       await tx.order.update({
         where: { id: order.id },
-        data: { paymentStatus: 'PAID', status: 'PAID', paidAt: now },
+        data: {
+          paymentStatus: 'PAID',
+          status: 'PAID',
+          paidAt: now,
+          needsManualReview,
+          manualReviewReason,
+        },
       });
+
       await tx.orderStatusHistory.create({
-        data: { orderId: order.id, fromStatus: order.status, toStatus: 'PAID', changedBy: adminId, note: 'Product payment verified by admin' },
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'PAID',
+          changedBy: adminId,
+          note: needsManualReview
+            ? `Product payment verified by admin. Flagged for review: ${manualReviewReason}`
+            : 'Product payment verified by admin',
+        },
+      });
+
+      // Immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'PAYMENT_VERIFIED',
+          title: 'Product Payment Verified',
+          description: `Product payment of ${formatNGN(productPayment.amountDueNGN)} verified by admin`,
+          actorType: 'ADMIN',
+          actorId: adminId,
+          metadata: { amountNGN: productPayment.amountDueNGN, note },
+        },
+      });
+
+      // Outbox event
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:product-payment:verified:v1`,
+        eventType: PIERCYN_EVENTS.PAYMENT_VERIFIED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          amountNGN: productPayment.amountDueNGN,
+          verifiedBy: adminId,
+        },
       });
     });
 
@@ -371,6 +451,37 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
           note: `Order dispatched via ${validated.logisticsProvider}${validated.dispatchReference ? ` | Ref: ${validated.dispatchReference}` : ''}`,
         },
       });
+
+      // Immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'ORDER_DISPATCHED',
+          title: 'Order Dispatched',
+          description: `Dispatched via ${validated.logisticsProvider}`,
+          actorType: 'ADMIN',
+          actorId: adminId,
+          metadata: {
+            logisticsProvider: validated.logisticsProvider,
+            dispatchReference: validated.dispatchReference,
+          },
+        },
+      });
+
+      // Outbox event
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:dispatched:v1`,
+        eventType: PIERCYN_EVENTS.ORDER_DISPATCHED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          deliveryCity: order.deliveryCity,
+          deliveryState: order.deliveryState,
+          logisticsProvider: validated.logisticsProvider,
+        },
+      });
     });
 
     // Notify customer
@@ -420,6 +531,30 @@ checkoutAdminRouter.post('/orders/:id/delivered', requireAdmin, async (req: Requ
         data: {
           orderId: order.id, fromStatus: 'DISPATCHED', toStatus: 'DELIVERED',
           changedBy: adminId, note: 'Order marked as delivered',
+        },
+      });
+
+      // Immutable timeline event
+      await tx.orderTimelineEvent.create({
+        data: {
+          orderId: order.id,
+          type: 'ORDER_DELIVERED',
+          title: 'Order Delivered',
+          description: 'Delivered successfully to customer',
+          actorType: 'ADMIN',
+          actorId: adminId,
+        },
+      });
+
+      // Outbox event
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:delivered:v1`,
+        eventType: PIERCYN_EVENTS.ORDER_DELIVERED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
         },
       });
     });

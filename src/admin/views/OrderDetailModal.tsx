@@ -676,28 +676,22 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const handleApprovePayment = async () => {
     if (!order) return;
 
-    if (order.quoteStatus !== 'ACCEPTED') {
-      if (
-        !window.confirm(
-          `Notice: Delivery quotation is currently ${order.quoteStatus}. Are you sure you want to approve payment without accepted quote?`
-        )
-      ) {
-        return;
-      }
-    } else {
-      if (
-        !window.confirm(
-          'Confirm that the transfer has been received in the verified PIERCYN bank account and approve this payment?'
-        )
-      ) {
-        return;
-      }
+    if (
+      !window.confirm(
+        'Confirm that the transfer has been received in the verified PIERCYN bank account and approve this product payment?'
+      )
+    ) {
+      return;
     }
 
     try {
       setPaymentAction('approving');
       setError(null);
-      await AdminApi.approvePayment(order.orderNumber, paymentNote.trim() || undefined);
+      try {
+        await AdminApi.verifyProductPayment(order.id, paymentNote.trim() || undefined);
+      } catch {
+        await AdminApi.approvePayment(order.orderNumber, paymentNote.trim() || undefined);
+      }
       setPaymentNote('');
       await fetchOrder();
       if (onOrderUpdated) onOrderUpdated();
@@ -719,7 +713,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     try {
       setPaymentAction('rejecting');
       setError(null);
-      await AdminApi.rejectPayment(order.orderNumber, reason);
+      try {
+        await AdminApi.rejectProductPayment(order.id, reason);
+      } catch {
+        await AdminApi.rejectPayment(order.orderNumber, reason);
+      }
       setPaymentNote('');
       await fetchOrder();
       if (onOrderUpdated) onOrderUpdated();

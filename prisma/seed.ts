@@ -19,10 +19,16 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import { ALL_PRODUCTS } from '../src/data/allProducts';
-import { COMMERCE_CONFIG } from '../src/server/config/constants';
+import { COMMERCE_CONFIG } from '../packages/config/src';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// ─── Production Protection Guard ─────────────────────────────
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PRODUCTION_SEED) {
+  console.error('\n❌ FATAL: Database seeding is blocked in production to protect customer orders, inventory, and credentials.\n');
+  process.exit(1);
+}
 
 // ─── Prisma setup (uses direct connection for seeding) ───────
 const rawConnectionString =
