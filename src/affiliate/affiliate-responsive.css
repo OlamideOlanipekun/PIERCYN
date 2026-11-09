@@ -80,3 +80,34 @@
     transform: none !important;
   }
 }
+
+
+/* Softened edges across the editorial affiliate UI, without rounding full-bleed bars. */
+.affiliate-landing-shell {
+  --affiliate-radius-control: 6px;
+  --affiliate-radius-surface: 8px;
+  --affiliate-radius-chip: 4px;
+}
+
+.affiliate-landing-shell button:not([class*="rounded-full"]) {
+  border-radius: var(--affiliate-radius-control);
+}
+
+.affiliate-landing-shell div[class*="shadow-"]:not([class*="fixed"]),
+.affiliate-landing-shell div[class*="border"][class*="p-"],
+.affiliate-landing-shell div[class*="aspect-"][class*="overflow-hidden"] {
+  border-radius: var(--affiliate-radius-surface);
+}
+
+.affiliate-landing-shell :is(span, div)[class*="px-"][class*="py-"][class*="uppercase"] {
+  border-radius: var(--affiliate-radius-chip);
+}
+
+.affiliate-landing-shell input[type="range"] {
+  border-radius: 999px;
+}
+
+.affiliate-landing-shell input[type="range"]::-webkit-slider-thumb,
+.affiliate-landing-shell input[type="range"]::-moz-range-thumb {
+  border-radius: 50%;
+}
