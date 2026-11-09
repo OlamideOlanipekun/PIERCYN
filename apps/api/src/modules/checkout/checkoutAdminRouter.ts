@@ -203,6 +203,23 @@ checkoutAdminRouter.post('/orders/:id/product-payment/reject', requireAdmin, asy
           changedBy: adminId, note: `Product payment rejected. Reason: ${reason}`,
         },
       });
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:product-payment:rejected:v${Date.now()}`,
+        eventType: PIERCYN_EVENTS.PAYMENT_REJECTED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          paymentType: 'PRODUCT',
+          amountNGN: productPayment.amountDueNGN,
+          providerReference: productPayment.providerReference || 'BANK_TRANSFER',
+          rejectionReason: reason,
+          verifiedBy: adminId,
+          timestamp: new Date().toISOString(),
+        },
+      });
     });
 
     // Notify customer
@@ -278,6 +295,24 @@ checkoutAdminRouter.post('/orders/:id/delivery/quote', requireAdmin, async (req:
 
     // Send official WhatsApp quotation message to customer
     const decisionUrl = `${APP_URL}/account/orders/${order.id}/delivery`;
+
+    await recordEvent(prisma as any, {
+      eventKey: `order:${order.id}:quote:v${newVersion}`,
+      eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_CREATED,
+      payload: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        deliveryFeeNGN: validated.amountNGN,
+        subtotalNGN: order.subtotalNGN,
+        totalNGN: order.totalNGN + validated.amountNGN,
+        quoteId: quote.id,
+        expiresAt: expiresAt.toISOString(),
+        decisionUrl,
+      },
+    });
     const customerMsg =
       `📦 *PIERCYN DELIVERY QUOTATION*\n\n` +
       `Order: *${order.orderNumber}*\n\n` +
@@ -332,6 +367,21 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/verify', requireAdmin, as
           changedBy: adminId, note: 'Delivery payment verified — order ready for dispatch',
         },
       });
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:delivery-payment:verified:v1`,
+        eventType: PIERCYN_EVENTS.DELIVERY_PAYMENT_VERIFIED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          amountNGN: deliveryPayment.amountDueNGN,
+          providerReference: deliveryPayment.providerReference || 'BANK_TRANSFER',
+          verifiedBy: adminId,
+          timestamp: now.toISOString(),
+        },
+      });
     });
 
     const waMsg =
@@ -379,6 +429,23 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/reject', requireAdmin, as
         data: {
           orderId: order.id, fromStatus: order.status, toStatus: order.status,
           changedBy: adminId, note: `Delivery payment rejected. Reason: ${reason}`,
+        },
+      });
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:delivery-payment:rejected:v${Date.now()}`,
+        eventType: PIERCYN_EVENTS.PAYMENT_REJECTED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          paymentType: 'DELIVERY',
+          amountNGN: deliveryPayment.amountDueNGN,
+          providerReference: deliveryPayment.providerReference || 'BANK_TRANSFER',
+          rejectionReason: reason,
+          verifiedBy: adminId,
+          timestamp: new Date().toISOString(),
         },
       });
     });

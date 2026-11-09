@@ -496,6 +496,19 @@ checkoutRouter.post('/orders/:id/delivery/quote/reject', optionalAuth, async (re
           note: `Customer rejected delivery quotation. Reason: ${rejectionReason || 'Not provided'}`,
         },
       });
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:quote-declined:v${activeQuote.version}`,
+        eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_DECLINED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          deliveryFeeNGN: activeQuote.amountNGN,
+          subtotalNGN: order.subtotalNGN,
+          rejectionReason,
+        },
+      });
     });
 
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;

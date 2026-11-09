@@ -3,11 +3,13 @@ import { prisma } from '@piercyn/db';
 import { getSmtpConfig, getMailTransporter, sanitizeError } from './emailConfig';
 import { telegramService } from '../telegram/telegramService';
 import {
+  renderWelcomeEmail,
   renderOrderCreatedEmail,
   renderReceiptUploadedEmail,
   renderPaymentVerifiedEmail,
   renderOutOfStockEmail,
   renderPaymentDecisionEmail,
+  renderDeliveryQuoteCreatedEmail,
   renderQuoteDecisionEmail,
   renderFulfilmentEmail,
 } from './emailTemplates';
@@ -184,7 +186,8 @@ export class OutboxProcessor {
             const emailContent = this.formatEmailMessage(delivery.event.eventType, payload);
             if (emailContent) {
               await transporter.sendMail({
-                from: `PIERCYN <${smtpConfig.user}>`,
+                from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
+                replyTo: smtpConfig.replyTo,
                 to: delivery.recipientKey,
                 subject: emailContent.subject,
                 html: emailContent.html,
@@ -324,21 +327,10 @@ export class OutboxProcessor {
   ): { subject: string; html: string; text: string } | null {
     switch (eventType) {
       case 'CUSTOMER_REGISTERED':
-        return {
-          subject: 'Welcome to PIERCYN',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-              <h2 style="color: #111;">Welcome to PIERCYN</h2>
-              <p>Hello ${payload.firstName || 'there'},</p>
-              <p>Your PIERCYN account is ready. Discover our curated collections crafted with architectural precision.</p>
-              <div style="margin: 32px 0;">
-                <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Start Shopping</a>
-              </div>
-              <p style="color: #666; font-size: 13px;">If you have any questions, simply reply to this email.</p>
-            </div>
-          `,
-          text: `Welcome to PIERCYN!\n\nYour account is ready. Visit ${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'} to start shopping.`,
-        };
+        return renderWelcomeEmail({
+          firstName: payload.firstName,
+          email: payload.email || payload.customerEmail,
+        });
 
       case 'ORDER_CREATED':
         return renderOrderCreatedEmail(payload as any);
@@ -348,6 +340,63 @@ export class OutboxProcessor {
 
       case 'PAYMENT_VERIFIED':
         return renderPaymentVerifiedEmail(payload as any);
+
+      case 'PAYMENT_REJECTED':
+        return renderPaymentDecisionEmail(
+          {
+            orderId: payload.orderId,
+            orderNumber: payload.orderNumber,
+            customerName: payload.customerName,
+            customerEmail: payload.customerEmail,
+            customerPhone: payload.customerPhone || '',
+            paymentType: payload.paymentType || 'PRODUCT',
+            amountNGN: payload.amountNGN || 0,
+            providerReference: payload.providerReference || 'N/A',
+            rejectionReason: payload.rejectionReason || payload.reason || 'Payment could not be confirmed',
+            verifiedBy: payload.verifiedBy,
+            timestamp: payload.timestamp || new Date().toISOString(),
+          },
+          false
+        );
+
+      case 'DELIVERY_PAYMENT_VERIFIED':
+        return renderPaymentDecisionEmail(
+          {
+            orderId: payload.orderId,
+            orderNumber: payload.orderNumber,
+            customerName: payload.customerName,
+            customerEmail: payload.customerEmail,
+            customerPhone: payload.customerPhone || '',
+            paymentType: 'DELIVERY',
+            amountNGN: payload.amountNGN || payload.deliveryFeeNGN || 0,
+            providerReference: payload.providerReference || 'N/A',
+            verifiedBy: payload.verifiedBy,
+            timestamp: payload.timestamp || new Date().toISOString(),
+          },
+          true
+        );
+
+      case 'DELIVERY_QUOTE_CREATED':
+        return renderDeliveryQuoteCreatedEmail({
+          orderId: payload.orderId,
+          orderNumber: payload.orderNumber,
+          customerName: payload.customerName,
+          customerEmail: payload.customerEmail,
+          customerPhone: payload.customerPhone || '',
+          deliveryFeeNGN: payload.deliveryFeeNGN || payload.amountNGN || 0,
+          subtotalNGN: payload.subtotalNGN || 0,
+          totalNGN: payload.totalNGN || 0,
+          quoteId: payload.quoteId || '',
+          expiresAt: payload.expiresAt || '',
+          decisionUrl: payload.decisionUrl || '',
+        });
+
+      case 'DELIVERY_QUOTE_ACCEPTED':
+        return renderQuoteDecisionEmail(payload as any, 'ACCEPTED');
+
+      case 'DELIVERY_QUOTE_DECLINED':
+      case 'DELIVERY_QUOTE_REJECTED':
+        return renderQuoteDecisionEmail(payload as any, 'REJECTED');
 
       case 'ORDER_DISPATCHED':
       case 'ORDER_DELIVERED': {

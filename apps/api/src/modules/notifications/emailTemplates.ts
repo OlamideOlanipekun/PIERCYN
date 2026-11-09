@@ -7,6 +7,7 @@ import {
   PaymentDecisionPayload,
   FulfilmentNotificationPayload,
 } from './types';
+import { COMMERCE_CONFIG } from '../../config/constants';
 
 function formatNGN(amount: number): string {
   const n = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
@@ -28,28 +29,65 @@ function escapeHtml(value: unknown): string {
 }
 
 const BASE_STYLES = `
-  body { margin: 0; padding: 0; background-color: #f5f5f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1c1917; -webkit-font-smoothing: antialiased; }
+  body { margin: 0; padding: 0; background-color: #F2F0EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #141414; -webkit-font-smoothing: antialiased; }
   .wrapper { width: 100%; max-width: 600px; margin: 0 auto; padding: 40px 20px; box-sizing: border-box; }
-  .card { background-color: #ffffff; border: 1px solid #e7e5e4; border-radius: 4px; padding: 32px 28px; }
-  .header { border-bottom: 2px solid #1c1917; padding-bottom: 20px; margin-bottom: 24px; }
-  .brand { font-size: 22px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: #1c1917; margin: 0; }
-  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #78716c; margin-top: 6px; }
-  .h1 { font-size: 18px; font-weight: 600; color: #1c1917; margin: 0 0 16px 0; }
+  .card { background-color: #FFFFFF; border: 1px solid #E7E5E4; border-radius: 4px; padding: 32px 28px; }
+  .header { border-bottom: 2px solid #141414; padding-bottom: 20px; margin-bottom: 24px; text-align: left; }
+  .brand { font-size: 24px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #141414; margin: 0; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #78716C; margin-top: 6px; }
+  .h1 { font-size: 18px; font-weight: 600; color: #141414; margin: 0 0 16px 0; }
   .meta-grid { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
-  .meta-grid td { padding: 8px 0; border-bottom: 1px solid #f5f5f4; }
-  .meta-label { color: #78716c; width: 35%; font-weight: 500; }
-  .meta-val { color: #1c1917; font-weight: 600; }
+  .meta-grid td { padding: 8px 0; border-bottom: 1px solid #F2F0EB; }
+  .meta-label { color: #78716C; width: 35%; font-weight: 500; }
+  .meta-val { color: #141414; font-weight: 600; }
   .table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
-  .table th { text-align: left; padding: 10px 8px; background: #fafaf9; border-bottom: 1px solid #e7e5e4; color: #78716c; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .table td { padding: 12px 8px; border-bottom: 1px solid #f5f5f4; color: #1c1917; }
-  .total-row { font-weight: 700; font-size: 14px; background: #fafaf9; }
+  .table th { text-align: left; padding: 10px 8px; background: #FAF9F6; border-bottom: 1px solid #E7E5E4; color: #78716C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .table td { padding: 12px 8px; border-bottom: 1px solid #F2F0EB; color: #141414; }
+  .total-row { font-weight: 700; font-size: 14px; background: #FAF9F6; }
   .badge { display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-  .badge-dark { background: #1c1917; color: #ffffff; }
-  .badge-amber { background: #fef3c7; color: #92400e; }
-  .badge-red { background: #fee2e2; color: #991b1b; }
-  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #a8a29e; letter-spacing: 0.05em; }
-  .button { display: inline-block; background-color: #1c1917; color: #ffffff; text-decoration: none; padding: 12px 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 2px; margin-top: 16px; }
+  .badge-dark { background: #141414; color: #FFFFFF; }
+  .badge-amber { background: #FEF3C7; color: #92400E; }
+  .badge-red { background: #FEE2E2; color: #991B1B; }
+  .badge-green { background: #DCFCE7; color: #166534; }
+  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #78716C; letter-spacing: 0.05em; }
+  .button { display: inline-block; background-color: #141414; color: #FFFFFF !important; text-decoration: none; padding: 14px 28px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 2px; margin-top: 20px; text-align: center; }
+  .bank-box { background: #FAF9F6; border: 1px solid #E7E5E4; border-radius: 4px; padding: 16px; margin: 20px 0; font-size: 13px; }
 `;
+
+export function renderWelcomeEmail(payload: { firstName?: string; email: string }): { subject: string; html: string; text: string } {
+  const name = payload.firstName ? payload.firstName.trim() : 'Valued Client';
+  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const subject = 'Welcome to PIERCYN';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">Client Services • Atelier Welcome</div>
+      </div>
+      <div class="h1">Welcome, ${escapeHtml(name)}</div>
+      <p style="font-size: 14px; line-height: 1.6; color: #44403C; margin: 0 0 16px 0;">
+        Thank you for creating an account with PIERCYN. Our ready-to-wear atelier crafts architectural luxury silhouettes tailored with uncompromised precision in Nigeria.
+      </p>
+      <p style="font-size: 14px; line-height: 1.6; color: #44403C; margin: 0 0 24px 0;">
+        Your profile is activated. You can track orders in real time, manage delivery addresses, and explore limited seasonal releases.
+      </p>
+      <div style="text-align: center; margin: 28px 0 20px 0;">
+        <a href="${siteUrl}/products" class="button">Explore Collections</a>
+      </div>
+    </div>
+    <div class="footer">PIERCYN Luxury Atelier • piercyn@gmail.com</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Welcome to PIERCYN, ${name}!\n\nYour account is active. Explore our luxury ready-to-wear collections:\n${siteUrl}/products\n\nPIERCYN Atelier • piercyn@gmail.com`;
+  return { subject, html, text };
+}
 
 export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: string; html: string; text: string } {
   const subject = `[PIERCYN] New Order #${p.orderNumber} - ${formatNGN(p.totalNGN)}`;
@@ -104,12 +142,31 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
         </thead>
         <tbody>
           ${itemsHtml}
-          <tr><td colspan="3" style="text-align: right; color: #78716c;">Subtotal</td><td style="text-align: right;">${escapeHtml(formatNGN(p.subtotalNGN))}</td></tr>
-          ${p.discountNGN > 0 ? `<tr><td colspan="3" style="text-align: right; color: #78716c;">Discount</td><td style="text-align: right; color: #dc2626;">-${escapeHtml(formatNGN(p.discountNGN))}</td></tr>` : ''}
-          <tr><td colspan="3" style="text-align: right; color: #78716c;">Delivery Fee</td><td style="text-align: right;">${p.deliveryFeeNGN > 0 ? escapeHtml(formatNGN(p.deliveryFeeNGN)) : 'Quote Pending'}</td></tr>
-          <tr class="total-row"><td colspan="3" style="text-align: right;">Total</td><td style="text-align: right; color: #1c1917;">${escapeHtml(formatNGN(p.totalNGN))}</td></tr>
+          <tr><td colspan="3" style="text-align: right; color: #78716C;">Subtotal</td><td style="text-align: right;">${escapeHtml(formatNGN(p.subtotalNGN))}</td></tr>
+          ${p.discountNGN > 0 ? `<tr><td colspan="3" style="text-align: right; color: #78716C;">Discount</td><td style="text-align: right; color: #DC2626;">-${escapeHtml(formatNGN(p.discountNGN))}</td></tr>` : ''}
+          <tr><td colspan="3" style="text-align: right; color: #78716C;">Delivery Fee</td><td style="text-align: right;">${p.deliveryFeeNGN > 0 ? escapeHtml(formatNGN(p.deliveryFeeNGN)) : 'Quote Pending'}</td></tr>
+          <tr class="total-row"><td colspan="3" style="text-align: right;">Total</td><td style="text-align: right; color: #141414;">${escapeHtml(formatNGN(p.totalNGN))}</td></tr>
         </tbody>
       </table>
+
+      ${
+        p.paymentMethod === 'BANK_TRANSFER' || p.paymentMethod === 'DIRECT_TRANSFER'
+          ? `
+      <div class="bank-box">
+        <div style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; color: #78716C; margin-bottom: 8px;">Direct Bank Transfer Instructions</div>
+        <div><strong>Bank:</strong> ${escapeHtml(COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER.BANK_NAME)}</div>
+        <div><strong>Account Name:</strong> ${escapeHtml(COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER.ACCOUNT_NAME)}</div>
+        <div><strong>Account Number:</strong> <code style="font-size: 14px; font-weight: 700;">${escapeHtml(COMMERCE_CONFIG.PAYMENT.BANK_TRANSFER.ACCOUNT_NUMBER)}</code></div>
+        <div><strong>Amount:</strong> <strong>${escapeHtml(formatNGN(p.totalNGN))}</strong></div>
+        <div><strong>Narration:</strong> <code>${escapeHtml(p.orderNumber)}</code></div>
+      </div>
+      `
+          : ''
+      }
+
+      <div style="text-align: center; margin: 24px 0 12px 0;">
+        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order Details</a>
+      </div>
     </div>
     <div class="footer">PIERCYN Automated Commercial Dispatch • Ref: ${escapeHtml(p.orderNumber)}</div>
   </div>
@@ -310,6 +367,10 @@ export function renderPaymentDecisionEmail(
         ${p.verifiedBy ? `<tr><td class="meta-label">Reviewed By</td><td class="meta-val">${escapeHtml(p.verifiedBy)}</td></tr>` : ''}
         <tr><td class="meta-label">Date</td><td class="meta-val">${escapeHtml(new Date(p.timestamp).toLocaleString('en-NG'))}</td></tr>
       </table>
+
+      <div style="text-align: center; margin: 24px 0 12px 0;">
+        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order</a>
+      </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier</div>
   </div>
@@ -323,6 +384,55 @@ Amount: ${formatNGN(p.amountNGN)}
 Reference: ${p.providerReference}
 ${!isVerified && p.rejectionReason ? `Rejection Reason: ${p.rejectionReason}\n` : ''}
 Date: ${p.timestamp}
+`;
+
+  return { subject, html, text };
+}
+
+export function renderDeliveryQuoteCreatedEmail(
+  p: QuoteNotificationPayload
+): { subject: string; html: string; text: string } {
+  const subject = `[PIERCYN] Delivery Quotation Available - Order #${p.orderNumber}`;
+  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const ctaUrl = p.decisionUrl || `${siteUrl}/account/orders/${p.orderId}/delivery`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">Logistics & Fulfilment • Quotation Ready</div>
+      </div>
+      <div class="h1">Delivery Quotation for Order #${escapeHtml(p.orderNumber)}</div>
+      <p style="font-size: 13px; color: #78716C; margin-top: -8px;">Your delivery fee has been calculated and is ready for your review.</p>
+      
+      <table class="meta-grid">
+        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${escapeHtml(p.orderNumber)}</td></tr>
+        <tr><td class="meta-label">Customer</td><td class="meta-val">${escapeHtml(p.customerName)}</td></tr>
+        <tr><td class="meta-label">Merchandise Subtotal</td><td class="meta-val">${escapeHtml(formatNGN(p.subtotalNGN))}</td></tr>
+        <tr><td class="meta-label">Quoted Delivery Fee</td><td class="meta-val" style="font-size: 15px; font-weight: 700; color: #141414;">${escapeHtml(formatNGN(p.deliveryFeeNGN))}</td></tr>
+        ${p.expiresAt ? `<tr><td class="meta-label">Quotation Expiry</td><td class="meta-val"><span class="badge badge-amber">${escapeHtml(new Date(p.expiresAt).toLocaleString('en-NG'))}</span></td></tr>` : ''}
+      </table>
+
+      <div style="text-align: center; margin: 24px 0 16px 0;">
+        <a href="${ctaUrl}" class="button">Review Delivery Quote</a>
+      </div>
+    </div>
+    <div class="footer">PIERCYN Commercial Engine • piercyn@gmail.com</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `PIERCYN - DELIVERY QUOTATION AVAILABLE
+=================================================
+Order: #${p.orderNumber}
+Customer: ${p.customerName}
+Quoted Delivery Fee: ${formatNGN(p.deliveryFeeNGN)}
+Subtotal: ${formatNGN(p.subtotalNGN)}
+Review Quotation: ${ctaUrl}
 `;
 
   return { subject, html, text };
@@ -395,6 +505,10 @@ export function renderFulfilmentEmail(
         ${p.logisticsProvider ? `<tr><td class="meta-label">Logistics Provider</td><td class="meta-val">${escapeHtml(p.logisticsProvider)}</td></tr>` : ''}
         ${p.dispatchReference ? `<tr><td class="meta-label">Dispatch Ref</td><td class="meta-val"><code>${escapeHtml(p.dispatchReference)}</code></td></tr>` : ''}
       </table>
+
+      <div style="text-align: center; margin: 24px 0 12px 0;">
+        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">Track Order</a>
+      </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier</div>
   </div>
