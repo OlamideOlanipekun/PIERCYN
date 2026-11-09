@@ -788,16 +788,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {order && (
               <span
                 className={`text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded ${
-                  order.orderStatus === 'DELIVERED' || order.orderStatus === 'COMPLETED'
+                  (order.orderStatus || (order as any).status) === 'DELIVERED' || (order.orderStatus || (order as any).status) === 'COMPLETED'
                     ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
-                    : order.orderStatus === 'SHIPPED'
+                    : (order.orderStatus || (order as any).status) === 'SHIPPED'
                     ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                    : order.orderStatus === 'PAID' || order.orderStatus === 'PROCESSING' || order.orderStatus === 'PACKED'
+                    : (order.orderStatus || (order as any).status) === 'PAID' || (order.orderStatus || (order as any).status) === 'PROCESSING' || (order.orderStatus || (order as any).status) === 'PACKED'
                     ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
                     : 'bg-neutral-800 text-neutral-300'
                 }`}
               >
-                {order.orderStatus.replace('_', ' ')}
+                {(order.orderStatus || (order as any).status || 'PENDING').replace(/_/g, ' ')}
               </span>
             )}
             {order && (
@@ -849,12 +849,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     CURRENT FULFILLMENT STATE
                   </span>
                   <div className="font-semibold text-sm text-[#F2F0EB] mt-0.5">
-                    {order.orderStatus.replace('_', ' ')}
+                    {(order.orderStatus || (order as any).status || 'PENDING').replace(/_/g, ' ')}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  {getNextActions(order.orderStatus).map((act, idx) => (
+                  {getNextActions(order.orderStatus || (order as any).status || 'PENDING_PAYMENT').map((act, idx) => (
                     <button
                       key={idx}
                       disabled={updatingStatus}
@@ -1638,7 +1638,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-[#F2F0EB]">
-                            {entry.status.replace('_', ' ')}
+                            {(entry.status || '').replace(/_/g, ' ')}
                           </span>
                           <span className="text-[10px] font-mono text-neutral-500">
                             {new Date(entry.timestamp).toLocaleString()}

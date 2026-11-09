@@ -760,7 +760,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                               <div>
                                 <h4 className="font-medium text-[#F2F0EB]">{p.name}</h4>
                                 <span className="text-[10px] text-neutral-400 uppercase font-mono">
-                                  {p.categoryId.replace('cat-', '')}
+                                  {(p.categoryId || p.category || '').replace(/^cat-/, '')}
                                 </span>
                               </div>
                             </div>

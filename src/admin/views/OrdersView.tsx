@@ -267,16 +267,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
 
                     <span
                       className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded ${
-                        ord.orderStatus === 'DELIVERED' || ord.orderStatus === 'COMPLETED'
+                        (ord.orderStatus || (ord as any).status) === 'DELIVERED' || (ord.orderStatus || (ord as any).status) === 'COMPLETED'
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
-                          : ord.orderStatus === 'SHIPPED'
+                          : (ord.orderStatus || (ord as any).status) === 'SHIPPED'
                           ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                          : ord.orderStatus === 'PAID' || ord.orderStatus === 'PROCESSING' || ord.orderStatus === 'PACKED'
+                          : (ord.orderStatus || (ord as any).status) === 'PAID' || (ord.orderStatus || (ord as any).status) === 'PROCESSING' || (ord.orderStatus || (ord as any).status) === 'PACKED'
                           ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
                           : 'bg-neutral-800 text-neutral-300'
                       }`}
                     >
-                      {ord.orderStatus.replace('_', ' ')}
+                      {(ord.orderStatus || (ord as any).status || 'PENDING').replace(/_/g, ' ')}
                     </span>
                   </div>
 
@@ -417,16 +417,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                       <td className="py-3.5 px-3">
                         <span
                           className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded ${
-                            ord.orderStatus === 'DELIVERED' || ord.orderStatus === 'COMPLETED'
+                            (ord.orderStatus || (ord as any).status) === 'DELIVERED' || (ord.orderStatus || (ord as any).status) === 'COMPLETED'
                               ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
-                              : ord.orderStatus === 'SHIPPED'
+                              : (ord.orderStatus || (ord as any).status) === 'SHIPPED'
                               ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                              : ord.orderStatus === 'PAID' || ord.orderStatus === 'PROCESSING' || ord.orderStatus === 'PACKED'
+                              : (ord.orderStatus || (ord as any).status) === 'PAID' || (ord.orderStatus || (ord as any).status) === 'PROCESSING' || (ord.orderStatus || (ord as any).status) === 'PACKED'
                               ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
                               : 'bg-neutral-800 text-neutral-300'
                           }`}
                         >
-                          {ord.orderStatus.replace('_', ' ')}
+                          {(ord.orderStatus || (ord as any).status || 'PENDING').replace(/_/g, ' ')}
                         </span>
                       </td>
 

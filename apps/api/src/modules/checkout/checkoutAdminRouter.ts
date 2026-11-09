@@ -644,7 +644,13 @@ checkoutAdminRouter.get('/orders', requireAdmin, async (req: Request, res: Respo
       prisma.order.count({ where }),
     ]);
 
-    return res.json({ success: true, data: orders, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    const mapped = orders.map((o) => ({
+      ...o,
+      orderStatus: o.status,
+      customerName: o.customerFirstName ? `${o.customerFirstName} ${o.customerLastName || ''}`.trim() : (o.customerEmail || 'Customer'),
+    }));
+
+    return res.json({ success: true, data: mapped, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -656,7 +662,12 @@ checkoutAdminRouter.get('/orders/:id', requireAdmin, async (req: Request, res: R
   try {
     const order = await loadAdminOrder(req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
-    return res.json({ success: true, data: order });
+    const mapped = {
+      ...order,
+      orderStatus: order.status,
+      customerName: order.customerFirstName ? `${order.customerFirstName} ${order.customerLastName || ''}`.trim() : (order.customerEmail || 'Customer'),
+    };
+    return res.json({ success: true, data: mapped });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
