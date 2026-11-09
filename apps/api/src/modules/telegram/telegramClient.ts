@@ -12,7 +12,7 @@ export class TelegramClient {
   private botToken: string | undefined;
 
   constructor(token?: string) {
-    this.botToken = token || process.env.TELEGRAM_BOT_TOKEN;
+    this.botToken = token !== undefined ? token : process.env.TELEGRAM_BOT_TOKEN;
   }
 
   get isConfigured(): boolean {

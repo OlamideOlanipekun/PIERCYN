@@ -28,8 +28,23 @@ telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
   res.status(200).json({ ok: true });
 
   try {
-    // 1. Handle Registration: /start <token>
+    // 1. Handle Registration: /start [token]
     if (text.startsWith('/start')) {
+      // Check if already registered
+      const existing = await prisma.telegramRecipient.findUnique({
+        where: { chatId },
+      });
+
+      if (existing && existing.isActive) {
+        if (telegramClient.isConfigured) {
+          await telegramClient.sendMessage({
+            chatId,
+            text: `👋 Welcome back, <b>${existing.label}</b>! You are already registered for PIERCYN operational notifications.\n\nType <code>/status</code> for today's summary or <code>/help</code> for commands.`,
+          });
+        }
+        return;
+      }
+
       const parts = text.split(/\s+/);
       if (parts.length > 1) {
         const rawToken = parts[1];
@@ -46,15 +61,37 @@ telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
           });
         }
         return;
-      } else {
+      }
+
+      // If no admin is registered yet, auto-register the first user as Primary Admin
+      const recipientCount = await prisma.telegramRecipient.count();
+      if (recipientCount === 0) {
+        const cleanUsername = username ? username.replace(/^@/, '').toLowerCase() : undefined;
+        await prisma.telegramRecipient.create({
+          data: {
+            chatId,
+            label: 'Primary Admin',
+            username: cleanUsername,
+            isActive: true,
+          },
+        });
+
         if (telegramClient.isConfigured) {
           await telegramClient.sendMessage({
             chatId,
-            text: 'Welcome to PIERCYN Admin Bot. If you have an invite token, send <code>/start &lt;token&gt;</code> to register.',
+            text: `🎉 <b>PIERCYN Admin Notifications Activated!</b>\n\nWelcome, <b>Primary Admin</b>. Your Telegram account is now registered to receive real-time alerts for incoming orders, bank transfer receipts, and dispatch updates.\n\nType <code>/status</code> to check today's queue or <code>/help</code> for available commands.`,
           });
         }
         return;
       }
+
+      if (telegramClient.isConfigured) {
+        await telegramClient.sendMessage({
+          chatId,
+          text: 'Welcome to PIERCYN Admin Bot. If you have an invite token, send <code>/start &lt;token&gt;</code> to register.',
+        });
+      }
+      return;
     }
 
     // 2. Authorize subsequent operational commands: recipient must be registered & active

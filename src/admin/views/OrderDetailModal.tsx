@@ -276,9 +276,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setQuoteFeedback((prev) =>
         prev
           ? {
-              ...prev,
-              message: 'Quotation copied to clipboard!',
-            }
+            ...prev,
+            message: 'Quotation copied to clipboard!',
+          }
           : null
       );
     } else {
@@ -423,7 +423,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       if (popupWindow && !popupWindow.closed) {
         try {
           popupWindow.close();
-        } catch {}
+        } catch { }
       }
       setQuoteFeedback({
         type: 'validation_error',
@@ -787,15 +787,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </span>
             {order && (
               <span
-                className={`text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded ${
-                  (order.orderStatus || (order as any).status) === 'DELIVERED' || (order.orderStatus || (order as any).status) === 'COMPLETED'
+                className={`text-[10px] font-mono uppercase font-bold px-2.5 py-0.5 rounded ${(order.orderStatus || (order as any).status) === 'DELIVERED' || (order.orderStatus || (order as any).status) === 'COMPLETED'
                     ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/40'
                     : (order.orderStatus || (order as any).status) === 'SHIPPED'
-                    ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
-                    : (order.orderStatus || (order as any).status) === 'PAID' || (order.orderStatus || (order as any).status) === 'PROCESSING' || (order.orderStatus || (order as any).status) === 'PACKED'
-                    ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
-                    : 'bg-neutral-800 text-neutral-300'
-                }`}
+                      ? 'bg-blue-950 text-blue-300 border border-blue-800/40'
+                      : (order.orderStatus || (order as any).status) === 'PAID' || (order.orderStatus || (order as any).status) === 'PROCESSING' || (order.orderStatus || (order as any).status) === 'PACKED'
+                        ? 'bg-amber-950 text-amber-300 border border-amber-800/40'
+                        : 'bg-neutral-800 text-neutral-300'
+                  }`}
               >
                 {(order.orderStatus || (order as any).status || 'PENDING').replace(/_/g, ' ')}
               </span>
@@ -865,13 +864,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           handleUpdateStatus(act.targetStatus);
                         }
                       }}
-                      className={`flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 min-h-[44px] sm:min-h-[40px] flex items-center justify-center text-center ${
-                        act.variant === 'primary'
+                      className={`flex-1 sm:flex-none px-3.5 py-2.5 sm:py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 min-h-[44px] sm:min-h-[40px] flex items-center justify-center text-center ${act.variant === 'primary'
                           ? 'bg-[#F2F0EB] text-[#0A0A0A] hover:bg-white'
                           : act.variant === 'warning'
-                          ? 'bg-amber-800 text-white hover:bg-amber-700'
-                          : 'bg-red-950 text-red-300 border border-red-800 hover:bg-red-900/60'
-                      }`}
+                            ? 'bg-amber-800 text-white hover:bg-amber-700'
+                            : 'bg-red-950 text-red-300 border border-red-800 hover:bg-red-900/60'
+                        }`}
                     >
                       {updatingStatus ? 'UPDATING...' : act.label}
                     </button>
@@ -901,17 +899,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-[10px] font-mono uppercase font-bold px-2.5 py-1 rounded border ${
-                        order.quoteStatus === 'ACCEPTED'
+                      className={`text-[10px] font-mono uppercase font-bold px-2.5 py-1 rounded border ${order.quoteStatus === 'ACCEPTED'
                           ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
                           : order.quoteStatus === 'SENT'
-                          ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
-                          : order.quoteStatus === 'SET'
-                          ? 'bg-sky-950 text-sky-300 border-sky-700'
-                          : order.quoteStatus === 'REJECTED'
-                          ? 'bg-red-950 text-red-300 border-red-700'
-                          : 'bg-amber-950 text-amber-300 border-amber-700'
-                      }`}
+                            ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                            : order.quoteStatus === 'SET'
+                              ? 'bg-sky-950 text-sky-300 border-sky-700'
+                              : order.quoteStatus === 'REJECTED'
+                                ? 'bg-red-950 text-red-300 border-red-700'
+                                : 'bg-amber-950 text-amber-300 border-amber-700'
+                        }`}
                     >
                       Quote Status: {order.quoteStatus}
                     </span>
@@ -1054,8 +1051,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         {isProcessingQuote
                           ? 'Opening WA & Copying...'
                           : copiedQuoteMsg
-                          ? 'Quotation Copied! Opening WA...'
-                          : 'Open WhatsApp & Copy Quotation'}
+                            ? 'Quotation Copied! Opening WA...'
+                            : 'Open WhatsApp & Copy Quotation'}
                       </span>
                     </button>
 
