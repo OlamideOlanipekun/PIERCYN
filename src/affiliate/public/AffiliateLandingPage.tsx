@@ -35,6 +35,15 @@ interface AffiliateLandingPageProps {
   onBackToShop: () => void;
 }
 
+const tickerMessages = [
+  'PIERCYN CREATOR NETWORK',
+  '₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER',
+  '30-DAY COOKIE ATTRIBUTION',
+  '₦0 MINIMUM WITHDRAWAL',
+  'CONTEMPORARY AFRICAN STREETWEAR',
+  'DIRECT NIGERIAN BANK PAYOUTS',
+];
+
 export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   onNavigate,
   onBackToShop,
@@ -206,24 +215,21 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   return (
     <div ref={landingRootRef} className="affiliate-landing-shell min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased selection:bg-[#141414] selection:text-white relative">
       {/* Editorial Live Ticker Tape */}
-      <div className="bg-[#141414] text-[#F2F0EB] overflow-hidden py-2.5 border-b border-[#2B2B2B]">
-        <div className="flex whitespace-nowrap animate-[marquee_28s_linear_infinite] text-[11px] font-semibold tracking-[0.25em] uppercase space-x-8">
-          <span>PIERCYN CREATOR NETWORK</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>30-DAY COOKIE ATTRIBUTION</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>₦0 MINIMUM WITHDRAWAL</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>CONTEMPORARY AFRICAN STREETWEAR</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>DIRECT NIGERIAN BANK PAYOUTS</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>PIERCYN CREATOR NETWORK</span>
-          <span className="text-[#A48B71]">·</span>
-          <span>₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER</span>
-          <span className="text-[#A48B71]">·</span>
+      <div className="affiliate-marquee bg-[#141414] text-[#F2F0EB] overflow-hidden py-2.5 border-b border-[#2B2B2B]">
+        <span className="sr-only">
+          PIERCYN Creator Network. ₦1,000 commission per qualifying delivered order. 30-day cookie attribution. ₦0 minimum withdrawal. Contemporary African streetwear. Direct Nigerian bank payouts.
+        </span>
+        <div aria-hidden="true" className="affiliate-marquee-track flex whitespace-nowrap text-[11px] font-semibold tracking-[0.25em] uppercase">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex shrink-0 items-center gap-8 pr-8">
+              {tickerMessages.map((message) => (
+                <React.Fragment key={`${copy}-${message}`}>
+                  <span>{message}</span>
+                  <span className="text-[#A48B71]">·</span>
+                </React.Fragment>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 
