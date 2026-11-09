@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './affiliate-responsive.css';
 import {
   AffiliateApiClient,
@@ -11,28 +11,42 @@ import {
   MediaItem,
 } from '../services/affiliateApi';
 import {
+  Activity,
+  ArrowDownToLine,
+  ArrowRight,
+  ArrowUpRight,
+  BadgeCheck,
+  Banknote,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Copy,
+  CreditCard,
+  Download,
+  ExternalLink,
+  FileText,
+  Headphones,
+  Image as ImageIcon,
   LayoutDashboard,
   Link2,
-  Receipt,
-  CreditCard,
-  User,
-  Copy,
-  Check,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
   LogOut,
+  Mail,
+  Menu,
+  MessageCircle,
   Plus,
-  ExternalLink,
-  ChevronRight,
-  ArrowUpRight,
+  Receipt,
   RefreshCw,
-  FileText,
-  Image as ImageIcon,
-  Download,
+  Search,
+  Share2,
+  ShieldCheck,
+  ShoppingBag,
+  UserRound,
   Wallet,
+  X,
 } from 'lucide-react';
+
+type PortalTab = 'overview' | 'links' | 'commissions' | 'ledger' | 'media' | 'payouts' | 'profile' | 'support';
 
 interface AffiliatePortalProps {
   initialUser: AffiliateUser;
@@ -40,15 +54,40 @@ interface AffiliatePortalProps {
   onBackToShop: () => void;
 }
 
-export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
-  initialUser,
-  onLogout,
-  onBackToShop,
-}) => {
+const naira = (amount: number) => `₦${(Number.isFinite(amount) ? amount : 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
+const dateLabel = (date: string) => new Date(date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+const tabLabels: Record<PortalTab, { title: string; subtitle: string }> = {
+  overview: { title: 'Affiliate Dashboard', subtitle: 'Your performance, links and earnings at a glance.' },
+  links: { title: 'Referral Links', subtitle: 'Create campaign links and share PIERCYN with your community.' },
+  commissions: { title: 'My Referrals', subtitle: 'Orders attributed to your referral links and their current status.' },
+  ledger: { title: 'Earnings', subtitle: 'A clear record of commission activity and wallet movements.' },
+  payouts: { title: 'Withdrawals', subtitle: 'Request a payout from your approved available balance.' },
+  media: { title: 'Promotional Media', subtitle: 'Official PIERCYN creative assets for your content.' },
+  profile: { title: 'Settings', subtitle: 'Manage your creator profile and payout destination.' },
+  support: { title: 'Support', subtitle: 'Find the right PIERCYN channel for affiliate questions.' },
+};
+
+const navItems: Array<{ id: PortalTab; label: string; icon: React.ElementType }> = [
+  { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'links', label: 'Referral links', icon: Link2 },
+  { id: 'commissions', label: 'My referrals', icon: Receipt },
+  { id: 'ledger', label: 'Earnings', icon: Activity },
+  { id: 'payouts', label: 'Withdrawals', icon: Wallet },
+  { id: 'media', label: 'Promotional media', icon: ImageIcon },
+  { id: 'profile', label: 'Settings', icon: UserRound },
+  { id: 'support', label: 'Support', icon: Headphones },
+];
+
+const statusTone = (status: string) => {
+  if (['AVAILABLE', 'PAID', 'APPROVED', 'ACTIVE'].includes(status)) return 'good';
+  if (['PENDING', 'PROCESSING'].includes(status)) return 'pending';
+  if (['REVERSED', 'REJECTED', 'SUSPENDED', 'FAILED'].includes(status)) return 'bad';
+  return 'neutral';
+};
+
+export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({ initialUser, onLogout, onBackToShop }) => {
   const [currentUser, setCurrentUser] = useState<AffiliateUser>(initialUser);
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'links' | 'commissions' | 'ledger' | 'media' | 'payouts' | 'profile'
-  >('overview');
+  const [activeTab, setActiveTab] = useState<PortalTab>('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [links, setLinks] = useState<AffiliateLinkItem[]>([]);
   const [commissions, setCommissions] = useState<CommissionItem[]>([]);
@@ -56,41 +95,46 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
   const [mediaAssets, setMediaAssets] = useState<MediaItem[]>([]);
   const [payouts, setPayouts] = useState<PayoutItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  // Link generator modal / inline form state
+  const [toast, setToast] = useState<string | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkDestination, setNewLinkDestination] = useState('/shop');
   const [newLinkType, setNewLinkType] = useState<'collection' | 'product' | 'homepage'>('collection');
   const [linkError, setLinkError] = useState<string | null>(null);
   const [isSubmittingLink, setIsSubmittingLink] = useState(false);
-
-  // Payout request modal / inline form state
   const [payoutAmountNGN, setPayoutAmountNGN] = useState<number>(0);
   const [payoutNotes, setPayoutNotes] = useState('');
   const [payoutError, setPayoutError] = useState<string | null>(null);
   const [payoutSuccess, setPayoutSuccess] = useState<string | null>(null);
   const [isSubmittingPayout, setIsSubmittingPayout] = useState(false);
-
-  // Profile update form state
   const [profileForm, setProfileForm] = useState({
-    bankName: initialUser.bankName || 'Guaranty Trust Bank (GTBank)',
+    bankName: initialUser.bankName || '',
     accountNumber: initialUser.accountNumber || '',
     accountName: initialUser.accountName || '',
     instagram: initialUser.instagram || '',
     tiktok: initialUser.tiktok || '',
     otherSocials: initialUser.otherSocials || '',
     promotionChannels: initialUser.promotionChannels || '',
-    audienceSize: initialUser.audienceSize || '1K - 10K',
+    audienceSize: initialUser.audienceSize || '',
   });
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [commissionQuery, setCommissionQuery] = useState('');
+  const [commissionStatus, setCommissionStatus] = useState('ALL');
+  const [commissionDateFrom, setCommissionDateFrom] = useState('');
+  const [commissionDateTo, setCommissionDateTo] = useState('');
+  const [commissionPage, setCommissionPage] = useState(1);
+  const pageSize = 8;
 
   const fetchPortalData = async () => {
     setIsRefreshing(true);
+    setLoadError(null);
     try {
       const [dashRes, linksRes, commsRes, payoutsRes, meRes, ledgerRes, mediaRes] = await Promise.all([
         AffiliateApiClient.getDashboard(),
@@ -101,1124 +145,292 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         AffiliateApiClient.getLedger(),
         AffiliateApiClient.getMedia(),
       ]);
-
-      if (dashRes.success && dashRes.data) {
-        setStats(dashRes.data);
-      }
-      if (linksRes.success && linksRes.data) {
-        setLinks(linksRes.data);
-      }
-      if (commsRes.success && commsRes.data) {
-        setCommissions(commsRes.data);
-      }
-      if (payoutsRes.success && payoutsRes.data) {
-        setPayouts(payoutsRes.data);
-      }
-      if (ledgerRes.success && ledgerRes.data) {
-        setLedgerEntries(ledgerRes.data);
-      }
-      if (mediaRes.success && mediaRes.data) {
-        setMediaAssets(mediaRes.data);
-      }
+      const failed = [dashRes, linksRes, commsRes, payoutsRes, meRes, ledgerRes, mediaRes].find((result) => !result.success);
+      if (failed && !dashRes.success) throw new Error(failed.error || 'Your dashboard could not be loaded.');
+      if (dashRes.success && dashRes.data) setStats(dashRes.data);
+      if (linksRes.success && linksRes.data) setLinks(linksRes.data);
+      if (commsRes.success && commsRes.data) setCommissions(commsRes.data);
+      if (payoutsRes.success && payoutsRes.data) setPayouts(payoutsRes.data);
+      if (ledgerRes.success && ledgerRes.data) setLedgerEntries(ledgerRes.data);
+      if (mediaRes.success && mediaRes.data) setMediaAssets(mediaRes.data);
       if (meRes.success && meRes.data) {
         setCurrentUser(meRes.data);
-        setProfileForm((prev) => ({
-          ...prev,
-          bankName: meRes.data.bankName || prev.bankName,
-          accountNumber: meRes.data.accountNumber || prev.accountNumber,
-          accountName: meRes.data.accountName || prev.accountName,
-          instagram: meRes.data.instagram || prev.instagram,
-          tiktok: meRes.data.tiktok || prev.tiktok,
+        setProfileForm((previous) => ({
+          ...previous,
+          bankName: meRes.data.bankName || previous.bankName,
+          accountNumber: meRes.data.accountNumber || previous.accountNumber,
+          accountName: meRes.data.accountName || previous.accountName,
+          instagram: meRes.data.instagram || previous.instagram,
+          tiktok: meRes.data.tiktok || previous.tiktok,
+          otherSocials: meRes.data.otherSocials || previous.otherSocials,
+          promotionChannels: meRes.data.promotionChannels || previous.promotionChannels,
+          audienceSize: meRes.data.audienceSize || previous.audienceSize,
         }));
       }
-    } catch (err) {
-      console.error('[AFFILIATE_PORTAL_FETCH_ERROR]', err);
+      if (failed) setLoadError(failed.error || 'Some dashboard information could not be refreshed.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Your dashboard could not be loaded.';
+      setLoadError(message);
+      console.error('[AFFILIATE_PORTAL_FETCH_ERROR]', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
+  useEffect(() => { void fetchPortalData(); }, []);
   useEffect(() => {
-    fetchPortalData();
-  }, []);
-
-  const minimumPayoutNGN = stats?.config.minimumPayoutNGN || 0;
-
-  useEffect(() => {
-    if (stats?.earnings.availableNGN && payoutAmountNGN === 0) {
-      setPayoutAmountNGN(stats.earnings.availableNGN);
+    if (toast) {
+      const timer = window.setTimeout(() => setToast(null), 2800);
+      return () => window.clearTimeout(timer);
     }
+  }, [toast]);
+  useEffect(() => {
+    if (stats?.earnings.availableNGN && payoutAmountNGN === 0) setPayoutAmountNGN(stats.earnings.availableNGN);
   }, [stats?.earnings.availableNGN]);
 
-  const handleCopyLink = (code: string) => {
-    const fullUrl = `${window.location.origin}/r/${code}`;
-    navigator.clipboard.writeText(fullUrl);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2500);
+  const minimumPayoutNGN = stats?.config.minimumPayoutNGN || 0;
+  const referralUrl = (code: string) => `${window.location.origin}/r/${code}`;
+  const openTab = (tab: PortalTab) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCreateLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLinkError(null);
-    if (!newLinkName.trim()) {
-      setLinkError('Please give your link a campaign name.');
+  const handleCopyLink = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(referralUrl(code));
+      setCopiedCode(code);
+      setToast('Referral link copied');
+      window.setTimeout(() => setCopiedCode(null), 2400);
+    } catch {
+      setToast('Could not copy link. Please copy it from the field.');
+    }
+  };
+
+  const handleNativeShare = async (code: string) => {
+    const url = referralUrl(code);
+    if (!navigator.share) {
+      await handleCopyLink(code);
       return;
     }
+    try {
+      await navigator.share({ title: 'PIERCYN', text: 'Shop PIERCYN with my link:', url });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) setToast('Sharing is not available right now.');
+    }
+  };
 
+  const handleCreateLink = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLinkError(null);
+    if (!newLinkName.trim()) { setLinkError('Please give your link a campaign name.'); return; }
     setIsSubmittingLink(true);
     try {
-      const res = await AffiliateApiClient.createLink({
-        name: newLinkName,
-        destination: newLinkDestination,
-        destinationType: newLinkType,
-      });
-
-      if (res.success && res.data) {
-        setLinks([res.data, ...links]);
+      const result = await AffiliateApiClient.createLink({ name: newLinkName, destination: newLinkDestination, destinationType: newLinkType });
+      if (result.success && result.data) {
+        setLinks((previous) => [result.data!, ...previous]);
         setIsCreatingLink(false);
         setNewLinkName('');
-      } else {
-        setLinkError(res.error || 'Failed to create link.');
-      }
-    } catch (err: any) {
-      setLinkError(err.message || 'An error occurred.');
-    } finally {
-      setIsSubmittingLink(false);
-    }
+        setToast('Your referral link is ready');
+      } else setLinkError(result.error || 'Failed to create link.');
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : 'An error occurred.');
+    } finally { setIsSubmittingLink(false); }
   };
 
-  const handleRequestPayout = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRequestPayout = async (event: React.FormEvent) => {
+    event.preventDefault();
     setPayoutError(null);
     setPayoutSuccess(null);
-
     if (!currentUser.bankName || !currentUser.accountNumber || !currentUser.accountName) {
-      setPayoutError('Please complete your bank account details under Profile & Banking before requesting a payout.');
-      return;
+      setPayoutError('Please complete your bank account details under Settings before requesting a withdrawal.'); return;
     }
-
     const availableNGN = stats?.earnings.availableNGN || 0;
-    if (payoutAmountNGN > availableNGN) {
-      setPayoutError(`Requested amount exceeds your available balance of ₦${availableNGN.toLocaleString()}`);
-      return;
-    }
-
-    if (payoutAmountNGN <= 0) {
-      setPayoutError('Withdrawal amount must be greater than zero.');
-      return;
-    }
-
-    if (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN) {
-      setPayoutError(`Minimum withdrawal amount is ₦${minimumPayoutNGN.toLocaleString()}.`);
-      return;
-    }
-
+    if (payoutAmountNGN > availableNGN) { setPayoutError(`Requested amount exceeds your available balance of ${naira(availableNGN)}.`); return; }
+    if (payoutAmountNGN <= 0) { setPayoutError('Withdrawal amount must be greater than zero.'); return; }
+    if (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN) { setPayoutError(`Minimum withdrawal amount is ${naira(minimumPayoutNGN)}.`); return; }
     setIsSubmittingPayout(true);
     try {
-      const res = await AffiliateApiClient.requestPayout({
+      const result = await AffiliateApiClient.requestPayout({
         amountNGN: payoutAmountNGN,
         bankName: currentUser.bankName,
         accountNumber: currentUser.accountNumber,
         accountName: currentUser.accountName,
         notes: payoutNotes || undefined,
       });
-
-      if (res.success && res.data) {
-        setPayoutSuccess(
-          `Payout request of ₦${payoutAmountNGN.toLocaleString()} submitted successfully! PIERCYN Finance processes payouts every Friday.`
-        );
-        fetchPortalData();
-      } else {
-        setPayoutError(res.error || 'Failed to submit payout request.');
-      }
-    } catch (err: any) {
-      setPayoutError(err.message || 'An error occurred submitting payout.');
-    } finally {
-      setIsSubmittingPayout(false);
-    }
+      if (result.success && result.data) {
+        setPayoutSuccess(`Withdrawal request for ${naira(payoutAmountNGN)} was submitted.`);
+        setToast('Withdrawal request submitted');
+        setPayoutNotes('');
+        await fetchPortalData();
+      } else setPayoutError(result.error || 'Failed to submit withdrawal request.');
+    } catch (error) {
+      setPayoutError(error instanceof Error ? error.message : 'An error occurred submitting the withdrawal.');
+    } finally { setIsSubmittingPayout(false); }
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
     setProfileError(null);
     setProfileSuccess(null);
     setIsSavingProfile(true);
-
     try {
-      const res = await AffiliateApiClient.updateProfile(profileForm);
-      if (res.success && res.data) {
-        setCurrentUser(res.data);
-        setProfileSuccess('Profile & banking information updated successfully.');
-      } else {
-        setProfileError(res.error || 'Failed to update profile.');
-      }
-    } catch (err: any) {
-      setProfileError(err.message || 'An error occurred.');
-    } finally {
-      setIsSavingProfile(false);
-    }
+      const result = await AffiliateApiClient.updateProfile(profileForm);
+      if (result.success && result.data) {
+        setCurrentUser(result.data);
+        setProfileSuccess('Your profile and payout details have been saved.');
+        setToast('Settings saved');
+      } else setProfileError(result.error || 'Failed to update profile.');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'An error occurred.');
+    } finally { setIsSavingProfile(false); }
   };
+
+  const filteredCommissions = useMemo(() => commissions.filter((commission) => {
+    const query = commissionQuery.trim().toLowerCase();
+    const matchesQuery = !query || [commission.orderNumber, commission.productName, commission.sku].some((value) => value?.toLowerCase().includes(query));
+    const matchesStatus = commissionStatus === 'ALL' || commission.status === commissionStatus;
+    const createdAt = new Date(commission.createdAt).getTime();
+    const from = commissionDateFrom ? new Date(`${commissionDateFrom}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
+    const to = commissionDateTo ? new Date(`${commissionDateTo}T23:59:59.999`).getTime() : Number.POSITIVE_INFINITY;
+    return matchesQuery && matchesStatus && createdAt >= from && createdAt <= to;
+  }), [commissions, commissionQuery, commissionStatus, commissionDateFrom, commissionDateTo]);
+  const totalPages = Math.max(1, Math.ceil(filteredCommissions.length / pageSize));
+  const pageCommissions = filteredCommissions.slice((commissionPage - 1) * pageSize, commissionPage * pageSize);
+  const topProducts = useMemo(() => {
+    const byProduct = new Map<string, { orders: Set<string>; revenue: number }>();
+    commissions.forEach((commission) => {
+      const name = commission.productName || 'PIERCYN item';
+      const current = byProduct.get(name) || { orders: new Set<string>(), revenue: 0 };
+      current.orders.add(commission.orderId);
+      current.revenue += (commission.unitPriceNGN || 0) * (commission.quantity || 1);
+      byProduct.set(name, current);
+    });
+    return [...byProduct.entries()].map(([name, value]) => ({ name, orders: value.orders.size, revenue: value.revenue }))
+      .sort((a, b) => b.orders - a.orders || b.revenue - a.revenue).slice(0, 3);
+  }, [commissions]);
 
   const isPendingReview = currentUser.status === 'PENDING';
   const isSuspended = currentUser.status === 'SUSPENDED';
+  const primaryLink = links.find((link) => link.isActive) || links[0];
+  const available = stats?.earnings.availableNGN || 0;
+  const earned = stats?.earnings.totalEarnedNGN || 0;
+  const pending = stats?.earnings.pendingNGN || 0;
+  const paid = stats?.earnings.paidNGN || 0;
+
+  const renderStatus = (status: string) => <span className={`ap-status ap-status--${statusTone(status)}`}><span className="ap-status-dot" />{status.replace(/_/g, ' ')}</span>;
+  const renderCommissionRows = (items: CommissionItem[]) => items.map((commission) => (
+    <tr key={commission.id}>
+      <td><span className="ap-date">{dateLabel(commission.createdAt)}</span></td>
+      <td><strong className="ap-order">{commission.orderNumber || commission.orderId.slice(0, 8)}</strong></td>
+      <td><div className="ap-product-cell"><strong>{commission.productName || 'PIERCYN item'}</strong><small>{[commission.colour, commission.size && `Size ${commission.size}`, commission.sku].filter(Boolean).join(' · ')}</small></div></td>
+      <td className="ap-number">{commission.quantity}</td>
+      <td className="ap-money">{naira(commission.amountNGN)}</td>
+      <td>{renderStatus(commission.status)}</td>
+    </tr>
+  ));
 
   return (
-    <div className="affiliate-portal-shell min-h-screen bg-[#0D0D0D] text-[#EDECE8] font-sans antialiased selection:bg-[#C9A96E] selection:text-black">
-      {/* Top Bar */}
-      <header className="border-b border-[#222222] bg-[#111111]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 cursor-pointer" onClick={onBackToShop}>
-              <span className="font-serif tracking-[0.25em] text-xl font-light text-white hover:text-[#C9A96E] transition-colors">
-                PIERCYN
-              </span>
-              <span className="text-[9px] uppercase tracking-widest px-2 py-0.5 border border-[#C9A96E]/40 text-[#C9A96E] rounded-full">
-                PARTNER PORTAL
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={fetchPortalData}
-              disabled={isRefreshing}
-              className="p-2 text-[#888888] hover:text-white rounded border border-[#2B2B2B] hover:border-[#444444] transition-colors"
-              title="Refresh Analytics"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#C9A96E]' : ''}`} />
+    <div className="affiliate-portal-shell ap-shell">
+      <header className="ap-topbar">
+        <button className="ap-brand" onClick={onBackToShop} aria-label="Return to PIERCYN shop">
+          <span className="ap-brand-word">PIERCYN</span><span className="ap-brand-tag">PARTNER STUDIO</span>
+        </button>
+        <div className="ap-topbar-right">
+          <button className={`ap-icon-button ${isRefreshing ? 'is-spinning' : ''}`} onClick={() => void fetchPortalData()} disabled={isRefreshing} aria-label="Refresh dashboard" title="Refresh dashboard"><RefreshCw size={17} /></button>
+          <div className="ap-profile-wrap">
+            <button className="ap-profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)} aria-expanded={profileMenuOpen}>
+              <span className="ap-avatar">{(currentUser.firstName?.[0] || 'P')}{(currentUser.lastName?.[0] || '')}</span>
+              <span className="ap-profile-name">{currentUser.firstName} {currentUser.lastName}</span><ChevronDown size={15} />
             </button>
-
-            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-[#181818] border border-[#2B2B2B] rounded">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-mono text-[#CCCCCC]">
-                {currentUser.firstName} {currentUser.lastName}
-              </span>
-            </div>
-
-            <button
-              onClick={onLogout}
-              className="px-3 py-1.5 text-xs text-[#888888] hover:text-white border border-[#2B2B2B] hover:border-red-900/60 rounded flex items-center gap-1.5 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+            {profileMenuOpen && <div className="ap-profile-menu"><button onClick={() => openTab('profile')}><UserRound size={15} /> Profile & payout details</button><button onClick={onLogout}><LogOut size={15} /> Sign out</button></div>}
           </div>
+          <button className="ap-mobile-menu-toggle" onClick={() => setMobileMenuOpen((open) => !open)} aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}>{mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         </div>
       </header>
 
-      {/* Account Status Notice Banner (if Pending or Suspended) */}
-      {isPendingReview && (
-        <div className="bg-[#C9A96E]/10 border-b border-[#C9A96E]/30 px-4 py-3 text-center">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-xs text-[#E6C98F]">
-            <Clock className="w-4 h-4 shrink-0 text-[#C9A96E]" />
-            <span>
-              <strong>Application Under Review:</strong> Your partner profile is currently being reviewed by our editorial team. You will be activated within 24 hours.
-            </span>
-          </div>
+      {(isPendingReview || isSuspended || loadError) && <div className={`ap-notice ${isSuspended ? 'ap-notice--bad' : loadError ? 'ap-notice--error' : 'ap-notice--pending'}`}>
+        {isPendingReview && <><Clock3 size={17} /><span><strong>Application under review.</strong> Your partner profile is being reviewed by the PIERCYN team.</span></>}
+        {isSuspended && <><ShieldCheck size={17} /><span><strong>Account status: suspended.</strong> Contact <a href="mailto:director@piercyn.com">director@piercyn.com</a> for assistance.</span></>}
+        {loadError && !isSuspended && !isPendingReview && <><RefreshCw size={17} /><span>{loadError}</span><button onClick={() => void fetchPortalData()}>Try again</button></>}
+      </div>}
+
+      <aside className={`ap-sidebar ${mobileMenuOpen ? 'ap-sidebar--open' : ''}`}>
+        <div className="ap-sidebar-section-label">YOUR STUDIO</div>
+        <nav className="ap-side-nav" aria-label="Affiliate dashboard">
+          {navItems.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => openTab(id)} className={`ap-nav-item ${activeTab === id ? 'is-active' : ''}`} aria-current={activeTab === id ? 'page' : undefined}><Icon size={17} strokeWidth={1.8} /><span>{label}</span>{activeTab === id && <span className="ap-nav-indicator" />}</button>)}
+        </nav>
+        <div className="ap-sidebar-bottom">
+          <div className="ap-sidebar-promo-kicker">PIERCYN CREATOR CLUB</div>
+          <p>Share PIERCYN.<br /><strong>Earn more.</strong></p>
+          <button onClick={() => openTab('links')}>Get your link <ArrowRight size={14} /></button>
+          <button className="ap-sidebar-support" onClick={() => openTab('support')}>Need help? Contact support</button>
         </div>
-      )}
+        <button className="ap-sidebar-shop" onClick={onBackToShop}><ArrowUpRight size={15} /> Back to PIERCYN</button>
+      </aside>
 
-      {isSuspended && (
-        <div className="bg-red-950/40 border-b border-red-800 px-4 py-3 text-center">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-            <span>
-              <strong>Account Suspended:</strong> Please contact director@piercyn.com for creator partner assistance.
-            </span>
-          </div>
+      <main className="ap-main">
+        <div className="ap-page-heading">
+          <div><div className="ap-eyebrow">PIERCYN AFFILIATE PROGRAM</div><h1>{tabLabels[activeTab].title}</h1><p>{tabLabels[activeTab].subtitle}</p></div>
+          <span className={`ap-account-state ap-account-state--${statusTone(currentUser.status)}`}><span className="ap-status-dot" />{currentUser.status}</span>
         </div>
-      )}
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-[#222222] bg-[#111111]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'overview', label: 'Overview & Earnings', icon: LayoutDashboard },
-              { id: 'links', label: 'Referral Links', icon: Link2 },
-              { id: 'commissions', label: 'Orders & Royalties', icon: Receipt },
-              { id: 'ledger', label: 'Financial Ledger', icon: FileText },
-              { id: 'media', label: 'Brand Kit & Media', icon: ImageIcon },
-              { id: 'payouts', label: 'Payout Requests', icon: CreditCard },
-              { id: 'profile', label: 'Bank & Profile', icon: User },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 py-4 border-b-2 text-xs uppercase tracking-widest font-medium whitespace-nowrap transition-colors ${
-                    isActive
-                      ? 'border-[#C9A96E] text-[#C9A96E]'
-                      : 'border-transparent text-[#888888] hover:text-white hover:border-[#444444]'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
+        {isLoading ? <div className="ap-loading" aria-live="polite"><span className="ap-spinner" /><span>Loading your studio…</span><div className="ap-skeleton-grid"><i /><i /><i /><i /></div><i className="ap-skeleton-wide" /></div> : <>
+          {activeTab === 'overview' && <div className="ap-page-content ap-overview">
+            <section className="ap-hero">
+              <img className="ap-hero-image" src="/images/affiliate-hero.webp" alt="PIERCYN streetwear editorial campaign" />
+              <div className="ap-hero-shade" />
+              <div className="ap-hero-copy"><div className="ap-hero-kicker">LAGOS · BUILT FOR EVERYWHERE</div><h2>Share your point<br />of view. <em>Earn more.</em></h2><p>Earn {naira(stats?.config.commissionPerOrderNGN ?? stats?.config.commissionPerProductNGN ?? 800)} for every qualifying order. Your community, your edit, your impact.</p><div className="ap-hero-actions"><button className="ap-button ap-button--light" onClick={() => primaryLink ? void handleCopyLink(primaryLink.referralCode) : openTab('links')}>{primaryLink ? <><Copy size={15} /> Copy your link</> : <><Plus size={16} /> Create your link</>}</button><button className="ap-button ap-button--outline-light" onClick={() => openTab('media')}>Explore resources <ArrowRight size={15} /></button></div></div>
+              <div className="ap-hero-caption">PIERCYN CREATOR CLUB <span>01 / YOUR STUDIO</span></div>
+            </section>
 
-      {/* Main Content Body */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        {/* ─── TAB 1: OVERVIEW ───────────────────────────────────────────── */}
-        {activeTab === 'overview' && (
-          <div className="space-y-8">
-            {/* Metric KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              {/* Available Balance */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">
-                    Available For Payout
-                  </span>
-                  <div className="p-2 rounded bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-3xl font-serif text-white mb-1">
-                  ₦{(stats?.earnings.availableNGN || 0).toLocaleString()}
-                </div>
-                <div className="text-[11px] text-[#777777] font-light">
-                  Ready to withdraw to bank account
-                </div>
-              </div>
-
-              {/* Pending Maturation */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">
-                    Pending Maturation
-                  </span>
-                  <div className="p-2 rounded bg-amber-950/50 text-amber-400 border border-amber-800/40">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-3xl font-serif text-white mb-1">
-                  ₦{(stats?.earnings.pendingNGN || 0).toLocaleString()}
-                </div>
-                <div className="text-[11px] text-[#777777] font-light">
-                  Within 7-day customer return window
-                </div>
-              </div>
-
-              {/* Total Earned (Lifetime) */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">
-                    Lifetime Royalties
-                  </span>
-                  <div className="p-2 rounded bg-[#C9A96E]/10 text-[#C9A96E] border border-[#C9A96E]/30">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-3xl font-serif text-[#C9A96E] mb-1">
-                  ₦{(stats?.earnings.totalEarnedNGN || 0).toLocaleString()}
-                </div>
-                <div className="text-[11px] text-[#777777] font-light">
-                  Total revenue generated across all campaigns
-                </div>
-              </div>
-
-              {/* Conversion Stats */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[11px] uppercase tracking-wider text-[#888888] font-medium">
-                    Conversions & Clicks
-                  </span>
-                  <div className="p-2 rounded bg-[#222222] text-[#AAAAAA] border border-[#333333]">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-3xl font-serif text-white mb-1">
-                  {stats?.metrics.totalOrders || 0} Orders
-                </div>
-                <div className="text-[11px] text-[#777777] font-light">
-                  From {stats?.metrics.totalClicks || 0} clicks ({stats?.metrics.conversionRatePercent || 0}% CVR)
-                </div>
-              </div>
+            <div className="ap-stat-grid">
+              <article className="ap-stat-card"><div className="ap-stat-top"><span>Total earnings</span><Banknote size={17} /></div><strong>{naira(earned)}</strong><small>Lifetime commissions earned</small></article>
+              <article className="ap-stat-card"><div className="ap-stat-top"><span>Referral visits</span><Link2 size={17} /></div><strong>{(stats?.metrics.totalClicks || 0).toLocaleString()}</strong><small>Tracked clicks across your links</small></article>
+              <article className="ap-stat-card"><div className="ap-stat-top"><span>Qualifying orders</span><ShoppingBag size={17} /></div><strong>{(stats?.metrics.totalOrders || 0).toLocaleString()}</strong><small>Orders attributed to your links</small></article>
+              <article className="ap-stat-card ap-stat-card--balance"><div className="ap-stat-top"><span>Available balance</span><Wallet size={17} /></div><strong>{naira(available)}</strong><small>Approved and ready to withdraw</small><button onClick={() => openTab('payouts')}>Withdraw <ArrowRight size={14} /></button></article>
             </div>
 
-            {/* Default Primary Referral Link Card */}
-            {links.length > 0 && (
-              <div className="p-6 rounded-xl bg-gradient-to-r from-[#171717] to-[#121212] border border-[#2B2B2B]">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] font-semibold block mb-1">
-                      YOUR PRIMARY REFERRAL LINK
-                    </span>
-                    <h3 className="text-lg font-serif text-white">{links[0].name}</h3>
-                    <p className="text-xs text-[#888888] font-mono mt-1">
-                      {window.location.origin}/r/{links[0].referralCode}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleCopyLink(links[0].referralCode)}
-                      className="px-5 py-2.5 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all shadow-md"
-                    >
-                      {copiedCode === links[0].referralCode ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          Copy Referral Link
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('links')}
-                      className="px-4 py-2.5 border border-[#333333] hover:border-white/40 text-white text-xs uppercase tracking-widest font-medium rounded transition-colors"
-                    >
-                      Manage Links
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Recent Royalties & Activity Split */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Recent Commissions */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424]">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-base font-serif text-white">Recent Royalties</h3>
-                  <button
-                    onClick={() => setActiveTab('commissions')}
-                    className="text-xs text-[#C9A96E] hover:underline"
-                  >
-                    View All →
-                  </button>
-                </div>
-
-                {commissions.length === 0 ? (
-                  <div className="text-center py-10 text-[#666666] text-xs">
-                    No royalties recorded yet. Share your links to start earning!
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {commissions.slice(0, 5).map((comm) => (
-                      <div
-                        key={comm.id}
-                        className="p-3.5 rounded bg-[#181818] border border-[#262626] flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="text-xs font-medium text-white">{comm.productName}</div>
-                          <div className="text-[10px] text-[#777777] font-mono mt-0.5">
-                            Order {comm.orderNumber} • Qty: {comm.quantity} • {new Date(comm.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="text-xs font-mono font-semibold text-[#C9A96E]">
-                            +₦{comm.amountNGN.toLocaleString()}
-                          </div>
-                          <span
-                            className={`inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-mono mt-0.5 ${
-                              comm.status === 'AVAILABLE'
-                                ? 'bg-emerald-950/60 text-emerald-300'
-                                : comm.status === 'PAID'
-                                ? 'bg-blue-950/60 text-blue-300'
-                                : comm.status === 'REVERSED'
-                                ? 'bg-red-950/60 text-red-300'
-                                : 'bg-amber-950/60 text-amber-300'
-                            }`}
-                          >
-                            {comm.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Recent Click Activity */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424]">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-base font-serif text-white">Live Click Tracking</h3>
-                  <span className="text-xs text-[#888888]">Last 30 days</span>
-                </div>
-
-                {stats?.recentClicks && stats.recentClicks.length > 0 ? (
-                  <div className="space-y-3">
-                    {stats.recentClicks.slice(0, 5).map((click) => (
-                      <div
-                        key={click.id}
-                        className="p-3.5 rounded bg-[#181818] border border-[#262626] flex items-center justify-between"
-                      >
-                        <div>
-                          <div className="text-xs text-white">{click.linkName}</div>
-                          <div className="text-[10px] text-[#777777] truncate max-w-[200px] mt-0.5">
-                            Landing: {click.landingPage || '/shop'}
-                          </div>
-                        </div>
-                        <div className="text-[10px] font-mono text-[#888888]">
-                          {new Date(click.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-[#666666] text-xs">
-                    Clicks will register in real-time as visitors use your link.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── TAB 2: LINKS ──────────────────────────────────────────────── */}
-        {activeTab === 'links' && (
-          <div className="space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-serif text-white">Referral Link Suite</h2>
-                <p className="text-xs text-[#888888] font-light mt-1">
-                  Create tailored links for different campaigns, lookbooks, or social bio placements.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setIsCreatingLink(!isCreatingLink)}
-                className="px-4 py-2.5 bg-[#C9A96E] hover:bg-[#DBC392] text-black text-xs uppercase tracking-widest font-semibold rounded flex items-center gap-2 transition-all self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Create New Link
-              </button>
+            <div className="ap-overview-grid">
+              <section className="ap-panel ap-link-panel">
+                <div className="ap-panel-heading"><div><div className="ap-eyebrow">YOUR LINK</div><h2>Your Referral Link</h2></div><Link2 size={19} /></div>
+                <p className="ap-muted">Share this with friends, your community and followers.</p>
+                {primaryLink ? <><div className="ap-link-field"><span title={referralUrl(primaryLink.referralCode)}>{referralUrl(primaryLink.referralCode)}</span><button onClick={() => void handleCopyLink(primaryLink.referralCode)} aria-label="Copy referral link">{copiedCode === primaryLink.referralCode ? <Check size={16} /> : <Copy size={16} />}</button></div><div className="ap-link-meta"><span>{primaryLink.name}</span><span>{primaryLink.clickCount.toLocaleString()} visits · {primaryLink.orderCount.toLocaleString()} orders</span></div><div className="ap-share-actions"><button onClick={() => void handleCopyLink(primaryLink.referralCode)}><Copy size={14} /> Copy</button><a href={`https://wa.me/?text=${encodeURIComponent(`Shop PIERCYN with my link: ${referralUrl(primaryLink.referralCode)}`)}`} target="_blank" rel="noreferrer"><MessageCircle size={14} /> WhatsApp</a><button onClick={() => { const text = `Shop PIERCYN with my link: ${referralUrl(primaryLink.referralCode)}`; window.open(`https://t.me/share/url?url=${encodeURIComponent(referralUrl(primaryLink.referralCode))}&text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer'); }}><Share2 size={14} /> Telegram</button><a href={`https://x.com/intent/post?text=${encodeURIComponent(`Shop PIERCYN with my link: ${referralUrl(primaryLink.referralCode)}`)}`} target="_blank" rel="noreferrer">X</a><a href={`mailto:?subject=${encodeURIComponent('PIERCYN — shop with my link')}&body=${encodeURIComponent(`Shop PIERCYN with my link: ${referralUrl(primaryLink.referralCode)}`)}`}><Mail size={14} /> Email</a><button onClick={() => void handleNativeShare(primaryLink.referralCode)}><Share2 size={14} /> Share</button></div></> : <div className="ap-empty-inline"><span>No referral links yet</span><button className="ap-button ap-button--dark" onClick={() => { openTab('links'); setIsCreatingLink(true); }}><Plus size={15} /> Create a link</button></div>}
+              </section>
+              <section className="ap-panel ap-activity-panel"><div className="ap-panel-heading"><div><div className="ap-eyebrow">LATEST ACTIVITY</div><h2>Recent referrals</h2></div><button className="ap-text-link" onClick={() => openTab('commissions')}>View all <ArrowRight size={14} /></button></div>
+                {commissions.length ? <div className="ap-activity-list">{commissions.slice(0, 4).map((commission) => <div className="ap-activity-row" key={commission.id}><div className="ap-activity-icon"><ShoppingBag size={16} /></div><div className="ap-activity-main"><strong>{commission.productName || `Order ${commission.orderNumber}`}</strong><span>Order {commission.orderNumber} · {dateLabel(commission.createdAt)}</span></div><div className="ap-activity-value"><strong>{naira(commission.amountNGN)}</strong>{renderStatus(commission.status)}</div></div>)}</div> : <div className="ap-empty-state ap-empty-state--compact"><span className="ap-empty-mark"><Link2 size={20} /></span><strong>Your first referral is one share away.</strong><p>When an order is attributed to one of your links, it will appear here.</p><button className="ap-text-link" onClick={() => openTab('links')}>View your links <ArrowRight size={14} /></button></div>}
+              </section>
             </div>
 
-            {/* Create Link Drawer / Inline Form */}
-            {isCreatingLink && (
-              <div className="p-6 rounded-xl bg-[#171717] border border-[#C9A96E]/30 animate-in fade-in">
-                <h3 className="text-base font-serif text-white mb-4">Generate Campaign Referral Link</h3>
+            {topProducts.length > 0 && <section className="ap-panel ap-products-panel"><div className="ap-panel-heading"><div><div className="ap-eyebrow">BASED ON ATTRIBUTED ORDERS</div><h2>Products your community chose</h2></div><button className="ap-text-link" onClick={() => openTab('commissions')}>See referrals <ArrowRight size={14} /></button></div><div className="ap-product-list">{topProducts.map((product, index) => <div className="ap-product-row" key={product.name}><span className="ap-product-rank">0{index + 1}</span><div className="ap-product-info"><strong>{product.name}</strong><span>{product.orders} attributed {product.orders === 1 ? 'order' : 'orders'}</span></div><span className="ap-product-revenue">{naira(product.revenue)}</span></div>)}</div></section>}
 
-                {linkError && (
-                  <div className="mb-4 p-3 rounded bg-red-950/40 border border-red-800 text-red-300 text-xs">
-                    {linkError}
-                  </div>
-                )}
+            <section className="ap-resource-banner"><img src="/images/affiliate-campaign.webp" alt="PIERCYN creator campaign" loading="lazy" /><div className="ap-resource-shade" /><div className="ap-resource-copy"><div className="ap-eyebrow">YOUR NEXT POST STARTS HERE</div><h2>Create content.<br />Share your link.<br /><em>Earn more.</em></h2><button className="ap-button ap-button--light" onClick={() => openTab('media')}>View resources <ArrowRight size={15} /></button></div></section>
+          </div>}
 
-                <form onSubmit={handleCreateLink} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                        Campaign Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newLinkName}
-                        onChange={(e) => setNewLinkName(e.target.value)}
-                        placeholder="e.g. Instagram Bio, December Lookbook"
-                        className="w-full px-4 py-2 bg-[#1F1F1F] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                      />
-                    </div>
+          {activeTab === 'links' && <div className="ap-page-content ap-section-stack">
+            <div className="ap-section-toolbar"><div><div className="ap-eyebrow">TRACK EVERY CAMPAIGN</div><h2>Your referral links</h2><p className="ap-muted">Each link carries your unique referral code and destination.</p></div><button className="ap-button ap-button--dark" onClick={() => { setLinkError(null); setIsCreatingLink((open) => !open); }}><Plus size={16} /> Create link</button></div>
+            {isCreatingLink && <section className="ap-panel ap-form-panel"><div className="ap-panel-heading"><div><div className="ap-eyebrow">NEW TRACKED LINK</div><h2>Create a referral link</h2></div><button className="ap-icon-button" onClick={() => setIsCreatingLink(false)} aria-label="Close form"><X size={18} /></button></div>{linkError && <div className="ap-form-alert ap-form-alert--error">{linkError}</div>}<form onSubmit={handleCreateLink} className="ap-form-grid"><label>Campaign name<input required minLength={3} maxLength={100} value={newLinkName} onChange={(event) => setNewLinkName(event.target.value)} placeholder="e.g. Weekend lookbook" /></label><label>Destination<select value={newLinkDestination} onChange={(event) => setNewLinkDestination(event.target.value)}><option value="/shop">Shop all</option><option value="/men">Men's collection</option><option value="/new">New arrivals</option><option value="/">Storefront home</option></select></label><label>Destination type<select value={newLinkType} onChange={(event) => setNewLinkType(event.target.value as typeof newLinkType)}><option value="collection">Collection</option><option value="product">Product</option><option value="homepage">Homepage</option></select></label><div className="ap-form-actions"><button className="ap-button ap-button--dark" type="submit" disabled={isSubmittingLink}>{isSubmittingLink ? 'Creating…' : 'Create link'}</button><button className="ap-button ap-button--quiet" type="button" onClick={() => setIsCreatingLink(false)}>Cancel</button></div></form></section>}
+            {links.length ? <div className="ap-link-grid">{links.map((link) => <article className="ap-panel ap-campaign-card" key={link.id}><div className="ap-campaign-top"><span className="ap-campaign-icon"><Link2 size={18} /></span>{renderStatus(link.isActive ? 'ACTIVE' : 'INACTIVE')}</div><h3>{link.name}</h3><div className="ap-link-field"><span title={referralUrl(link.referralCode)}>{referralUrl(link.referralCode)}</span><button onClick={() => void handleCopyLink(link.referralCode)} aria-label={`Copy ${link.name}`}>{copiedCode === link.referralCode ? <Check size={16} /> : <Copy size={16} />}</button></div><div className="ap-link-stats"><span><small>Visits</small><strong>{link.clickCount.toLocaleString()}</strong></span><span><small>Orders</small><strong>{link.orderCount.toLocaleString()}</strong></span><span><small>Created</small><strong>{dateLabel(link.createdAt)}</strong></span></div><div className="ap-card-foot"><span>{link.destination}</span><button onClick={() => void handleCopyLink(link.referralCode)}><Share2 size={14} /> Share link</button></div></article>)}</div> : !isCreatingLink && <div className="ap-empty-state"><span className="ap-empty-mark"><Link2 size={22} /></span><h3>Start with your first link</h3><p>Create a unique link for a campaign, collection or product. Share it with your audience to track attributed orders.</p><button className="ap-button ap-button--dark" onClick={() => setIsCreatingLink(true)}><Plus size={16} /> Create a referral link</button></div>}
+          </div>}
 
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                        Destination Page *
-                      </label>
-                      <select
-                        value={newLinkDestination}
-                        onChange={(e) => setNewLinkDestination(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-[#1F1F1F] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                      >
-                        <option value="/shop">Shop All Collections (/shop)</option>
-                        <option value="/men">Men's Collection (/men)</option>
-                        <option value="/new">New Arrivals (/new)</option>
-                        <option value="/">Storefront Homepage (/)</option>
-                      </select>
-                    </div>
-                  </div>
+          {activeTab === 'commissions' && <div className="ap-page-content ap-section-stack"><div className="ap-table-summary"><div className="ap-stat-card ap-stat-card--small"><span>Attributed orders</span><strong>{(stats?.metrics.totalOrders || 0).toLocaleString()}</strong></div><div className="ap-stat-card ap-stat-card--small"><span>Pending commission</span><strong>{naira(pending)}</strong></div><div className="ap-stat-card ap-stat-card--small"><span>Available commission</span><strong>{naira(available)}</strong></div></div><section className="ap-panel ap-table-panel"><div className="ap-section-toolbar ap-section-toolbar--inside"><div><div className="ap-eyebrow">ORDER ATTRIBUTION</div><h2>Referral history</h2></div><div className="ap-table-filters"><label className="ap-search"><Search size={15} /><input aria-label="Search orders" placeholder="Search order or product" value={commissionQuery} onChange={(event) => { setCommissionQuery(event.target.value); setCommissionPage(1); }} /></label><select aria-label="Filter by status" value={commissionStatus} onChange={(event) => { setCommissionStatus(event.target.value); setCommissionPage(1); }}><option value="ALL">All statuses</option><option value="PENDING">Pending</option><option value="AVAILABLE">Available</option><option value="PAID">Paid</option><option value="REVERSED">Reversed</option></select><label className="ap-date-filter"><span>From</span><input aria-label="Start date" type="date" value={commissionDateFrom} onChange={(event) => { setCommissionDateFrom(event.target.value); setCommissionPage(1); }} /></label><label className="ap-date-filter"><span>To</span><input aria-label="End date" type="date" value={commissionDateTo} onChange={(event) => { setCommissionDateTo(event.target.value); setCommissionPage(1); }} /></label></div></div><div className="ap-table-scroll"><table className="ap-table"><thead><tr><th>Date</th><th>Order reference</th><th>Product</th><th>Qty</th><th>Commission</th><th>Status</th></tr></thead><tbody>{pageCommissions.length ? renderCommissionRows(pageCommissions) : <tr><td colSpan={6}><div className="ap-table-empty">{commissions.length ? 'No referrals match those filters.' : 'No attributed orders yet. Share your link to get started.'}</div></td></tr>}</tbody></table></div><div className="ap-pagination"><span>{filteredCommissions.length ? `Showing ${(commissionPage - 1) * pageSize + 1}–${Math.min(commissionPage * pageSize, filteredCommissions.length)} of ${filteredCommissions.length}` : 'No results'}</span><div><button onClick={() => setCommissionPage((page) => Math.max(1, page - 1))} disabled={commissionPage <= 1}>Previous</button><span>{commissionPage} / {totalPages}</span><button onClick={() => setCommissionPage((page) => Math.min(totalPages, page + 1))} disabled={commissionPage >= totalPages}>Next</button></div></div></section></div>}
 
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingLink(false)}
-                      className="px-4 py-2 text-xs text-[#888888] hover:text-white"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingLink}
-                      className="px-5 py-2 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-50 text-black text-xs uppercase tracking-widest font-semibold rounded"
-                    >
-                      {isSubmittingLink ? 'Generating...' : 'Generate Link'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+          {activeTab === 'ledger' && <div className="ap-page-content ap-section-stack"><div className="ap-table-summary"><div className="ap-stat-card ap-stat-card--small"><span>Total earned</span><strong>{naira(earned)}</strong></div><div className="ap-stat-card ap-stat-card--small"><span>Pending</span><strong>{naira(pending)}</strong></div><div className="ap-stat-card ap-stat-card--small"><span>Available</span><strong>{naira(available)}</strong></div><div className="ap-stat-card ap-stat-card--small"><span>Paid out</span><strong>{naira(paid)}</strong></div></div><section className="ap-panel ap-table-panel"><div className="ap-section-toolbar ap-section-toolbar--inside"><div><div className="ap-eyebrow">WALLET ACTIVITY</div><h2>Financial ledger</h2><p className="ap-muted">Each entry reflects a recorded wallet movement.</p></div><button className="ap-button ap-button--light-border" onClick={() => void fetchPortalData()} disabled={isRefreshing}><RefreshCw size={15} className={isRefreshing ? 'ap-spin' : ''} /> Refresh</button></div><div className="ap-table-scroll"><table className="ap-table"><thead><tr><th>Date</th><th>Entry</th><th>Description</th><th>Amount</th><th>Balance after</th></tr></thead><tbody>{ledgerEntries.length ? ledgerEntries.map((entry: LedgerItem) => <tr key={entry.id}><td><span className="ap-date">{dateLabel(entry.createdAt)}</span></td><td>{renderStatus(entry.type)}</td><td>{entry.description || entry.referenceType || 'Financial entry'}</td><td className={entry.amountKobo >= 0 ? 'ap-money' : 'ap-money ap-money--debit'}>{entry.amountKobo >= 0 ? '+' : '−'}{naira(Math.abs(entry.amountKobo) / 100)}</td><td className="ap-number">{naira(entry.balanceAfterKobo / 100)}</td></tr>) : <tr><td colSpan={5}><div className="ap-table-empty">No ledger movements recorded yet.</div></td></tr>}</tbody></table></div></section><section className="ap-panel ap-commission-mini"><div className="ap-panel-heading"><div><div className="ap-eyebrow">COMMISSION DETAIL</div><h2>Recent commissions</h2></div><button className="ap-text-link" onClick={() => openTab('commissions')}>View referrals <ArrowRight size={14} /></button></div>{commissions.length ? <div className="ap-activity-list">{commissions.slice(0, 5).map((commission) => <div className="ap-activity-row" key={commission.id}><div className="ap-activity-main"><strong>{commission.productName || commission.orderNumber}</strong><span>Order {commission.orderNumber} · {dateLabel(commission.createdAt)}</span></div><div className="ap-activity-value"><strong>{naira(commission.amountNGN)}</strong>{renderStatus(commission.status)}</div></div>)}</div> : <p className="ap-muted">Commissions will appear here when orders are attributed.</p>}</section></div>}
 
-            {/* Links Table */}
-            <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
-                      <th className="py-3 px-4 sm:px-6">Campaign & Link</th>
-                      <th className="py-3 px-4">Destination</th>
-                      <th className="py-3 px-4 text-center">Clicks</th>
-                      <th className="py-3 px-4 text-center">Orders</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1F1F1F] text-xs">
-                    {links.map((link) => (
-                      <tr key={link.id} className="hover:bg-[#181818]/60 transition-colors">
-                        <td className="py-4 px-4 sm:px-6">
-                          <div className="font-medium text-white">{link.name}</div>
-                          <div className="text-[11px] font-mono text-[#C9A96E] mt-0.5 flex items-center gap-1.5">
-                            <span>/r/{link.referralCode}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 font-mono text-[#888888]">{link.destination}</td>
-                        <td className="py-4 px-4 text-center font-mono text-white">{link.clickCount}</td>
-                        <td className="py-4 px-4 text-center font-mono text-white">{link.orderCount}</td>
-                        <td className="py-4 px-4 text-right">
-                          <button
-                            onClick={() => handleCopyLink(link.referralCode)}
-                            className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] text-[#CCCCCC] hover:text-white rounded border border-[#333333] text-[11px] inline-flex items-center gap-1.5 transition-colors"
-                          >
-                            {copiedCode === link.referralCode ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                Copy Link
-                              </>
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+          {activeTab === 'payouts' && <div className="ap-page-content ap-section-stack"><div className="ap-withdrawal-summary"><article className="ap-balance-feature"><div className="ap-eyebrow">AVAILABLE TO WITHDRAW</div><strong>{naira(available)}</strong><span>Only approved available commissions can be requested. Pending commissions are not withdrawable.</span></article><div className="ap-stat-card ap-stat-card--small"><span>Pending commissions</span><strong>{naira(pending)}</strong><small>Not yet available</small></div><div className="ap-stat-card ap-stat-card--small"><span>Total paid</span><strong>{naira(paid)}</strong><small>Recorded payouts</small></div></div><div className="ap-payout-layout"><section className="ap-panel ap-withdrawal-form"><div className="ap-panel-heading"><div><div className="ap-eyebrow">PAYOUT REQUEST</div><h2>Request a withdrawal</h2></div><CreditCard size={19} /></div><p className="ap-muted">Choose an amount up to your available balance. Your saved bank details will be used.</p>{payoutError && <div className="ap-form-alert ap-form-alert--error">{payoutError}</div>}{payoutSuccess && <div className="ap-form-alert ap-form-alert--success"><CheckCircle2 size={17} />{payoutSuccess}</div>}<form onSubmit={handleRequestPayout} className="ap-form-stack"><label>Amount in naira<div className="ap-amount-input"><span>₦</span><input type="number" required min={minimumPayoutNGN || 0.01} max={available} step="0.01" value={payoutAmountNGN || ''} onChange={(event) => setPayoutAmountNGN(Number(event.target.value) || 0)} placeholder="0.00" /></div><small>{minimumPayoutNGN > 0 ? `Current minimum: ${naira(minimumPayoutNGN)} (program setting)` : 'No minimum amount is currently configured.'}</small></label><div className="ap-destination"><span className="ap-eyebrow">SAVED DESTINATION</span><strong>{currentUser.bankName || 'No bank saved'}</strong><span>{currentUser.accountNumber ? `••••••${currentUser.accountNumber.slice(-4)}` : 'Add an account number in Settings'}{currentUser.accountName ? ` · ${currentUser.accountName}` : ''}</span><button type="button" className="ap-text-link" onClick={() => openTab('profile')}>Manage bank details <ArrowRight size={14} /></button></div><label>Note for the finance team <span className="ap-optional">Optional</span><textarea rows={3} maxLength={500} value={payoutNotes} onChange={(event) => setPayoutNotes(event.target.value)} placeholder="Add a note if needed" /></label><button className="ap-button ap-button--dark ap-button--full" type="submit" disabled={isSubmittingPayout || available <= 0 || payoutAmountNGN <= 0 || payoutAmountNGN > available || (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN)}>{isSubmittingPayout ? 'Submitting request…' : <><Wallet size={16} /> Request withdrawal</>}</button></form></section><section className="ap-panel ap-table-panel"><div className="ap-section-toolbar ap-section-toolbar--inside"><div><div className="ap-eyebrow">PAYOUT HISTORY</div><h2>Withdrawal requests</h2></div></div><div className="ap-table-scroll"><table className="ap-table"><thead><tr><th>Date requested</th><th>Reference</th><th>Amount</th><th>Status</th></tr></thead><tbody>{payouts.length ? payouts.map((payout: PayoutItem) => <tr key={payout.id}><td>{dateLabel(payout.requestedAt)}</td><td>{payout.payoutReference || 'Awaiting reference'}</td><td className="ap-money">{naira(payout.amountNGN)}</td><td>{renderStatus(payout.status)}</td></tr>) : <tr><td colSpan={4}><div className="ap-table-empty">Your withdrawal requests will appear here.</div></td></tr>}</tbody></table></div></section></div></div>}
 
-        {/* ─── TAB 3: COMMISSIONS & ORDERS ───────────────────────────────── */}
-        {activeTab === 'commissions' && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-serif text-white">Order & Royalty Ledger</h2>
-              <p className="text-xs text-[#888888] font-light mt-1">
-                Itemized breakdown of every garment purchase attributed to your creator links.
-              </p>
-            </div>
+          {activeTab === 'media' && <div className="ap-page-content ap-section-stack"><div className="ap-media-intro"><div className="ap-eyebrow">OFFICIAL PIERCYN CREATIVE</div><h2>Make the story yours.</h2><p>Browse the current media kit and use the original files to bring your own point of view to the pieces you share.</p></div>{mediaAssets.length ? <div className="ap-media-grid">{mediaAssets.map((asset: MediaItem) => <article className="ap-panel ap-media-card" key={asset.id}><button className="ap-media-preview" onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')} aria-label={`Preview ${asset.title}`}>{asset.thumbnailUrl || asset.url ? <img src={asset.thumbnailUrl || asset.url} alt={asset.title} loading="lazy" /> : <ImageIcon size={26} />}<span>{asset.mediaType}</span></button><div className="ap-media-copy"><div className="ap-eyebrow">{asset.category}</div><h3>{asset.title}</h3>{asset.description && <p>{asset.description}</p>}<div className="ap-media-meta">{asset.dimensions && <span>{asset.dimensions}</span>}{asset.fileSize && <span>{asset.fileSize}</span>}</div><div className="ap-media-actions"><button onClick={async () => { try { await navigator.clipboard.writeText(asset.url); setToast('Media link copied'); } catch { setToast('Could not copy media link'); } }}><Copy size={14} /> Copy link</button><a href={asset.downloadUrl || asset.url} target="_blank" rel="noreferrer" download><Download size={14} /> Download <ArrowDownToLine size={13} /></a></div></div></article>)}</div> : <div className="ap-empty-state"><span className="ap-empty-mark"><ImageIcon size={22} /></span><h3>New assets are on the way</h3><p>There are no active promotional files available in the media library right now. Please check back later or contact PIERCYN support.</p><button className="ap-button ap-button--light-border" onClick={() => openTab('support')}><Headphones size={15} /> Contact support</button></div>}</div>}
 
-            <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
-                      <th className="py-3 px-4 sm:px-6">Date</th>
-                      <th className="py-3 px-4">Order Ref</th>
-                      <th className="py-3 px-4">Item Details</th>
-                      <th className="py-3 px-4 text-center">Qty</th>
-                      <th className="py-3 px-4 text-right">Royalty (₦)</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1F1F1F] text-xs">
-                    {commissions.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-[#666666]">
-                          No orders recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      commissions.map((comm) => (
-                        <tr key={comm.id} className="hover:bg-[#181818]/60 transition-colors">
-                          <td className="py-4 px-4 sm:px-6 text-[#888888] font-mono">
-                            {new Date(comm.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-4 font-mono font-medium text-white">{comm.orderNumber}</td>
-                          <td className="py-4 px-4">
-                            <div className="text-white font-medium">{comm.productName}</div>
-                            <div className="text-[10px] text-[#777777] font-mono mt-0.5">
-                              {comm.colour} • Size {comm.size} • SKU: {comm.sku}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-center font-mono text-white">{comm.quantity}</td>
-                          <td className="py-4 px-4 text-right font-mono font-semibold text-[#C9A96E]">
-                            ₦{comm.amountNGN.toLocaleString()}
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            <span
-                              className={`inline-block text-[9px] uppercase tracking-wider px-2 py-0.5 rounded font-mono ${
-                                comm.status === 'AVAILABLE'
-                                  ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40'
-                                  : comm.status === 'PAID'
-                                  ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40'
-                                  : comm.status === 'REVERSED'
-                                  ? 'bg-red-950/60 text-red-300 border border-red-800/40'
-                                  : 'bg-amber-950/60 text-amber-300 border border-amber-800/40'
-                              }`}
-                            >
-                              {comm.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+          {activeTab === 'profile' && <div className="ap-page-content ap-settings-layout"><section className="ap-settings-identity"><span className="ap-settings-avatar">{(currentUser.firstName?.[0] || 'P')}{(currentUser.lastName?.[0] || '')}</span><div className="ap-eyebrow">AFFILIATE PROFILE</div><h2>{currentUser.firstName} {currentUser.lastName}</h2><span>{currentUser.email}</span><div className="ap-settings-meta"><span>Affiliate ID</span><strong>{currentUser.id}</strong></div><div className="ap-settings-meta"><span>Account status</span>{renderStatus(currentUser.status)}</div></section><section className="ap-panel ap-form-panel ap-profile-form"><div className="ap-panel-heading"><div><div className="ap-eyebrow">YOUR DETAILS</div><h2>Profile & payout details</h2></div><BadgeCheck size={19} /></div><p className="ap-muted">Keep your creator channels and settlement details current.</p>{profileError && <div className="ap-form-alert ap-form-alert--error">{profileError}</div>}{profileSuccess && <div className="ap-form-alert ap-form-alert--success"><CheckCircle2 size={17} />{profileSuccess}</div>}<form onSubmit={handleSaveProfile} className="ap-form-grid"><div className="ap-form-section-title">Payout destination</div><label>Bank name<input required value={profileForm.bankName} onChange={(event) => setProfileForm({ ...profileForm, bankName: event.target.value })} placeholder="Bank name" /></label><label>Account number<input required maxLength={10} inputMode="numeric" value={profileForm.accountNumber} onChange={(event) => setProfileForm({ ...profileForm, accountNumber: event.target.value })} placeholder="10-digit account number" /></label><label>Account holder name<input required value={profileForm.accountName} onChange={(event) => setProfileForm({ ...profileForm, accountName: event.target.value })} placeholder="Name on bank account" /></label><div className="ap-form-section-title">Creator channels</div><label>Instagram<input value={profileForm.instagram} onChange={(event) => setProfileForm({ ...profileForm, instagram: event.target.value })} placeholder="@yourhandle" /></label><label>TikTok<input value={profileForm.tiktok} onChange={(event) => setProfileForm({ ...profileForm, tiktok: event.target.value })} placeholder="@yourhandle" /></label><label>Other socials<input value={profileForm.otherSocials} onChange={(event) => setProfileForm({ ...profileForm, otherSocials: event.target.value })} placeholder="Other social links" /></label><label>Promotion channels<input value={profileForm.promotionChannels} onChange={(event) => setProfileForm({ ...profileForm, promotionChannels: event.target.value })} placeholder="Where you share content" /></label><label>Audience size<input value={profileForm.audienceSize} onChange={(event) => setProfileForm({ ...profileForm, audienceSize: event.target.value })} placeholder="Your audience range" /></label><div className="ap-form-actions ap-form-actions--wide"><button type="submit" className="ap-button ap-button--dark" disabled={isSavingProfile}>{isSavingProfile ? 'Saving…' : 'Save settings'}</button></div></form></section></div>}
 
-        {/* ─── TAB: FINANCIAL LEDGER ────────────────────────────────────── */}
-        {activeTab === 'ledger' && (
-          <div className="space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-serif text-white">Immutable Financial Ledger</h2>
-                <p className="text-xs text-[#888888] font-light mt-1">
-                  Complete, verifiable record of all wallet credits, reservations, payouts, and adjustments.
-                </p>
-              </div>
-              <button
-                onClick={fetchPortalData}
-                disabled={isRefreshing}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-[#333333] hover:border-[#666666] text-xs text-[#CCCCCC] transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh Ledger
-              </button>
-            </div>
-
-            <div className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
-                      <th className="py-3 px-4 sm:px-6">Timestamp</th>
-                      <th className="py-3 px-4">Event Type</th>
-                      <th className="py-3 px-4">Description</th>
-                      <th className="py-3 px-4 text-right">Amount (₦)</th>
-                      <th className="py-3 px-4 text-right">Balance Before</th>
-                      <th className="py-3 px-4 text-right">Balance After</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1F1F1F] text-xs">
-                    {ledgerEntries.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-[#666666] font-light">
-                          No ledger movements recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      ledgerEntries.map((entry) => {
-                        const isCredit =
-                          entry.type === 'COMMISSION_EARNED' ||
-                          entry.type === 'COMMISSION_PENDING' ||
-                          entry.type === 'WITHDRAWAL_RELEASED';
-                        return (
-                          <tr key={entry.id} className="hover:bg-[#181818]/60 transition-colors">
-                            <td className="py-4 px-4 sm:px-6 text-[#AAAAAA] font-mono text-[11px]">
-                              {new Date(entry.createdAt).toLocaleString()}
-                            </td>
-                            <td className="py-4 px-4">
-                              <span
-                                className={`inline-block text-[9px] uppercase tracking-wider px-2 py-0.5 rounded font-mono ${
-                                  entry.type === 'COMMISSION_EARNED'
-                                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/40'
-                                    : entry.type === 'COMMISSION_PENDING'
-                                    ? 'bg-amber-950/60 text-amber-300 border border-amber-800/40'
-                                    : entry.type === 'WITHDRAWAL_PAID'
-                                    ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40'
-                                    : entry.type === 'WITHDRAWAL_RESERVED'
-                                    ? 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
-                                    : entry.type === 'COMMISSION_REVERSED'
-                                    ? 'bg-red-950/60 text-red-300 border border-red-800/40'
-                                    : 'bg-zinc-800 text-zinc-300'
-                                }`}
-                              >
-                                {entry.type.replace(/_/g, ' ')}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-[#CCCCCC] max-w-xs truncate">
-                              {entry.description || entry.referenceType || 'Financial entry'}
-                            </td>
-                            <td
-                              className={`py-4 px-4 text-right font-mono font-semibold ${
-                                isCredit ? 'text-emerald-400' : 'text-red-400'
-                              }`}
-                            >
-                              {isCredit ? '+' : '-'}₦{(entry.amountKobo / 100).toLocaleString()}
-                            </td>
-                            <td className="py-4 px-4 text-right font-mono text-[#888888]">
-                              ₦{(entry.balanceBeforeKobo / 100).toLocaleString()}
-                            </td>
-                            <td className="py-4 px-4 text-right font-mono font-medium text-white">
-                              ₦{(entry.balanceAfterKobo / 100).toLocaleString()}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── TAB: BRAND KIT & MEDIA ────────────────────────────────────── */}
-        {activeTab === 'media' && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-serif text-white">Media Library & Brand Assets</h2>
-              <p className="text-xs text-[#888888] font-light mt-1">
-                Download official PIERCYN lookbooks, imagery, badges, and banners to feature in your content.
-              </p>
-            </div>
-
-            {mediaAssets.length === 0 ? (
-              <div className="p-12 text-center rounded-xl bg-[#141414] border border-[#242424]">
-                <ImageIcon className="w-10 h-10 text-[#444444] mx-auto mb-3" />
-                <h4 className="text-sm font-medium text-white mb-1">No Brand Assets Available Yet</h4>
-                <p className="text-xs text-[#777777] font-light max-w-md mx-auto">
-                  Our marketing team is curating the official media kit. Please check back soon or reach out via creator support.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mediaAssets.map((asset) => (
-                  <div
-                    key={asset.id}
-                    className="rounded-xl bg-[#141414] border border-[#242424] overflow-hidden hover:border-[#C9A96E]/40 transition-colors flex flex-col"
-                  >
-                    <div className="aspect-video bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center">
-                      {asset.thumbnailUrl || asset.url ? (
-                        <img
-                          src={asset.thumbnailUrl || asset.url}
-                          alt={asset.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <ImageIcon className="w-8 h-8 text-[#555555]" />
-                      )}
-                      <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider px-2 py-0.5 rounded bg-black/70 backdrop-blur text-[#C9A96E] border border-[#C9A96E]/30 font-mono">
-                        {asset.category}
-                      </span>
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-sm font-serif text-white mb-1">{asset.title}</h4>
-                        {asset.description && (
-                          <p className="text-xs text-[#888888] line-clamp-2 font-light mb-3">
-                            {asset.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-3 text-[10px] text-[#666666] font-mono">
-                          {asset.dimensions && <span>{asset.dimensions}</span>}
-                          {asset.fileSize && <span>{asset.fileSize}</span>}
-                        </div>
-                      </div>
-
-                      <div className="pt-4 mt-4 border-t border-[#222222] flex items-center justify-between gap-3">
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(asset.url);
-                            alert('Asset URL copied to clipboard!');
-                          }}
-                          className="text-[11px] uppercase tracking-wider text-[#C9A96E] hover:underline flex items-center gap-1.5"
-                        >
-                          <Copy className="w-3 h-3" />
-                          Copy Link
-                        </button>
-                        <a
-                          href={asset.downloadUrl || asset.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          download
-                          className="px-3 py-1.5 rounded bg-[#222222] hover:bg-[#333333] text-white text-xs flex items-center gap-1.5 transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Download
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── TAB 4: PAYOUTS ────────────────────────────────────────────── */}
-        {activeTab === 'payouts' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Request Payout Card */}
-              <div className="p-6 rounded-xl bg-[#141414] border border-[#242424] lg:col-span-1">
-                <h3 className="text-lg font-serif text-white mb-2">Request Bank Payout</h3>
-                <p className="text-xs text-[#888888] font-light mb-6">
-                  Available Balance: <strong className="text-white">₦{(stats?.earnings.availableNGN || 0).toLocaleString()}</strong>
-                </p>
-
-                {payoutError && (
-                  <div className="mb-4 p-3 rounded bg-red-950/40 border border-red-800 text-red-300 text-xs">
-                    {payoutError}
-                  </div>
-                )}
-
-                {payoutSuccess && (
-                  <div className="mb-4 p-3 rounded bg-green-950/40 border border-green-800 text-green-300 text-xs">
-                    {payoutSuccess}
-                  </div>
-                )}
-
-                <form onSubmit={handleRequestPayout} className="space-y-4">
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                      Withdrawal Amount (₦) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={minimumPayoutNGN || 1}
-                      max={stats?.earnings.availableNGN || 0}
-                      step={100}
-                      value={payoutAmountNGN}
-                      onChange={(e) => setPayoutAmountNGN(parseInt(e.target.value, 10) || 0)}
-                      className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white font-mono text-sm focus:border-[#C9A96E] outline-none"
-                    />
-                    <span className="text-[10px] text-[#666666] mt-1 block">
-                      {minimumPayoutNGN > 0
-                        ? `Minimum payout: ₦${minimumPayoutNGN.toLocaleString()}`
-                        : 'No minimum withdrawal limit (₦0 minimum)'}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded bg-[#181818] border border-[#292929] text-xs">
-                    <span className="text-[10px] uppercase tracking-wider text-[#888888] block mb-1">
-                      Destination Account
-                    </span>
-                    <div className="text-white font-medium">{currentUser.bankName || 'No bank saved'}</div>
-                    <div className="text-xs font-mono text-[#AAAAAA] mt-0.5">
-                      {currentUser.accountNumber || '••••••••••'} • {currentUser.accountName || 'Not Set'}
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={
-                      isSubmittingPayout ||
-                      (stats?.earnings.availableNGN || 0) <= 0 ||
-                      payoutAmountNGN <= 0 ||
-                      payoutAmountNGN > (stats?.earnings.availableNGN || 0) ||
-                      (minimumPayoutNGN > 0 && payoutAmountNGN < minimumPayoutNGN)
-                    }
-                    className="w-full py-3 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-40 text-black text-xs uppercase tracking-widest font-semibold rounded transition-all"
-                  >
-                    {isSubmittingPayout ? 'Submitting Request...' : 'Submit Withdrawal Request'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Payout History Ledger */}
-              <div className="rounded-xl bg-[#141414] border border-[#242424] lg:col-span-2 overflow-hidden">
-                <div className="p-4 sm:p-6 border-b border-[#242424]">
-                  <h3 className="text-lg font-serif text-white">Withdrawal History</h3>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-[#242424] bg-[#181818] text-[10px] uppercase tracking-widest text-[#888888]">
-                        <th className="py-3 px-4 sm:px-6">Requested Date</th>
-                        <th className="py-3 px-4">Amount (₦)</th>
-                        <th className="py-3 px-4">Bank Reference</th>
-                        <th className="py-3 px-4 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1F1F1F] text-xs">
-                      {payouts.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="py-12 text-center text-[#666666]">
-                            No payout requests found.
-                          </td>
-                        </tr>
-                      ) : (
-                        payouts.map((p) => (
-                          <tr key={p.id} className="hover:bg-[#181818]/60 transition-colors">
-                            <td className="py-4 px-4 sm:px-6 text-[#888888] font-mono">
-                              {new Date(p.requestedAt).toLocaleDateString()}
-                            </td>
-                            <td className="py-4 px-4 font-mono font-medium text-white">
-                              ₦{p.amountNGN.toLocaleString()}
-                            </td>
-                            <td className="py-4 px-4 font-mono text-[#888888]">
-                              {p.payoutReference || 'In Review'}
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              <span
-                                className={`inline-block text-[9px] uppercase tracking-wider px-2 py-0.5 rounded font-mono ${
-                                  p.status === 'PAID'
-                                    ? 'bg-emerald-950/60 text-emerald-300'
-                                    : p.status === 'PROCESSING'
-                                    ? 'bg-blue-950/60 text-blue-300'
-                                    : p.status === 'REJECTED'
-                                    ? 'bg-red-950/60 text-red-300'
-                                    : 'bg-amber-950/60 text-amber-300'
-                                }`}
-                              >
-                                {p.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ─── TAB 5: PROFILE & BANKING ──────────────────────────────────── */}
-        {activeTab === 'profile' && (
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="bg-[#141414] p-8 rounded-2xl border border-[#242424]">
-              <h2 className="text-2xl font-serif text-white mb-2">Banking & Creator Profile</h2>
-              <p className="text-xs text-[#888888] font-light mb-6">
-                Update your Nigerian settlement account and creator socials for campaign matching.
-              </p>
-
-              {profileError && (
-                <div className="mb-4 p-3 rounded bg-red-950/40 border border-red-800 text-red-300 text-xs">
-                  {profileError}
-                </div>
-              )}
-
-              {profileSuccess && (
-                <div className="mb-4 p-3 rounded bg-green-950/40 border border-green-800 text-green-300 text-xs">
-                  {profileSuccess}
-                </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="space-y-5">
-                <div>
-                  <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] block mb-3 font-semibold">
-                    SETTLEMENT BANK DETAILS
-                  </span>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                        Bank Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={profileForm.bankName}
-                        onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
-                        placeholder="e.g. GTBank, Access Bank, Zenith Bank, Kuda"
-                        className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                          Account Number (10 Digits) *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          maxLength={10}
-                          value={profileForm.accountNumber}
-                          onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
-                          placeholder="0123456789"
-                          className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white font-mono text-sm focus:border-[#C9A96E] outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                          Account Holder Name *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={profileForm.accountName}
-                          onChange={(e) => setProfileForm({ ...profileForm, accountName: e.target.value })}
-                          placeholder="Kelvin Adeyemi"
-                          className="w-full px-4 py-2.5 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-[#242424]">
-                  <span className="text-[10px] uppercase tracking-widest text-[#C9A96E] block mb-3 font-semibold">
-                    CREATOR SOCIALS
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                        Instagram
-                      </label>
-                      <input
-                        type="text"
-                        value={profileForm.instagram}
-                        onChange={(e) => setProfileForm({ ...profileForm, instagram: e.target.value })}
-                        placeholder="@yourhandle"
-                        className="w-full px-4 py-2 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] uppercase tracking-wider text-[#AAAAAA] mb-1">
-                        TikTok
-                      </label>
-                      <input
-                        type="text"
-                        value={profileForm.tiktok}
-                        onChange={(e) => setProfileForm({ ...profileForm, tiktok: e.target.value })}
-                        placeholder="@yourhandle"
-                        className="w-full px-4 py-2 bg-[#1C1C1C] border border-[#333333] rounded text-white text-sm focus:border-[#C9A96E] outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="w-full py-3 bg-[#C9A96E] hover:bg-[#DBC392] disabled:opacity-50 text-black text-xs uppercase tracking-widest font-semibold rounded transition-all mt-4"
-                >
-                  {isSavingProfile ? 'Saving Details...' : 'Save Bank & Profile Information'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+          {activeTab === 'support' && <div className="ap-page-content ap-section-stack"><section className="ap-support-hero"><div><div className="ap-eyebrow">HERE WHEN YOU NEED US</div><h2>Good partnerships<br /><em>start with good support.</em></h2><p>Reach PIERCYN using the existing support channels below. For account-specific help, include your affiliate email and referral code.</p></div><Headphones size={42} strokeWidth={1.3} /></section><div className="ap-support-grid"><a className="ap-panel ap-support-card" href="mailto:director@piercyn.com"><span className="ap-support-icon"><Mail size={19} /></span><div className="ap-eyebrow">EMAIL</div><h3>Affiliate assistance</h3><p>For portal access, profile or earnings questions.</p><strong>director@piercyn.com <ArrowUpRight size={14} /></strong></a><a className="ap-panel ap-support-card" href="https://wa.me/2348076431059?text=Hello%20PIERCYN%2C%20I%20need%20help%20with%20the%20affiliate%20program." target="_blank" rel="noreferrer"><span className="ap-support-icon"><MessageCircle size={19} /></span><div className="ap-eyebrow">WHATSAPP</div><h3>Message PIERCYN</h3><p>Use the existing PIERCYN WhatsApp support channel.</p><strong>Open WhatsApp <ArrowUpRight size={14} /></strong></a><a className="ap-panel ap-support-card" href="/affiliate"><span className="ap-support-icon"><FileText size={19} /></span><div className="ap-eyebrow">PROGRAM GUIDE</div><h3>Affiliate program</h3><p>Review the public program overview and published FAQs.</p><strong>View program details <ArrowUpRight size={14} /></strong></a><a className="ap-panel ap-support-card" href="/contact"><span className="ap-support-icon"><ExternalLink size={19} /></span><div className="ap-eyebrow">HELP CENTRE</div><h3>Contact PIERCYN</h3><p>Visit the existing store contact page for general enquiries.</p><strong>Open contact page <ArrowUpRight size={14} /></strong></a></div><div className="ap-support-note"><ShieldCheck size={17} /><span>Withdrawals are processed according to the current PIERCYN program rules. Pending commissions remain separate from the available balance shown in Withdrawals.</span></div></div>}
+        </>}
       </main>
+
+      {toast && <div className="ap-toast" role="status"><CheckCircle2 size={17} />{toast}</div>}
+      <footer className="ap-mobile-footer">PIERCYN · LAGOS, NIGERIA <button onClick={onBackToShop}>Shop PIERCYN <ArrowUpRight size={13} /></button></footer>
     </div>
   );
 };
