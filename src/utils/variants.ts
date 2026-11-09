@@ -32,14 +32,22 @@ export function usesSizeOnlyOptions(product: Pick<Product, 'category' | 'categor
 export function findProductVariant(product: Product, colorName?: string, size?: string) {
   if (!size || !product.variants?.length) return undefined;
   const matchingSize = product.variants.filter((variant) => variant.size.toUpperCase() === size.toUpperCase());
+  if (!matchingSize.length) return undefined;
+
   if (usesSizeOnlyOptions(product)) {
     return matchingSize.find((variant) => variant.active !== false && (variant.availableStock ?? 0) > 0)
       || matchingSize.find((variant) => variant.colour.toLowerCase() === (colorName || '').toLowerCase())
       || matchingSize[0];
   }
+
+  const normalizedColor = (colorName || '').toLowerCase().trim();
   return matchingSize.find((variant) =>
-    variant.colour.toLowerCase() === (colorName || '').toLowerCase() || variant.colourHex === colorName
-  );
+    variant.colour.toLowerCase().trim() === normalizedColor ||
+    variant.colourHex === colorName
+  ) || matchingSize.find((variant) =>
+    Boolean(normalizedColor && variant.colour.toLowerCase().includes(normalizedColor)) ||
+    Boolean(normalizedColor && normalizedColor.includes(variant.colour.toLowerCase()))
+  ) || matchingSize[0];
 }
 
 /**

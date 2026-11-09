@@ -63,7 +63,14 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       if (product.sizes && product.sizes.length > 0) {
         const firstAvailableSize = product.sizes.find((size) => {
           const variant = findProductVariant(product, product.colors?.[0]?.name, size);
-          return Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+          return isSupplierFulfilled
+            ? product.supplierVerified !== false && (!variant || variant.active !== false)
+            : Boolean(
+                !variant || (
+                  variant.active !== false &&
+                  (variant.availableStock === undefined || variant.availableStock > 0)
+                )
+              );
         });
         setSelectedSize(firstAvailableSize || product.sizes[0]);
       } else {
@@ -126,21 +133,45 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
 
   // Stock status determination
+  const isInactive = product.status === 'archived' || (product.status as string) === 'inactive';
+  const isSupplierFulfilled = product.availabilityType === 'available_to_order';
   const hasVariants = Boolean(product.variants?.length);
   const selectedVariant = findProductVariant(product, currentColor?.name, selectedSize);
   const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
-  const maxPurchaseQuantity = typeof selectedStock === 'number' ? Math.max(0, Math.min(10, selectedStock)) : 0;
-  const isSoldOut = product.isSoldOut || (hasVariants
-    ? Boolean(selectedSize) && (!selectedVariant || selectedVariant.active === false || typeof selectedStock !== 'number' || selectedStock <= 0)
-    : typeof selectedStock !== 'number' || selectedStock <= 0);
-  const isAlmostGone = product.stock !== undefined && product.stock > 0 && product.stock <= 5;
 
-  const maxAvailableQuantity =
-    product.availabilityType === 'available_to_order'
-      ? 10
-      : Math.max(1, Math.min(10, product.stock !== undefined ? product.stock : 10));
+  // A product with variants is ONLY completely sold out if ALL variants are inactive or 0 stock
+  const allVariantsSoldOut = hasVariants && (product.variants?.length ?? 0) > 0 && product.variants!.every(
+    (v) => v.active === false || (typeof v.availableStock === 'number' && v.availableStock <= 0)
+  );
+
+  const isSoldOut = isInactive || Boolean(product.isSoldOut) || (
+    isSupplierFulfilled
+      ? product.supplierVerified === false
+      : (hasVariants
+          ? allVariantsSoldOut
+          : (typeof product.stock === 'number' ? product.stock <= 0 : false))
+  );
+
+  // The specific size selection is sold out if its variant has 0 stock or is inactive
+  const isSelectionSoldOut = isSoldOut || (
+    !isSupplierFulfilled && Boolean(selectedSize) && Boolean(
+      hasVariants && selectedVariant
+        ? (selectedVariant.active === false || (typeof selectedStock === 'number' && selectedStock <= 0))
+        : (typeof selectedStock === 'number' && selectedStock <= 0)
+    )
+  );
+
+  const isAlmostGone = !isSupplierFulfilled && product.stock !== undefined && product.stock > 0 && product.stock <= 5;
+
+  const maxAvailableQuantity = isSupplierFulfilled
+    ? 10
+    : (typeof selectedStock === 'number' ? Math.max(1, Math.min(10, selectedStock)) : 10);
 
   const handleAddToCart = () => {
+    if (isSelectionSoldOut) {
+      showToast('This size is currently sold out. Please select an available size.');
+      return;
+    }
     if (product.sizes.length > 0 && !selectedSize) {
       setSizeError(true);
       showToast('Please select your size before adding to bag');
@@ -159,6 +190,10 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   };
 
   const handleBuyNow = () => {
+    if (isSelectionSoldOut) {
+      showToast('This size is currently sold out. Please select an available size.');
+      return;
+    }
     if (product.sizes.length > 0 && !selectedSize) {
       setSizeError(true);
       showToast('Please select your size to proceed to checkout');
@@ -323,7 +358,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             )}
 
 
-            {isSizeOnlyProduct && (
+            {product.sizes && product.sizes.length > 0 && (
               <section className="space-y-2 border-t border-[#DAD8D1] pt-3" aria-label="Choose size">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">SIZE</span>
@@ -332,7 +367,9 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 <div className="flex flex-wrap gap-2">
                   {sizeOptions.map((size) => {
                     const variant = findProductVariant(product, currentColor?.name, size);
-                    const inStock = Boolean(variant && variant.active !== false && (variant.availableStock ?? 0) > 0);
+                    const inStock = isSupplierFulfilled
+                      ? product.supplierVerified !== false && (!variant || variant.active !== false)
+                      : Boolean(!variant || (variant.active !== false && (variant.availableStock === undefined || variant.availableStock > 0)));
                     return (
                       <button
                         key={size}
@@ -406,11 +443,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isSoldOut}
+                  disabled={isSelectionSoldOut}
                   className="flex-1 h-12 min-h-[48px] px-6 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-[0.16em] hover:bg-black transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>ADD TO BAG</span>
+                  <span>{isSoldOut ? 'SOLD OUT' : isSelectionSoldOut ? 'OUT OF STOCK IN THIS SIZE' : 'ADD TO BAG'}</span>
                 </button>
 
                 <button
@@ -426,7 +463,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 </button>
               </div>
 
-              {!isSoldOut && (
+              {!isSelectionSoldOut && (
                 <button
                   onClick={handleBuyNow}
                   className="w-full h-12 min-h-[48px] px-6 rounded-full border border-[#141414] bg-transparent text-[#141414] hover:bg-[#141414] hover:text-[#F2F0EB] text-xs font-bold uppercase tracking-[0.16em] transition-all duration-300 inline-flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
@@ -522,11 +559,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
         <button
           onClick={handleAddToCart}
-          disabled={isSoldOut}
+          disabled={isSelectionSoldOut}
           className="flex-1 h-11 rounded-full bg-[#141414] text-[#F2F0EB] text-xs font-bold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>{isSoldOut ? 'SOLD OUT' : selectedSize ? `ADD TO BAG (${selectedSize})` : 'CHOOSE SIZE'}</span>
+          <span>{isSoldOut ? 'SOLD OUT' : isSelectionSoldOut ? 'OUT OF STOCK IN THIS SIZE' : selectedSize ? `ADD TO BAG (${selectedSize})` : 'CHOOSE SIZE'}</span>
         </button>
       </div>
 
