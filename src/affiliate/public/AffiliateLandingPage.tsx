@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import '../affiliate-responsive.css';
 import {
   ArrowRight,
   CheckCircle2,
@@ -48,6 +49,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   const [copiedLinkIndex, setCopiedLinkIndex] = useState<string | null>(null);
   const [activeStepTab, setActiveStepTab] = useState<number>(0);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const landingRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,6 +78,29 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const root = landingRootRef.current;
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      return;
+    }
+
+    const targets = root.querySelectorAll<HTMLElement>(':scope > section, [data-reveal-stagger] > *');
+    if (targets.length === 0) return;
+
+    root.classList.add('affiliate-motion-ready');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -44px 0px' });
+
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [featuredProducts.length]);
 
   // Commission math: ₦1,000 per qualifying order
   const COMMISSION_PER_ORDER = 1000;
@@ -179,7 +204,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased selection:bg-[#141414] selection:text-white relative">
+    <div ref={landingRootRef} className="affiliate-landing-shell min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased selection:bg-[#141414] selection:text-white relative">
       {/* Editorial Live Ticker Tape */}
       <div className="bg-[#141414] text-[#F2F0EB] overflow-hidden py-2.5 border-b border-[#2B2B2B]">
         <div className="flex whitespace-nowrap animate-[marquee_28s_linear_infinite] text-[11px] font-semibold tracking-[0.25em] uppercase space-x-8">
@@ -240,7 +265,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e2dc_1px,transparent_1px),linear-gradient(to_bottom,#e5e2dc_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          <div data-reveal-stagger className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             {/* Left Column: Editorial Headline & Copy */}
             <div className="lg:col-span-7 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E2DC] text-[11px] font-semibold uppercase tracking-[0.22em] text-[#737373] shadow-xs">
@@ -277,7 +302,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               </div>
 
               {/* Trust micro-badges */}
-              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-[#E5E2DC] max-w-lg">
+              <div data-reveal-stagger className="grid grid-cols-3 gap-4 pt-6 border-t border-[#E5E2DC] max-w-lg">
                 <div className="space-y-0.5">
                   <div className="text-2xl sm:text-3xl font-serif font-bold text-[#141414]">₦1,000</div>
                   <div className="text-[11px] text-[#737373] uppercase tracking-wider font-semibold">Per Order</div>
@@ -351,7 +376,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <div data-reveal-stagger className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {creatorSteps.map((step, idx) => (
               <div
                 key={step.num}
@@ -559,7 +584,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div data-reveal-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredProducts.map((product) => {
                 const colorIdx = selectedProductColors[product.id] || 0;
                 const activeColor = product.colors?.[colorIdx];
@@ -715,7 +740,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div data-reveal-stagger className="grid grid-cols-3 gap-4">
                   <div className="p-4 bg-[#FAF8F5] border border-[#E5E2DC]">
                     <div className="text-[10px] uppercase tracking-widest text-[#737373]">Available Balance</div>
                     <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">₦52,000</div>
