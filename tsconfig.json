@@ -30,6 +30,7 @@
     "node_modules",
     "dist",
     "build",
-    "prisma"
+    "prisma",
+    "apps/web"
   ]
 }

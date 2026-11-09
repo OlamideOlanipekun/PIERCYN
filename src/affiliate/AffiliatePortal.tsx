@@ -73,7 +73,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         {
           id: 'notif-welcome',
           title: 'Welcome to the PIERCYN Creator Network',
-          message: 'Your partner account is active. You earn ₦800 per delivered referral with 30-day cookie tracking.',
+          message: 'Your partner account is active. You earn ₦1,000 per delivered referral with 30-day cookie tracking.',
           timestamp: user.createdAt || new Date().toISOString(),
           type: 'announcement',
           isRead: false,
@@ -87,7 +87,7 @@ export const AffiliatePortal: React.FC<AffiliatePortalProps> = ({
         notifs.push({
           id: `notif-comm-${latest.id}`,
           title: 'Referral Order Attributed',
-          message: `Order #${latest.orderNumber} for "${latest.productName || 'PIERCYN piece'}" was attributed to your link. Commission: ₦800.`,
+          message: `Order #${latest.orderNumber} for "${latest.productName || 'PIERCYN piece'}" was attributed to your link. Commission: ₦1,000.`,
           timestamp: latest.createdAt,
           type: 'order',
           isRead: false,

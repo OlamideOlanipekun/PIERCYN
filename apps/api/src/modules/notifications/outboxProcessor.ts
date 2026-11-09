@@ -350,8 +350,10 @@ export class OutboxProcessor {
         return renderPaymentVerifiedEmail(payload as any);
 
       case 'ORDER_DISPATCHED':
-      case 'ORDER_DELIVERED':
-        return renderFulfilmentEmail(eventType, payload as any);
+      case 'ORDER_DELIVERED': {
+        const stage = eventType === 'ORDER_DISPATCHED' ? 'DISPATCHED' : 'DELIVERED';
+        return renderFulfilmentEmail(payload as any, stage);
+      }
 
       default:
         return null;

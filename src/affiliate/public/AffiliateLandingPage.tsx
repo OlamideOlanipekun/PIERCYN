@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -14,6 +15,12 @@ import {
   Layers,
   ArrowUpRight,
   Calculator,
+  Sliders,
+  DollarSign,
+  Copy,
+  Check,
+  Award,
+  Zap,
 } from 'lucide-react';
 import { catalogService } from '../../services/catalogService';
 import { PRODUCTS } from '../../data/products';
@@ -32,10 +39,15 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   onBackToShop,
 }) => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [ordersPerMonth, setOrdersPerMonth] = useState<number>(35);
+  const [selectedProductColors, setSelectedProductColors] = useState<Record<string, number>>({});
+  const [ordersPerMonth, setOrdersPerMonth] = useState<number>(40);
+  const [calcTimeframe, setCalcTimeframe] = useState<'monthly' | 'weekly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [copiedLinkIndex, setCopiedLinkIndex] = useState<string | null>(null);
+  const [activeStepTab, setActiveStepTab] = useState<number>(0);
+  const [showStickyBar, setShowStickyBar] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,6 +56,8 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
       .then((items) => {
         if (isMounted && items && items.length > 0) {
           setFeaturedProducts(items.slice(0, 4));
+        } else if (isMounted) {
+          setFeaturedProducts(PRODUCTS.slice(0, 4));
         }
       })
       .catch(() => {
@@ -51,29 +65,77 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
           setFeaturedProducts(PRODUCTS.slice(0, 4));
         }
       });
+
+    const handleScroll = () => {
+      setShowStickyBar(window.scrollY > 550);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
       isMounted = false;
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
-  const projectedEarnings = ordersPerMonth * 800;
+  // Commission math: ₦1,000 per qualifying order
+  const COMMISSION_PER_ORDER = 1000;
+  const projectedEarnings =
+    calcTimeframe === 'monthly'
+      ? ordersPerMonth * COMMISSION_PER_ORDER
+      : Math.round((ordersPerMonth / 4) * COMMISSION_PER_ORDER);
+
+  // Dynamic Tier Milestone based on order volume
+  const getCuratorTier = (orders: number) => {
+    if (orders >= 120) {
+      return {
+        name: 'Atelier Head Curator',
+        badge: 'VIP Tier',
+        perk: 'Dedicated PR seeding & bespoke capsule lookbook early access',
+        color: '#141414',
+      };
+    }
+    if (orders >= 60) {
+      return {
+        name: 'Senior Stylist',
+        badge: 'Tier 02',
+        perk: 'Direct WhatsApp creator desk & custom campaign deep-links',
+        color: '#141414',
+      };
+    }
+    if (orders >= 25) {
+      return {
+        name: 'Established Curator',
+        badge: 'Tier 01',
+        perk: 'Fast-track bank disbursement settlement within 24h',
+        color: '#141414',
+      };
+    }
+    return {
+      name: 'Emerging Tastemaker',
+      badge: 'Starter',
+      perk: '₦1,000 flat per delivered order · No minimum withdrawal',
+      color: '#737373',
+    };
+  };
+
+  const currentTier = getCuratorTier(ordersPerMonth);
 
   const faqs = [
     {
       q: 'How does the PIERCYN Affiliate Program work?',
-      a: 'When you are accepted as a PIERCYN creator affiliate, you receive a dedicated tracking code and custom links for the store, collections, and individual products. Whenever a customer purchases through your link and the order is successfully delivered, you earn a flat ₦800 commission.',
+      a: 'When accepted into the PIERCYN Creator Network, you receive a dedicated tracking code and custom links for the storefront, collections, or individual pieces. Whenever a customer orders through your link and the piece is delivered, you earn a flat ₦1,000 commission.',
     },
     {
       q: 'When do I get paid for qualifying referrals?',
-      a: 'Commissions clear 14 days after the customer takes delivery of their order (our standard return window). Once cleared, the balance moves to your Available Wallet, and you can withdraw anytime with no minimum balance directly to your Nigerian bank account.',
+      a: 'Commissions clear 14 days after the customer takes delivery of their order (our standard return window). Once cleared, the balance moves immediately to your Available Wallet for one-click withdrawal directly to your Nigerian bank account.',
     },
     {
       q: 'Is there a minimum withdrawal threshold?',
-      a: 'No. PIERCYN imposes zero minimum withdrawal amount. Whether you have ₦800 or ₦250,000 in approved commissions, you can request an instant disbursement to your registered bank account.',
+      a: 'No. PIERCYN enforces zero minimum withdrawal requirement. Whether you have ₦1,000 or ₦350,000 in approved available balance, you can request an instant disbursement.',
     },
     {
       q: 'How long does affiliate tracking last?',
-      a: 'Our tracking window lasts 30 full days from the moment someone clicks your link. If they return to piercyn.com and purchase anytime within 30 days, you receive the full commission credit.',
+      a: 'Our tracking window lasts 30 full days from the moment someone clicks your referral link. If they return to piercyn.com and complete their order anytime within 30 days, you receive the full ₦1,000 credit.',
     },
     {
       q: 'What assets do I receive to promote PIERCYN?',
@@ -81,19 +143,63 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
     },
     {
       q: 'Who is eligible to join the Creator Network?',
-      a: 'We welcome stylists, content creators, fashion enthusiasts, and community builders who resonate with contemporary streetwear, refined tailoring, and African design narratives. Every application is reviewed individually by our team within 24 to 48 hours.',
+      a: 'We welcome stylists, content creators, fashion enthusiasts, and community builders who resonate with contemporary African streetwear and refined tailoring. Every application is reviewed individually by our team within 24 to 48 hours.',
     },
   ];
 
+  const creatorSteps = [
+    {
+      num: '01',
+      title: 'Apply & Get Curated',
+      subtitle: '24–48h Curation Review',
+      desc: 'Submit your creator profile and social handles. Our Lagos editorial team approves creators who align with contemporary luxury streetwear aesthetics.',
+      metric: 'Instant code generated',
+    },
+    {
+      num: '02',
+      title: 'Share Curated Pieces',
+      subtitle: '30-Day Active Cookie',
+      desc: 'Generate trackable links to hoodies, tees, caps, or drop campaigns. Share effortlessly on Instagram Stories, TikTok, Twitter/X, and WhatsApp.',
+      metric: 'Deep-link to any piece',
+    },
+    {
+      num: '03',
+      title: 'Earn ₦1,000 Per Order',
+      subtitle: '₦0 Minimum Payout',
+      desc: 'For every qualifying delivered order attributed to your links, receive ₦1,000 directly into your wallet. Withdraw anytime directly to your bank account.',
+      metric: 'Direct NIP bank transfer',
+    },
+  ];
+
+  const handleCopyProductLink = (slug: string) => {
+    const url = `https://piercyn.vercel.app/product/${slug}?ref=CREATOR_VIP`;
+    navigator.clipboard.writeText(url);
+    setCopiedLinkIndex(slug);
+    setTimeout(() => setCopiedLinkIndex(null), 2000);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased selection:bg-[#141414] selection:text-white">
-      {/* Editorial Announcement Bar */}
-      <div className="bg-[#141414] text-[#F2F0EB] text-center py-2 px-4 text-[11px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-3">
-        <span>PIERCYN Creator Network</span>
-        <span className="opacity-40">·</span>
-        <span>₦800 Commission On Every Delivered Order</span>
-        <span className="opacity-40">·</span>
-        <span className="hidden sm:inline">Direct Bank Payouts</span>
+    <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased selection:bg-[#141414] selection:text-white relative">
+      {/* Editorial Live Ticker Tape */}
+      <div className="bg-[#141414] text-[#F2F0EB] overflow-hidden py-2.5 border-b border-[#2B2B2B]">
+        <div className="flex whitespace-nowrap animate-[marquee_28s_linear_infinite] text-[11px] font-semibold tracking-[0.25em] uppercase space-x-8">
+          <span>PIERCYN CREATOR NETWORK</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>30-DAY COOKIE ATTRIBUTION</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>₦0 MINIMUM WITHDRAWAL</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>CONTEMPORARY AFRICAN STREETWEAR</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>DIRECT NIGERIAN BANK PAYOUTS</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>PIERCYN CREATOR NETWORK</span>
+          <span className="text-[#A48B71]">·</span>
+          <span>₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER</span>
+          <span className="text-[#A48B71]">·</span>
+        </div>
       </div>
 
       {/* Navigation Header */}
@@ -120,7 +226,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
             </button>
             <button
               onClick={() => onNavigate('register')}
-              className="px-5 py-2.5 bg-[#141414] hover:bg-[#262626] text-white text-xs font-semibold uppercase tracking-widest transition-colors"
+              className="px-5 py-2.5 bg-[#141414] hover:bg-[#262626] text-white text-xs font-semibold uppercase tracking-widest transition-all shadow-sm active:scale-95"
             >
               Become an Affiliate
             </button>
@@ -130,13 +236,16 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28 border-b border-[#E5E2DC]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Subtle decorative grid backdrop */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e2dc_1px,transparent_1px),linear-gradient(to_bottom,#e5e2dc_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40 pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             {/* Left Column: Editorial Headline & Copy */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E2DC] text-[11px] font-semibold uppercase tracking-[0.22em] text-[#737373]">
-                <Sparkles className="w-3.5 h-3.5 text-[#141414]" />
-                Official Creator & Affiliate Program
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E2DC] text-[11px] font-semibold uppercase tracking-[0.22em] text-[#737373] shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Official Creator & Affiliate Program</span>
               </div>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-[#141414] leading-[1.05]">
@@ -147,20 +256,21 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
 
               <p className="text-base sm:text-lg text-[#555555] max-w-xl leading-relaxed font-normal">
                 Turn your style, community, and creativity into earnings. Share PIERCYN, connect people with pieces
-                they love, and earn <span className="text-[#141414] font-semibold">₦800</span> for every qualifying
+                they love, and earn <span className="text-[#141414] font-bold border-b border-[#141414] pb-0.5">₦1,000</span> for every qualifying
                 delivered referral.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                 <button
                   onClick={() => onNavigate('register')}
-                  className="px-8 py-4 bg-[#141414] hover:bg-[#262626] text-white text-xs font-semibold uppercase tracking-[0.22em] flex items-center justify-center gap-3 transition-colors shadow-sm"
+                  className="group px-8 py-4 bg-[#141414] hover:bg-[#262626] text-white text-xs font-semibold uppercase tracking-[0.22em] flex items-center justify-center gap-3 transition-all shadow-md active:scale-98 cursor-pointer"
                 >
-                  Become an Affiliate <ArrowRight className="w-4 h-4" />
+                  <span>Become an Affiliate</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button
                   onClick={() => onNavigate('login')}
-                  className="px-8 py-4 bg-white hover:bg-[#FAF8F5] text-[#141414] border border-[#E5E2DC] hover:border-[#141414] text-xs font-semibold uppercase tracking-[0.22em] transition-all text-center"
+                  className="px-8 py-4 bg-white hover:bg-[#FAF8F5] text-[#141414] border border-[#E5E2DC] hover:border-[#141414] text-xs font-semibold uppercase tracking-[0.22em] transition-all text-center shadow-xs cursor-pointer"
                 >
                   Affiliate Login
                 </button>
@@ -168,30 +278,30 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
 
               {/* Trust micro-badges */}
               <div className="grid grid-cols-3 gap-4 pt-6 border-t border-[#E5E2DC] max-w-lg">
-                <div>
-                  <div className="text-xl sm:text-2xl font-serif font-semibold text-[#141414]">₦800</div>
-                  <div className="text-[11px] text-[#737373] uppercase tracking-wider mt-0.5">Per Order</div>
+                <div className="space-y-0.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-[#141414]">₦1,000</div>
+                  <div className="text-[11px] text-[#737373] uppercase tracking-wider font-semibold">Per Order</div>
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-serif font-semibold text-[#141414]">30 Days</div>
-                  <div className="text-[11px] text-[#737373] uppercase tracking-wider mt-0.5">Attribution</div>
+                <div className="space-y-0.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-[#141414]">30 Days</div>
+                  <div className="text-[11px] text-[#737373] uppercase tracking-wider font-semibold">Cookie Window</div>
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-serif font-semibold text-[#141414]">₦0 Min</div>
-                  <div className="text-[11px] text-[#737373] uppercase tracking-wider mt-0.5">Withdrawal</div>
+                <div className="space-y-0.5">
+                  <div className="text-2xl sm:text-3xl font-serif font-bold text-[#141414]">₦0 Min</div>
+                  <div className="text-[11px] text-[#737373] uppercase tracking-wider font-semibold">Direct Payout</div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Editorial Campaign Imagery */}
+            {/* Right Column: Editorial Campaign Imagery with Dynamic Overlay */}
             <div className="lg:col-span-5 relative">
               <div className="relative mx-auto max-w-md lg:max-w-none">
-                {/* Main Hero Card */}
-                <div className="aspect-[3/4] bg-[#E5E2DC] overflow-hidden border border-[#E5E2DC] shadow-xl relative group">
+                {/* Main Hero Card with dynamic hover depth */}
+                <div className="aspect-[3/4] bg-[#E5E2DC] overflow-hidden border border-[#E5E2DC] shadow-2xl relative group">
                   <img
                     src="/images/affiliate-hero.webp"
                     alt="PIERCYN Editorial Campaign"
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover object-center group-hover:scale-108 transition-transform duration-700 ease-out"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
@@ -200,12 +310,24 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="absolute top-4 left-4 bg-[#141414]/90 backdrop-blur-sm text-white px-3 py-1 text-[10px] uppercase tracking-[0.22em] font-medium">
                     PIERCYN STUDIOS · LAGOS
                   </div>
-                  {/* Floating live badge */}
-                  <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md border border-[#E5E2DC] p-3 shadow-lg max-w-[200px]">
-                    <div className="text-[10px] uppercase tracking-wider text-[#737373] font-semibold">Earn on Pieces</div>
-                    <div className="text-xs font-serif font-medium text-[#141414] mt-0.5">
-                      ₦800 per referral credited directly
+
+                  {/* Dynamic Floating Live Rate Badge */}
+                  <div className="absolute bottom-5 left-5 right-5 bg-white/95 backdrop-blur-md border border-[#E5E2DC] p-4 shadow-xl flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#737373] font-bold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                        <span>Live Referral Reward</span>
+                      </div>
+                      <div className="text-base font-serif font-bold text-[#141414] mt-0.5">
+                        ₦1,000 per delivered piece
+                      </div>
                     </div>
+                    <button
+                      onClick={() => onNavigate('register')}
+                      className="px-3 py-1.5 bg-[#141414] text-white text-[10px] font-semibold uppercase tracking-wider hover:bg-[#262626] transition-colors"
+                    >
+                      Join Now
+                    </button>
                   </div>
                 </div>
               </div>
@@ -214,7 +336,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
         </div>
       </section>
 
-      {/* How It Works Section */}
+      {/* Dynamic Step Progression (Interactive tabs) */}
       <section className="py-20 sm:py-28 bg-white border-b border-[#E5E2DC]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
@@ -229,86 +351,146 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-            {/* Step 1 */}
-            <div className="p-8 bg-[#FAF8F5] border border-[#E5E2DC] space-y-4 relative">
-              <span className="text-3xl font-serif text-[#141414] font-semibold">01</span>
-              <h3 className="text-lg font-serif font-medium text-[#141414] uppercase tracking-wide">
-                Apply & Get Approved
-              </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Submit your simple creator application with your social handles. Our team reviews submissions within 24 to 48 hours to ensure brand alignment.
-              </p>
-              <div className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-[#737373]">
-                Instant code generation upon approval
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {creatorSteps.map((step, idx) => (
+              <div
+                key={step.num}
+                onMouseEnter={() => setActiveStepTab(idx)}
+                className={`p-8 border transition-all duration-300 relative flex flex-col justify-between cursor-pointer ${
+                  activeStepTab === idx
+                    ? 'bg-[#141414] text-white border-[#141414] shadow-xl -translate-y-1'
+                    : 'bg-[#FAF8F5] text-[#141414] border-[#E5E2DC] hover:border-[#141414]'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-4xl font-serif font-bold ${
+                        activeStepTab === idx ? 'text-[#A48B71]' : 'text-[#141414]'
+                      }`}
+                    >
+                      {step.num}
+                    </span>
+                    <span
+                      className={`text-[9px] uppercase tracking-widest px-2 py-0.5 font-bold ${
+                        activeStepTab === idx
+                          ? 'bg-white/10 text-white border border-white/20'
+                          : 'bg-white text-[#737373] border border-[#E5E2DC]'
+                      }`}
+                    >
+                      {step.subtitle}
+                    </span>
+                  </div>
 
-            {/* Step 2 */}
-            <div className="p-8 bg-[#FAF8F5] border border-[#E5E2DC] space-y-4 relative">
-              <span className="text-3xl font-serif text-[#141414] font-semibold">02</span>
-              <h3 className="text-lg font-serif font-medium text-[#141414] uppercase tracking-wide">
-                Curate & Share Pieces
-              </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Generate custom links for your favorite hoodies, tees, caps, or drop campaigns. Share them seamlessly on Instagram, TikTok, WhatsApp, or Twitter.
-              </p>
-              <div className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-[#737373]">
-                30-day tracking cookie attached to every link
-              </div>
-            </div>
+                  <h3 className="text-xl font-serif font-medium uppercase tracking-wide">
+                    {step.title}
+                  </h3>
 
-            {/* Step 3 */}
-            <div className="p-8 bg-[#FAF8F5] border border-[#E5E2DC] space-y-4 relative">
-              <span className="text-3xl font-serif text-[#141414] font-semibold">03</span>
-              <h3 className="text-lg font-serif font-medium text-[#141414] uppercase tracking-wide">
-                Earn ₦800 Per Order
-              </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                For every qualifying delivered order attributed to your links, receive ₦800 directly in your wallet. Withdraw anytime directly to your bank.
-              </p>
-              <div className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-[#737373]">
-                Zero minimum withdrawal threshold
+                  <p
+                    className={`text-xs sm:text-sm leading-relaxed ${
+                      activeStepTab === idx ? 'text-[#D4D2CD]' : 'text-[#555555]'
+                    }`}
+                  >
+                    {step.desc}
+                  </p>
+                </div>
+
+                <div
+                  className={`pt-6 mt-6 border-t text-[11px] font-semibold uppercase tracking-wider flex items-center justify-between ${
+                    activeStepTab === idx ? 'border-white/15 text-[#A48B71]' : 'border-[#E5E2DC] text-[#737373]'
+                  }`}
+                >
+                  <span>{step.metric}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Commission Potential Calculator */}
+      {/* Dynamic Commission Potential Calculator */}
       <section className="py-20 sm:py-28 bg-[#F2F0EB] border-b border-[#E5E2DC]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white border border-[#E5E2DC] p-8 sm:p-12 shadow-sm space-y-8">
+          <div className="bg-white border border-[#E5E2DC] p-8 sm:p-12 shadow-md space-y-8 relative overflow-hidden">
+            {/* Header with Timeframe Toggle */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-[#E5E2DC] pb-8">
               <div>
                 <span className="text-[11px] tracking-[0.24em] font-semibold uppercase text-[#737373]">
-                  Interactive Estimate
+                  Interactive Earnings Simulator
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-serif text-[#141414] font-medium mt-1">
                   Commission Potential Calculator
                 </h2>
                 <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  Adjust the slider based on your estimated monthly referred orders.
+                  Simulate your projected revenue based on <strong>₦1,000 per delivered order</strong>.
                 </p>
               </div>
-              <div className="text-left md:text-right bg-[#FAF8F5] p-4 border border-[#E5E2DC] w-full md:w-auto">
-                <span className="text-[10px] uppercase tracking-widest text-[#737373] block font-semibold">
-                  Estimated Monthly Payout
-                </span>
-                <span className="text-3xl sm:text-4xl font-serif font-bold text-[#141414]">
+
+              {/* Projected Display with Timeframe switch */}
+              <div className="bg-[#FAF8F5] p-5 border border-[#141414] w-full md:w-auto text-left md:text-right shrink-0">
+                <div className="flex items-center justify-between md:justify-end gap-3 mb-1">
+                  <span className="text-[10px] uppercase tracking-widest text-[#737373] font-bold">
+                    Projected Payout
+                  </span>
+                  <div className="inline-flex p-0.5 bg-[#E5E2DC] rounded-none text-[9px] uppercase font-bold">
+                    <button
+                      onClick={() => setCalcTimeframe('monthly')}
+                      className={`px-2 py-0.5 transition-colors ${
+                        calcTimeframe === 'monthly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setCalcTimeframe('weekly')}
+                      className={`px-2 py-0.5 transition-colors ${
+                        calcTimeframe === 'weekly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
+                      }`}
+                    >
+                      Weekly
+                    </button>
+                  </div>
+                </div>
+                <div className="text-3xl sm:text-4xl font-serif font-bold text-[#141414] tracking-tight">
                   {formatNGN(projectedEarnings)}
+                </div>
+                <span className="text-[10px] uppercase tracking-wider text-[#737373] font-medium">
+                  {calcTimeframe === 'monthly' ? 'Based on 30-day projection' : 'Based on weekly pace'}
                 </span>
               </div>
             </div>
 
-            {/* Slider */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-xs font-semibold text-[#141414] uppercase tracking-wider">
-                <span>Monthly Delivered Orders:</span>
-                <span className="text-base font-serif font-bold px-3 py-1 bg-[#F2F0EB] border border-[#E5E2DC]">
-                  {ordersPerMonth} orders
-                </span>
+            {/* Slider with Volume Presets */}
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="text-xs font-semibold text-[#141414] uppercase tracking-wider flex items-center gap-2">
+                  <span>Monthly Delivered Orders:</span>
+                  <span className="text-base font-serif font-bold px-3 py-1 bg-[#F2F0EB] border border-[#E5E2DC]">
+                    {ordersPerMonth} orders
+                  </span>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase text-[#737373] font-semibold hidden sm:inline">Presets:</span>
+                  {[15, 40, 80, 150].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setOrdersPerMonth(preset)}
+                      className={`px-2.5 py-1 text-[11px] font-mono font-semibold border transition-all ${
+                        ordersPerMonth === preset
+                          ? 'bg-[#141414] text-white border-[#141414]'
+                          : 'bg-[#FAF8F5] text-[#555555] border-[#E5E2DC] hover:border-[#141414]'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Range Input */}
               <input
                 type="range"
                 min="5"
@@ -316,33 +498,44 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                 step="5"
                 value={ordersPerMonth}
                 onChange={(e) => setOrdersPerMonth(Number(e.target.value))}
-                className="w-full h-2 bg-[#E5E2DC] rounded-none appearance-none cursor-pointer accent-[#141414]"
+                className="w-full h-3 bg-[#E5E2DC] appearance-none cursor-pointer accent-[#141414]"
               />
-              <div className="flex justify-between text-[11px] text-[#737373]">
-                <span>5 orders (₦4,000)</span>
-                <span>50 orders (₦40,000)</span>
-                <span>100 orders (₦80,000)</span>
-                <span>200 orders (₦160,000)</span>
+
+              <div className="flex justify-between text-[11px] text-[#737373] font-mono">
+                <span>5 orders (₦5,000)</span>
+                <span>50 orders (₦50,000)</span>
+                <span>100 orders (₦100,000)</span>
+                <span>200 orders (₦200,000)</span>
               </div>
             </div>
 
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#555555] bg-[#FAF8F5] p-4 border border-[#E5E2DC]">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#141414]" />
-                <span>₦800 per order · 30-day cookie · Direct Nigerian bank account transfers</span>
+            {/* Dynamic Milestone Card */}
+            <div className="p-5 bg-[#FAF8F5] border border-[#E5E2DC] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-[#141414]" />
+                  <span className="text-xs uppercase tracking-wider font-bold text-[#141414]">
+                    {currentTier.name}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 bg-white border border-[#E5E2DC] font-semibold text-[#737373]">
+                    {currentTier.badge}
+                  </span>
+                </div>
+                <p className="text-xs text-[#555555]">{currentTier.perk}</p>
               </div>
+
               <button
                 onClick={() => onNavigate('register')}
-                className="text-xs font-semibold uppercase tracking-wider text-[#141414] hover:underline shrink-0"
+                className="px-5 py-2.5 bg-[#141414] hover:bg-[#262626] text-white text-xs uppercase tracking-widest font-semibold shrink-0 transition-colors cursor-pointer"
               >
-                Start Earning Now →
+                Apply for this Tier →
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Featured PIERCYN Pieces for Affiliates */}
+      {/* Featured PIERCYN Pieces (with Live Colorway Switcher & Direct Copy) */}
       {featuredProducts.length > 0 && (
         <section className="py-20 sm:py-28 bg-white border-b border-[#E5E2DC]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -355,7 +548,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   Pieces Ready for Your Curation
                 </h2>
                 <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  High-converting streetwear staples crafted in Lagos, Nigeria.
+                  High-converting streetwear staples crafted in Lagos, Nigeria. Every piece pays <strong>₦1,000</strong> per qualifying referral.
                 </p>
               </div>
               <button
@@ -366,13 +559,17 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredProducts.map((product) => {
-                const img = product.images?.[0] || product.colors?.[0]?.image || '';
+                const colorIdx = selectedProductColors[product.id] || 0;
+                const activeColor = product.colors?.[colorIdx];
+                const img = activeColor?.image || product.images?.[0] || '';
+                const isCopied = copiedLinkIndex === product.slug;
+
                 return (
                   <div
                     key={product.id}
-                    className="group bg-[#FAF8F5] border border-[#E5E2DC] overflow-hidden flex flex-col justify-between"
+                    className="group bg-[#FAF8F5] border border-[#E5E2DC] hover:border-[#141414] transition-all flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md"
                   >
                     <div className="aspect-[3/4] bg-[#E5E2DC] overflow-hidden relative">
                       {img ? (
@@ -387,20 +584,56 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                           PIERCYN
                         </div>
                       )}
-                      <div className="absolute top-2 left-2 bg-[#141414] text-white text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5">
-                        ₦800 Commission
+
+                      {/* Commission Tag */}
+                      <div className="absolute top-3 left-3 bg-[#141414] text-white text-[9px] uppercase tracking-widest font-bold px-2 py-0.5">
+                        ₦1,000 Commission
+                      </div>
+
+                      {/* Quick copy overlay on hover */}
+                      <div className="absolute inset-x-3 bottom-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleCopyProductLink(product.slug)}
+                          className="w-full py-2 bg-white/95 backdrop-blur-sm text-[#141414] text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md hover:bg-white transition-colors"
+                        >
+                          {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{isCopied ? 'Link Copied!' : 'Copy Piece Link'}</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="p-4 space-y-1">
-                      <div className="text-[10px] uppercase tracking-wider text-[#737373] font-medium">
-                        {product.category || 'Apparel'}
+
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-[#737373]">
+                        <span>{product.category || 'Apparel'}</span>
+                        {product.gsm && <span>{product.gsm}</span>}
                       </div>
-                      <h4 className="text-xs sm:text-sm font-semibold uppercase text-[#141414] truncate">
+
+                      <h4 className="text-sm font-semibold uppercase text-[#141414] truncate">
                         {product.name}
                       </h4>
-                      <div className="text-xs font-serif font-bold text-[#141414] pt-1">
+
+                      <div className="text-xs font-serif font-bold text-[#141414]">
                         {formatNGN(product.priceNGN)}
                       </div>
+
+                      {/* Interactive Colorway Switcher */}
+                      {product.colors && product.colors.length > 1 && (
+                        <div className="flex items-center gap-1.5 pt-1">
+                          {product.colors.map((c, idx) => (
+                            <button
+                              key={c.name}
+                              onClick={() =>
+                                setSelectedProductColors((prev) => ({ ...prev, [product.id]: idx }))
+                              }
+                              className={`w-3.5 h-3.5 rounded-full border transition-all ${
+                                colorIdx === idx ? 'border-[#141414] scale-110 ring-1 ring-[#141414]' : 'border-black/20'
+                              }`}
+                              style={{ backgroundColor: c.hex }}
+                              title={c.name}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -459,7 +692,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               <div className="pt-4">
                 <button
                   onClick={() => onNavigate('register')}
-                  className="px-6 py-3.5 bg-[#141414] hover:bg-[#262626] text-white text-xs uppercase tracking-widest font-semibold transition-colors"
+                  className="px-6 py-3.5 bg-[#141414] hover:bg-[#262626] text-white text-xs uppercase tracking-widest font-semibold transition-colors shadow-sm"
                 >
                   Join the Network
                 </button>
@@ -477,23 +710,23 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#141414]"></span>
-                    <span className="text-[10px] uppercase tracking-wider text-[#737373] font-semibold">Active Creator</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-[10px] uppercase tracking-wider text-[#737373] font-semibold">Active Partner</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-4 bg-[#FAF8F5] border border-[#E5E2DC]">
                     <div className="text-[10px] uppercase tracking-widest text-[#737373]">Available Balance</div>
-                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">₦42,400</div>
+                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">₦52,000</div>
                   </div>
                   <div className="p-4 bg-[#FAF8F5] border border-[#E5E2DC]">
                     <div className="text-[10px] uppercase tracking-widest text-[#737373]">Delivered Orders</div>
-                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">53</div>
+                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">52</div>
                   </div>
                   <div className="p-4 bg-[#FAF8F5] border border-[#E5E2DC]">
-                    <div className="text-[10px] uppercase tracking-widest text-[#737373]">Conversion Rate</div>
-                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">4.8%</div>
+                    <div className="text-[10px] uppercase tracking-widest text-[#737373]">Commission Rate</div>
+                    <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414] mt-1">₦1,000</div>
                   </div>
                 </div>
 
@@ -536,12 +769,13 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                 <div key={idx} className="py-5">
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full flex items-center justify-between text-left text-base sm:text-lg font-serif font-medium text-[#141414] hover:text-[#737373] transition-colors gap-4"
+                    className="w-full flex items-center justify-between text-left text-base sm:text-lg font-serif font-medium text-[#141414] hover:text-[#737373] transition-colors gap-4 cursor-pointer"
                   >
                     <span>{faq.q}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-[#737373] shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''
-                        }`}
+                      className={`w-4 h-4 text-[#737373] shrink-0 transition-transform duration-300 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
                     />
                   </button>
                   {isOpen && (
@@ -557,7 +791,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
           <div className="text-center pt-8">
             <button
               onClick={() => setIsGuidelinesOpen(true)}
-              className="text-xs uppercase tracking-widest font-semibold text-[#141414] hover:underline"
+              className="text-xs uppercase tracking-widest font-semibold text-[#141414] hover:underline cursor-pointer"
             >
               Read Full Program Guidelines & Terms →
             </button>
@@ -575,18 +809,18 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
             Ready to Monetize Your Taste?
           </h2>
           <p className="text-sm sm:text-base text-[#A3A3A3] max-w-xl mx-auto leading-relaxed">
-            Join a curated roster of tastemakers, stylists, and creators sharing contemporary African fashion.
+            Join a curated roster of tastemakers, stylists, and creators sharing contemporary African fashion at ₦1,000 per referral.
           </p>
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={() => onNavigate('register')}
-              className="w-full sm:w-auto px-8 py-4 bg-white text-[#141414] hover:bg-[#F2F0EB] text-xs uppercase tracking-[0.22em] font-semibold transition-colors shadow-lg"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-[#141414] hover:bg-[#F2F0EB] text-xs uppercase tracking-[0.22em] font-semibold transition-colors shadow-lg cursor-pointer"
             >
               Apply to Partner Today
             </button>
             <button
               onClick={() => onNavigate('login')}
-              className="w-full sm:w-auto px-8 py-4 border border-[#404040] hover:border-white text-white text-xs uppercase tracking-[0.22em] font-semibold transition-colors"
+              className="w-full sm:w-auto px-8 py-4 border border-[#404040] hover:border-white text-white text-xs uppercase tracking-[0.22em] font-semibold transition-colors cursor-pointer"
             >
               Creator Sign In
             </button>
@@ -606,19 +840,19 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
           <div className="flex items-center gap-6">
             <button
               onClick={() => setIsGuidelinesOpen(true)}
-              className="hover:text-[#141414] transition-colors"
+              className="hover:text-[#141414] transition-colors cursor-pointer"
             >
               Operating Guidelines
             </button>
             <button
               onClick={() => setIsSupportOpen(true)}
-              className="hover:text-[#141414] transition-colors"
+              className="hover:text-[#141414] transition-colors cursor-pointer"
             >
               Creator Support
             </button>
             <button
               onClick={onBackToShop}
-              className="hover:text-[#141414] transition-colors font-medium text-[#141414]"
+              className="hover:text-[#141414] transition-colors font-medium text-[#141414] cursor-pointer"
             >
               Back to Storefront
             </button>
@@ -626,10 +860,37 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
         </div>
       </footer>
 
+      {/* Floating Dynamic Sticky Bar on scroll */}
+      {showStickyBar && (
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-[#141414] text-white border-t border-[#2B2B2B] px-4 py-3 shadow-2xl flex items-center justify-between animate-fade-up">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] tracking-widest font-mono uppercase bg-[#262626] px-2 py-0.5 text-[#A48B71]">
+              ₦1,000 / ORDER
+            </span>
+            <span className="text-xs font-serif font-medium hidden sm:inline">
+              Earn on every qualifying delivered piece
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onNavigate('login')}
+              className="text-xs uppercase tracking-wider text-[#A3A3A3] hover:text-white transition-colors hidden sm:inline"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => onNavigate('register')}
+              className="px-4 py-2 bg-white text-[#141414] hover:bg-[#F2F0EB] text-[11px] uppercase tracking-widest font-bold transition-colors"
+            >
+              Apply to Partner →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Guidelines & Support Modals */}
       <GuidelinesModal isOpen={isGuidelinesOpen} onClose={() => setIsGuidelinesOpen(false)} />
       <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
     </div>
   );
 };
-

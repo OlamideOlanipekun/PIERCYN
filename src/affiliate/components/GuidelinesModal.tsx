@@ -47,7 +47,7 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClos
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#141414] shrink-0 mt-0.5" />
                 <span>
-                  <strong>₦800 Flat Commission</strong> per qualifying delivered referral order.
+                  <strong>₦1,000 Flat Commission</strong> per qualifying delivered referral order.
                 </span>
               </div>
               <div className="flex items-start gap-2">

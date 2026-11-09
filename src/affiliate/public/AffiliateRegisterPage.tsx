@@ -146,7 +146,7 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-[#141414] shrink-0 mt-0.5" />
                   <span>
-                    <strong className="text-[#141414]">₦800 Flat Commission</strong> per qualifying delivered referral order.
+                    <strong className="text-[#141414]">₦1,000 Flat Commission</strong> per qualifying delivered referral order.
                   </span>
                 </div>
                 <div className="flex items-start gap-3">
@@ -388,7 +388,7 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                       >
                         PIERCYN Affiliate Operating Guidelines
                       </button>
-                      , including the ₦800 per delivered order commission structure, 14-day clearance policy, and prohibition of self-referrals.
+                      , including the ₦1,000 per delivered order commission structure, 14-day clearance policy, and prohibition of self-referrals.
                     </span>
                   </label>
                 </div>

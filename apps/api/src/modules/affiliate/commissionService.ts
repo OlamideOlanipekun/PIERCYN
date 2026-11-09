@@ -5,14 +5,14 @@ import { AffiliateNotificationService } from './affiliateNotificationService';
 // ============================================================
 // COMMISSION SERVICE
 // Authoritative single source of truth for all commission calculations.
-// Centralised order-level calculation: ₦800 = 80,000 kobo per qualifying order.
+// Centralised order-level calculation: ₦1,000 = 100,000 kobo per qualifying order.
 // Immutable ledger movements and atomic wallet projections.
 // ============================================================
 
 export class CommissionService {
   /**
    * Authoritative commission amount per qualifying order in Kobo.
-   * ₦800 = 80,000 kobo.
+   * ₦1,000 = 100,000 kobo.
    */
   public static calculateAffiliateCommission(): number {
     return AFFILIATE_CONFIG.commissionPerOrderKobo;

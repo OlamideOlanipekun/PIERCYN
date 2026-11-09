@@ -79,7 +79,7 @@ telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
 
       const [orderCount, pendingReceipts, pendingQuotes] = await Promise.all([
         prisma.order.count({ where: { createdAt: { gte: today } } }),
-        prisma.order.count({ where: { paymentStatus: 'UNDER_REVIEW' } }),
+        prisma.order.count({ where: { paymentStatus: 'AWAITING_VERIFICATION' } }),
         prisma.order.count({ where: { quoteStatus: 'PENDING' } }),
       ]);
 
@@ -95,7 +95,7 @@ telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
 
     if (text === '/pending' || text === '/receipts') {
       const orders = await prisma.order.findMany({
-        where: { paymentStatus: 'UNDER_REVIEW' },
+        where: { paymentStatus: 'AWAITING_VERIFICATION' },
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: { orderNumber: true, totalNGN: true, customerFirstName: true, customerLastName: true },

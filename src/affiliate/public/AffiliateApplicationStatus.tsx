@@ -234,7 +234,7 @@ export const AffiliateApplicationStatus: React.FC<AffiliateApplicationStatusProp
                 </span>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Your custom affiliate link and unique tracking code are activated instantly.</li>
-                  <li>You earn ₦800 flat commission per qualifying delivered referral order.</li>
+                  <li>You earn ₦1,000 flat commission per qualifying delivered referral order.</li>
                   <li>Access to high-res lookbooks, video assets, and pre-written editorial captions.</li>
                 </ul>
               </div>

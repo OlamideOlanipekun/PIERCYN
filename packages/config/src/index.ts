@@ -4,7 +4,7 @@ export const AFFILIATE_CONFIG = {
     typeof process !== 'undefined' && process.env?.AFFILIATE_PROGRAM_ENABLED !== undefined
       ? process.env.AFFILIATE_PROGRAM_ENABLED === 'true'
       : true,
-  commissionPerOrderKobo: 80_000, // ₦800 per qualifying order (in kobo)
+  commissionPerOrderKobo: 100_000, // ₦1,000 per qualifying order (in kobo)
   attributionWindowDays: 30, // 30-day last-valid-click attribution
   minimumWithdrawalKobo: 0, // No minimum withdrawal threshold for approved earnings
   returnWindowDays: 7, // 7-day post-delivery cooling window
@@ -15,10 +15,10 @@ export const AFFILIATE_CONFIG = {
 export function validateAffiliateConfig(): void {
   if (
     !Number.isInteger(AFFILIATE_CONFIG.commissionPerOrderKobo) ||
-    AFFILIATE_CONFIG.commissionPerOrderKobo !== 80_000
+    AFFILIATE_CONFIG.commissionPerOrderKobo !== 100_000
   ) {
     throw new Error(
-      `[CONFIG_ERROR] Invalid affiliate commission rate. Must be 80,000 kobo (₦800), got: ${AFFILIATE_CONFIG.commissionPerOrderKobo}`
+      `[CONFIG_ERROR] Invalid affiliate commission rate. Must be 100,000 kobo (₦1,000), got: ${AFFILIATE_CONFIG.commissionPerOrderKobo}`
     );
   }
   if (AFFILIATE_CONFIG.attributionWindowDays <= 0) {

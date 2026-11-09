@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '@piercyn/db';
 import { OutboxProcessor } from '../notifications/outboxProcessor';
 import { InventoryService } from '../inventory/inventoryService';
+import { CommissionService } from '../affiliate/commissionService';
+import { DeliveryQuoteCron } from '../checkout/quoteCron';
 
 export const internalJobsRouter = Router();
 
@@ -17,6 +19,59 @@ function requireCronSecret(req: Request, res: Response, next: () => void) {
 }
 
 internalJobsRouter.use(requireCronSecret);
+
+/**
+ * GET/POST /api/internal/cron/daily
+ * Daily aggregator cron triggered by Vercel Cron at 06:00 UTC.
+ * Executes:
+ * 1. Delivery quote lifecycle & reminders/expiries
+ * 2. Mature affiliate commission qualification
+ * 3. Stale inventory reservation expiry
+ * 4. Notification delivery outbox processing
+ */
+const handleDailyCron = async (_req: Request, res: Response) => {
+  const summary: Record<string, any> = {};
+  const errors: string[] = [];
+
+  // 1. Process delivery quotation reminders and expiries
+  try {
+    summary.quotes = await DeliveryQuoteCron.processQuoteLifecycle();
+  } catch (err: any) {
+    errors.push(`DeliveryQuoteCron: ${err.message}`);
+  }
+
+  // 2. Qualify mature commissions
+  try {
+    summary.qualifiedCommissions = await CommissionService.qualifyMatureCommissions();
+  } catch (err: any) {
+    errors.push(`CommissionService: ${err.message}`);
+  }
+
+  // 3. Expire stale inventory reservations
+  try {
+    summary.expiredReservations = await InventoryService.expireReservations();
+  } catch (err: any) {
+    errors.push(`InventoryService: ${err.message}`);
+  }
+
+  // 4. Process pending notification outbox deliveries
+  try {
+    summary.outbox = await OutboxProcessor.processDeliveries(30);
+  } catch (err: any) {
+    errors.push(`OutboxProcessor: ${err.message}`);
+  }
+
+  const success = errors.length === 0;
+  return res.status(success ? 200 : 207).json({
+    success,
+    executedAt: new Date().toISOString(),
+    summary,
+    errors: errors.length > 0 ? errors : undefined,
+  });
+};
+
+internalJobsRouter.get('/cron/daily', handleDailyCron);
+internalJobsRouter.post('/cron/daily', handleDailyCron);
 
 /**
  * POST /api/internal/process-outbox
@@ -38,7 +93,7 @@ internalJobsRouter.post('/process-outbox', async (_req: Request, res: Response) 
  */
 internalJobsRouter.post('/expire-reservations', async (_req: Request, res: Response) => {
   try {
-    const expiredCount = await InventoryService.expireStaleReservations();
+    const expiredCount = await InventoryService.expireReservations();
     return res.json({ success: true, expiredCount });
   } catch (error: any) {
     console.error('[CRON_EXPIRE_RESERVATIONS_ERROR]', error);
