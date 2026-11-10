@@ -235,7 +235,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               Your Primary Referral Link
             </h3>
             <p className="text-xs text-[#666666]">
-              Share this link anywhere. Clicks are tracked for 30 days and earn ₦800 per delivered order.
+              Share this link anywhere. Clicks are tracked for 30 days and earn ₦1,000 per delivered order.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -334,13 +334,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                     </td>
                     <td className="px-6 py-3.5">
                       <span
-                        className={`inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold ${
-                          item.status === 'AVAILABLE' || item.status === 'PAID'
+                        className={`inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold ${item.status === 'AVAILABLE' || item.status === 'PAID'
                             ? 'bg-[#141414] text-white'
                             : item.status === 'PENDING'
-                            ? 'bg-[#FAF8F5] text-[#735E29] border border-[#E5E2DC]'
-                            : 'bg-[#FDF2F2] text-[#7F1D1D]'
-                        }`}
+                              ? 'bg-[#FAF8F5] text-[#735E29] border border-[#E5E2DC]'
+                              : 'bg-[#FDF2F2] text-[#7F1D1D]'
+                          }`}
                       >
                         {item.status}
                       </span>

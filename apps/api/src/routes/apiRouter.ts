@@ -137,6 +137,53 @@ apiRouter.get('/sitemap.xml', async (_req: Request, res: Response) => {
   }
 });
 
+/**
+ * Image Download Proxy
+ * Fetches upstream media and returns it with Content-Disposition: attachment
+ * so browser triggers native file download on mobile and desktop without CORS blocks.
+ */
+apiRouter.get('/download/image', async (req: Request, res: Response) => {
+  const rawUrl = req.query.url;
+  const rawFilename = req.query.filename;
+
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return res.status(400).type('text/plain').send('Missing or invalid "url" query parameter.');
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).type('text/plain').send('Invalid URL protocol. Only HTTP and HTTPS are permitted.');
+    }
+
+    const upstream = await fetch(parsed.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PIERCYN-Image-Fetcher/1.0)',
+      },
+    });
+
+    if (!upstream.ok) {
+      return res.status(upstream.status).type('text/plain').send(`Upstream image fetch failed with status ${upstream.status}.`);
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    const buffer = await upstream.arrayBuffer();
+
+    const fallbackName = 'piercyn-asset.jpg';
+    const filename = typeof rawFilename === 'string' && rawFilename.trim()
+      ? rawFilename.trim().replace(/[^a-zA-Z0-9_.-]/g, '_')
+      : fallbackName;
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    return res.send(Buffer.from(buffer));
+  } catch (err: any) {
+    console.error('[IMAGE_DOWNLOAD_PROXY_FAILED]', err);
+    return res.status(500).type('text/plain').send('Failed to proxy image download.');
+  }
+});
+
 const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
 const getSessionId = (req: Request): string => {

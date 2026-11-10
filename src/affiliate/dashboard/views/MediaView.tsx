@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MediaItem, AffiliateApiClient } from '../../../services/affiliateApi';
+import { downloadProductImage } from '../../../utils/downloadImage';
 import {
   Image as ImageIcon,
   Download,
@@ -12,6 +13,7 @@ import {
   X,
   FileText,
   Share2,
+  Loader2,
 } from 'lucide-react';
 
 interface MediaViewProps {
@@ -24,6 +26,8 @@ export const MediaView: React.FC<MediaViewProps> = ({ primaryReferralCode }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [copiedCaptionIdx, setCopiedCaptionIdx] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
 
   const referralUrl = `https://piercyn.vercel.app/?ref=${primaryReferralCode}`;
 
@@ -131,14 +135,21 @@ export const MediaView: React.FC<MediaViewProps> = ({ primaryReferralCode }) => 
     setTimeout(() => setCopiedCaptionIdx(null), 2000);
   };
 
-  const handleDownload = (item: MediaItem) => {
-    const a = document.createElement('a');
-    a.href = item.downloadUrl || item.url;
-    a.download = `piercyn-${item.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.jpg`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (item: MediaItem) => {
+    const url = item.downloadUrl || item.url;
+    if (!url) return;
+
+    setDownloadingId(item.id);
+    try {
+      const fileName = `piercyn-${item.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      const success = await downloadProductImage(url, fileName);
+      if (success) {
+        setDownloadedId(item.id);
+        setTimeout(() => setDownloadedId(null), 2500);
+      }
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const filteredItems = mediaItems.filter((item) => {
@@ -168,17 +179,16 @@ export const MediaView: React.FC<MediaViewProps> = ({ primaryReferralCode }) => 
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
-                categoryFilter === cat
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${categoryFilter === cat
                   ? 'bg-[#141414] text-white'
                   : 'bg-[#FAF8F5] border border-[#E5E2DC] text-[#555555] hover:border-[#141414]'
-              }`}
+                }`}
             >
               {cat === 'ALL'
                 ? 'All Assets'
                 : cat === 'vertical'
-                ? '9:16 Vertical / Reels'
-                : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  ? '9:16 Vertical / Reels'
+                  : cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
         </div>
@@ -228,11 +238,27 @@ export const MediaView: React.FC<MediaViewProps> = ({ primaryReferralCode }) => 
 
               <div className="pt-2">
                 <button
+                  type="button"
                   onClick={() => handleDownload(item)}
-                  className="w-full py-2 bg-[#FAF8F5] hover:bg-[#141414] hover:text-white border border-[#E5E2DC] text-[#141414] text-xs uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  disabled={downloadingId === item.id}
+                  className="w-full py-2 bg-[#FAF8F5] hover:bg-[#141414] hover:text-white border border-[#E5E2DC] text-[#141414] text-xs uppercase tracking-wider font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Asset</span>
+                  {downloadingId === item.id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : downloadedId === item.id ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Saved Asset</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Asset</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -313,10 +339,27 @@ export const MediaView: React.FC<MediaViewProps> = ({ primaryReferralCode }) => 
                 {previewItem.dimensions} · {previewItem.fileSize}
               </div>
               <button
+                type="button"
                 onClick={() => handleDownload(previewItem)}
-                className="px-4 py-2 bg-[#141414] hover:bg-[#262626] text-white text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5"
+                disabled={downloadingId === previewItem.id}
+                className="px-4 py-2 bg-[#141414] hover:bg-[#262626] text-white text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5" /> Download Full Quality
+                {downloadingId === previewItem.id ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Downloading...</span>
+                  </>
+                ) : downloadedId === previewItem.id ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Full Quality</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

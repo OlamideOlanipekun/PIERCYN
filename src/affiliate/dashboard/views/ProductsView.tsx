@@ -3,6 +3,7 @@ import { Product } from '../../../types';
 import { catalogService } from '../../../services/catalogService';
 import { PRODUCTS } from '../../../data/products';
 import { formatNGN } from '../../types';
+import { downloadProductImage } from '../../../utils/downloadImage';
 import {
   ShoppingBag,
   Search,
@@ -15,6 +16,7 @@ import {
   MessageCircle,
   ExternalLink,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 interface ProductsViewProps {
@@ -30,6 +32,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -68,16 +72,21 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDownloadImage = (p: Product) => {
+  const handleDownloadImage = async (p: Product) => {
     const imgUrl = p.images?.[0] || p.colors?.[0]?.image;
     if (!imgUrl) return;
-    const a = document.createElement('a');
-    a.href = imgUrl;
-    a.download = `piercyn-${p.slug || p.id}.jpg`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+
+    setDownloadingId(p.id);
+    try {
+      const fileName = `piercyn-${p.slug || p.id}`;
+      const success = await downloadProductImage(imgUrl, fileName);
+      if (success) {
+        setDownloadedId(p.id);
+        setTimeout(() => setDownloadedId(null), 2500);
+      }
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // Filter products
@@ -120,7 +129,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             Products & Link Generator
           </h2>
           <p className="text-xs text-[#737373] mt-0.5">
-            Share individual pieces with your audience. Earn ₦800 on every delivered referral.
+            Share individual pieces with your audience. Earn ₦1,000 on every delivered referral.
           </p>
         </div>
 
@@ -215,14 +224,37 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   )}
 
                   {/* Commission Badge */}
-                  <div className="absolute top-3 left-3 bg-[#141414] text-white text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5">
-                    ₦800 Commission
+                  <div className="absolute top-3 left-3 bg-[#141414] text-white text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5 z-10 shadow-sm">
+                    ₦1,000 Commission
                   </div>
 
                   {/* Stock tag */}
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-[#141414] text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5 border border-[#E5E2DC]">
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-[#141414] text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5 border border-[#E5E2DC] z-10">
                     {product.isSoldOut ? 'Sold Out' : 'Available'}
                   </div>
+
+                  {/* Direct Download Icon on Image */}
+                  {img && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadImage(product);
+                      }}
+                      title="Download image"
+                      aria-label={`Download image for ${product.name}`}
+                      disabled={downloadingId === product.id}
+                      className="absolute bottom-3 right-3 bg-white/95 hover:bg-white text-[#141414] p-2 border border-[#E5E2DC] shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer z-10 flex items-center justify-center disabled:opacity-50"
+                    >
+                      {downloadingId === product.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : downloadedId === product.id ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Content Section */}
@@ -269,11 +301,27 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                         <span>WhatsApp</span>
                       </a>
                       <button
+                        type="button"
                         onClick={() => handleDownloadImage(product)}
-                        className="py-1.5 bg-[#FAF8F5] hover:bg-[#F2F0EB] border border-[#E5E2DC] text-[11px] font-semibold uppercase tracking-wider text-[#141414] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        disabled={downloadingId === product.id}
+                        className="py-1.5 bg-[#FAF8F5] hover:bg-[#F2F0EB] border border-[#E5E2DC] text-[11px] font-semibold uppercase tracking-wider text-[#141414] flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Image</span>
+                        {downloadingId === product.id ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : downloadedId === product.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-700">Saved</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

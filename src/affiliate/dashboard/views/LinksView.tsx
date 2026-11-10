@@ -265,7 +265,7 @@ export const LinksView: React.FC<LinksViewProps> = ({
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-[#141414]">
-                        {formatNGN((link.orderCount || 0) * 800)} earned
+                        {formatNGN((link.orderCount || 0) * 1000)} earned
                       </span>
                     </div>
                   </div>

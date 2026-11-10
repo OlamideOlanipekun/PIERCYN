@@ -98,13 +98,15 @@ function productStructuredData(product, canonical) {
       availability: productAvailable(product) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       itemCondition: 'https://schema.org/NewCondition',
     },
-    ...(hasRating ? { aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: Number(product.ratingSummary.averageRating),
-      reviewCount: Number(product.ratingSummary.totalReviews),
-      bestRating: 5,
-      worstRating: 1,
-    } } : {}),
+    ...(hasRating ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: Number(product.ratingSummary.averageRating),
+        reviewCount: Number(product.ratingSummary.totalReviews),
+        bestRating: 5,
+        worstRating: 1,
+      }
+    } : {}),
   };
 }
 
@@ -272,6 +274,14 @@ async function main() {
     '/affiliate/login',
     '/affiliate/register',
     '/affiliate/dashboard',
+    '/affiliate/products',
+    '/affiliate/links',
+    '/affiliate/media',
+    '/affiliate/referrals',
+    '/affiliate/earnings',
+    '/affiliate/withdrawals',
+    '/affiliate/notifications',
+    '/affiliate/settings',
     '/affiliate/application',
     '/login',
     '/signin',

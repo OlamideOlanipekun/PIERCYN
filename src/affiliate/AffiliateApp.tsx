@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+          import React, { useState, useEffect, useCallback } from 'react';
 import { AffiliateApiClient, AffiliateUser } from '../services/affiliateApi';
 import { AffiliatePublicRoute, AffiliateDashboardTab } from './types';
 import { AffiliateLandingPage } from './public/AffiliateLandingPage';
@@ -6,6 +6,7 @@ import { AffiliateRegisterPage } from './public/AffiliateRegisterPage';
 import { AffiliateLoginPage } from './public/AffiliateLoginPage';
 import { AffiliateApplicationStatus } from './public/AffiliateApplicationStatus';
 import { AffiliatePortal } from './AffiliatePortal';
+import { ProductsView } from './dashboard/views/ProductsView';
 
 interface AffiliateAppProps {
   onBackToShop: () => void;
@@ -115,7 +116,11 @@ export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop }) => {
       if (!token) {
         setIsCheckingAuth(false);
         if (initialParsed.kind === 'dashboard') {
-          navigateTo({ kind: 'public', route: 'login' }, true);
+          if (initialParsed.dashboardTab === 'products') {
+            setCurrentRoute(initialParsed);
+          } else {
+            navigateTo({ kind: 'public', route: 'login' }, true);
+          }
         } else {
           setCurrentRoute(initialParsed);
         }
@@ -169,7 +174,11 @@ export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop }) => {
     const handlePopState = () => {
       const parsed = parsePath();
       if (!currentUser && parsed.kind === 'dashboard') {
-        navigateTo({ kind: 'public', route: 'login' }, true);
+        if (parsed.dashboardTab === 'products') {
+          setCurrentRoute(parsed);
+        } else {
+          navigateTo({ kind: 'public', route: 'login' }, true);
+        }
       } else {
         setCurrentRoute(parsed);
       }
@@ -295,6 +304,66 @@ export const AffiliateApp: React.FC<AffiliateAppProps> = ({ onBackToShop }) => {
         onLogout={handleLogout}
         onBackToShop={onBackToShop}
       />
+    );
+  }
+
+  // Public catalog view for /affiliate/products without requiring authentication
+  if (currentRoute.kind === 'dashboard' && currentRoute.dashboardTab === 'products') {
+    return (
+      <div className="min-h-screen bg-[#F2F0EB] text-[#141414] font-sans antialiased flex flex-col justify-between">
+        {/* Top Header */}
+        <header className="border-b border-[#E5E2DC] bg-[#F2F0EB]/95 backdrop-blur-md px-4 sm:px-8 py-5 sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigateTo({ kind: 'public', route: 'landing' })}
+                className="text-2xl font-serif font-bold uppercase tracking-widest text-[#141414] hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                PIERCYN
+              </button>
+              <span className="text-[10px] uppercase tracking-[0.24em] font-semibold text-[#737373] border-l border-[#E5E2DC] pl-4 hidden sm:inline">
+                Creator Catalog
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <button
+                onClick={() => navigateTo({ kind: 'public', route: 'login' })}
+                className="text-xs font-semibold uppercase tracking-wider text-[#141414] hover:bg-[#E5E2DC] px-3 py-1.5 border border-[#141414] transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => navigateTo({ kind: 'public', route: 'register' })}
+                className="text-xs font-semibold uppercase tracking-wider bg-[#141414] text-white px-3.5 py-1.5 hover:bg-[#262626] transition-colors cursor-pointer"
+              >
+                Apply to Partner
+              </button>
+              <button
+                onClick={onBackToShop}
+                className="text-xs font-semibold uppercase tracking-wider text-[#737373] hover:text-[#141414] hidden md:inline ml-2 transition-colors cursor-pointer"
+              >
+                Storefront
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Highlight Banner */}
+        <div className="bg-[#141414] text-white px-4 py-2.5 text-center text-xs tracking-wide">
+          <span>Earn <strong>₦1,000 flat commission</strong> per qualifying delivered referral order. </span>
+          <button
+            onClick={() => navigateTo({ kind: 'public', route: 'register' })}
+            className="underline font-semibold ml-1.5 hover:text-[#FAF8F5] cursor-pointer"
+          >
+            Apply to Partner →
+          </button>
+        </div>
+
+        {/* Curated Products Catalog */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ProductsView primaryReferralCode="CREATOR" />
+        </main>
+      </div>
     );
   }
 

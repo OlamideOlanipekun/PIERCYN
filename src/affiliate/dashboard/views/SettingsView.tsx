@@ -194,7 +194,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <span className="text-[#737373] block mb-1">Commission Rate</span>
             <div className="font-semibold text-sm text-[#141414] bg-[#FAF8F5] p-3 border border-[#E5E2DC]">
-              ₦800 per delivered referral
+              ₦1,000 per delivered referral
             </div>
           </div>
         </div>
