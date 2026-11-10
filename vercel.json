@@ -20,7 +20,7 @@
     },
     {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap.xml"
+      "destination": "/api/[...path]"
     },
     {
       "source": "/(.*)",
