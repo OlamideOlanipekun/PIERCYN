@@ -23,8 +23,8 @@
       "destination": "/api/sitemap.xml"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/api/seo/fallback?path=$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

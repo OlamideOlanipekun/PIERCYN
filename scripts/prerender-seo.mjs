@@ -130,6 +130,12 @@ const STATIC_PAGES = {
     heading: 'Shop all PIERCYN pieces',
     intro: 'Browse the current PIERCYN collection of contemporary Nigerian streetwear, everyday essentials, tees, denim and more.',
   },
+  '/products': {
+    title: 'Shop All Clothing | PIERCYN Lagos',
+    description: 'Explore the full PIERCYN clothing collection: heavyweight tees, jeans, polos and modern everyday essentials, designed in Lagos and priced to make sense.',
+    heading: 'Shop all PIERCYN pieces',
+    intro: 'Browse the current PIERCYN collection of contemporary Nigerian streetwear, everyday essentials, tees, denim and more.',
+  },
   '/men': { title: "Men's Streetwear & Clothing | PIERCYN Lagos", description: 'Discover modern men’s streetwear from PIERCYN Lagos, including heavyweight tees, polos, denim and easy everyday essentials.', heading: "Men's streetwear from PIERCYN", intro: 'Explore versatile everyday clothing and contemporary streetwear from PIERCYN Lagos.' },
   '/women': { title: "Women's Clothing & Streetwear | PIERCYN Lagos", description: 'Shop contemporary women’s clothing and streetwear from PIERCYN Lagos. Explore modern essentials, expressive tees and easy everyday pieces.', heading: "Women's clothing from PIERCYN", intro: 'Discover contemporary pieces designed for personal style, comfort and everyday wear.' },
   '/new-arrivals': { title: 'New Arrivals & Latest Drops | PIERCYN', description: 'See the latest clothing drops and new arrivals from PIERCYN Lagos. Shop fresh streetwear, tees and contemporary everyday essentials.', heading: 'New arrivals from PIERCYN', intro: 'Discover the latest PIERCYN pieces and recent drops from Lagos.' },
@@ -223,13 +229,60 @@ async function main() {
     await writeRoute(template, routePath, makePage(template, { title, description, path: routePath, image: matches.find((product) => product.images?.[0])?.images?.[0] || primaryImage, body }));
   }
 
-  const privateRoutes = ['/account', '/cart', '/checkout', '/search', '/track-order', '/order-confirmation', '/admin', '/affiliate', '/login', '/signin', '/auth/callback'];
+  for (const product of products) {
+    if (!product.slug) continue;
+    const productPath = `/products/${encodeURIComponent(product.slug)}`;
+    const productName = text(product.name);
+    const title = `${productName} | PIERCYN Lagos`;
+    const description = text(product.description || product.shortDescription || `${productName} from PIERCYN Lagos.`).slice(0, 160);
+    const canonical = `${SITE_ORIGIN}${productPath}`;
+    const image = product.images?.[0] || primaryImage;
+    const jsonLd = productStructuredData(product, canonical);
+    const price = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(product.priceNGN || 0));
+    const stockMsg = productAvailable(product) ? 'Available to order.' : 'Currently out of stock.';
+    const body = `<main><nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/shop">Shop</a> / <span>${escapeHtml(productName)}</span></nav><article><h1>${escapeHtml(productName)}</h1><p>${escapeHtml(description)}</p><p><strong>${escapeHtml(price)}</strong> · ${escapeHtml(stockMsg)}</p></article></main>`;
+    const rendered = makePage(template, {
+      title,
+      description,
+      path: productPath,
+      canonicalPath: productPath,
+      image,
+      type: 'product',
+      body,
+      jsonLd,
+    });
+    await writeRoute(template, productPath, rendered);
+    await writeRoute(template, `/product/${encodeURIComponent(product.slug)}`, rendered);
+  }
+
+  const privateRoutes = [
+    '/account',
+    '/account/orders',
+    '/orders',
+    '/cart',
+    '/checkout',
+    '/search',
+    '/track-order',
+    '/order-confirmation',
+    '/admin',
+    '/admin/orders',
+    '/admin/products',
+    '/admin/affiliates',
+    '/affiliate',
+    '/affiliate/login',
+    '/affiliate/register',
+    '/affiliate/dashboard',
+    '/affiliate/application',
+    '/login',
+    '/signin',
+    '/auth/callback',
+  ];
   for (const routePath of privateRoutes) {
     const name = routePath.slice(1).replaceAll('-', ' ');
     const rendered = makePage(template, { title: `${name.replace(/\b\w/g, (letter) => letter.toUpperCase())} | PIERCYN`, description: 'This PIERCYN store page is intended for customer use.', path: routePath, noindex: true, image: primaryImage, body: `<main><h1>${escapeHtml(name)}</h1></main>` });
     await writeRoute(template, routePath, rendered);
   }
-  console.log(`SEO prerender complete: ${Object.keys(STATIC_PAGES).length} public routes and ${collectionPages.length} collections; ${products.length} products and ${categories.length} categories will render live on request.`);
+  console.log(`SEO prerender complete: ${Object.keys(STATIC_PAGES).length} public routes, ${collectionPages.length} collections, and ${products.length} products prerendered.`);
 }
 
 main().catch((error) => {

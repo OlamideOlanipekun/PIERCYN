@@ -195,7 +195,7 @@ async function renderCategory(pathname: string, slug: string, template: string, 
 }
 
 async function renderCatalogLanding(pathname: string, template: string, res: Response) {
-  if (pathname !== '/' && pathname !== '/shop') return false;
+  if (pathname !== '/' && pathname !== '/shop' && pathname !== '/products') return false;
   const catalog = await ProductService.getCatalog({ page: 1, limit: pathname === '/' ? 12 : 100 });
   const categories = await ProductService.getCategories();
   const isHome = pathname === '/';

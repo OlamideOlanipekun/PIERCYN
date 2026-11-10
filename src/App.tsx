@@ -184,7 +184,7 @@ const MainLayout: React.FC = () => {
       setActivePage('orderSuccess');
       setCurrentPdpProduct(null);
       document.title = STOREFRONT_PAGE_TITLES['order-confirmation'];
-    } else if (rawPath === '/shop') {
+    } else if (rawPath === '/shop' || rawPath === '/products') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
       // Honour ?category= query param set by VIEW ALL links from the homepage
@@ -217,7 +217,7 @@ const MainLayout: React.FC = () => {
       setActivePage('authCallback');
       setCurrentPdpProduct(null);
       document.title = 'Authenticating… | PIERCYN';
-    } else if (rawPath === '/account') {
+    } else if (rawPath === '/account' || rawPath === '/orders' || rawPath === '/account/orders') {
       setActivePage('account');
       setCurrentPdpProduct(null);
       document.title = 'Account | PIERCYN';

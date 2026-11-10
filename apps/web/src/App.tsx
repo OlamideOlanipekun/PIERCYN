@@ -67,7 +67,7 @@ const MainLayout: React.FC = () => {
 
     setIsAdminView(false);
 
-    if (rawPath === '/shop') {
+    if (rawPath === '/shop' || rawPath === '/products') {
       setActivePage('shop');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — Shop All';
@@ -83,10 +83,10 @@ const MainLayout: React.FC = () => {
       setActivePage('about');
       setCurrentPdpProduct(null);
       document.title = 'PIERCYN — About';
-    } else if (rawPath.startsWith('/product/')) {
-      const slug = rawPath.replace('/product/', '');
+    } else if (rawPath.startsWith('/product/') || rawPath.startsWith('/products/')) {
+      const slug = rawPath.replace(/^\/products?\//, '');
       setActivePage('product');
-      
+
       const foundInCache = products.find(
         (p) =>
           p.slug === slug ||
@@ -232,7 +232,7 @@ const MainLayout: React.FC = () => {
       <AnnouncementBar />
 
       {/* 2. Primary Navigation */}
-      <Navbar 
+      <Navbar
         onNavigateSection={handleNavigateSection}
         activePage={activePage}
         onSelectPage={handleSelectPage}
@@ -264,7 +264,7 @@ const MainLayout: React.FC = () => {
           <HeroSection onExplore={handleExploreHero} />
 
           {/* New Arrivals Grid */}
-          <JustDroppedSection 
+          <JustDroppedSection
             products={justDropped}
             onViewProduct={handleViewProduct}
             onSelectPage={handleSelectPage}
@@ -275,7 +275,7 @@ const MainLayout: React.FC = () => {
 
           {/* Men's Fashion Discovery */}
           {mensFashion.length > 0 && (
-            <MensFashionSection 
+            <MensFashionSection
               products={mensFashion}
               onViewProduct={handleViewProduct}
               onSelectPage={handleSelectPage}
