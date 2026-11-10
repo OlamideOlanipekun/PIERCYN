@@ -238,6 +238,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               { label: 'NEW ARRIVALS', pageKey: 'new' as const, badge: 'NEW' },
               { label: 'MEN', pageKey: 'men' as const },
               { label: 'ABOUT PIERCYN', pageKey: 'about' as const },
+              { label: 'AFFILIATE PROGRAM', pageKey: 'affiliate' as const },
               { label: 'SHIPPING & DELIVERY', pageKey: 'shipping' as const },
               { label: 'RETURNS & EXCHANGES', pageKey: 'returns' as const },
               { label: 'SIZE GUIDE', pageKey: 'sizeGuide' as const },

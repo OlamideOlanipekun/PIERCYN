@@ -57,7 +57,6 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [copiedLinkIndex, setCopiedLinkIndex] = useState<string | null>(null);
   const [activeStepTab, setActiveStepTab] = useState<number>(0);
-  const [showStickyBar, setShowStickyBar] = useState(false);
   const landingRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,14 +76,8 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
         }
       });
 
-    const handleScroll = () => {
-      setShowStickyBar(window.scrollY > 550);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
     return () => {
       isMounted = false;
-      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -890,34 +883,6 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
           </div>
         </div>
       </footer>
-
-      {/* Floating Dynamic Sticky Bar on scroll */}
-      {showStickyBar && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-[#141414] text-white border-t border-[#2B2B2B] px-4 py-3 shadow-2xl flex items-center justify-between animate-fade-up">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] tracking-widest font-mono uppercase bg-[#262626] px-2 py-0.5 text-[#A48B71]">
-              ₦1,000 / ORDER
-            </span>
-            <span className="text-xs font-serif font-medium hidden sm:inline">
-              Earn on every qualifying delivered piece
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => onNavigate('login')}
-              className="text-xs uppercase tracking-wider text-[#A3A3A3] hover:text-white transition-colors hidden sm:inline"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => onNavigate('register')}
-              className="px-4 py-2 bg-white text-[#141414] hover:bg-[#F2F0EB] text-[11px] uppercase tracking-widest font-bold transition-colors"
-            >
-              Apply to Partner →
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Guidelines & Support Modals */}
       <GuidelinesModal isOpen={isGuidelinesOpen} onClose={() => setIsGuidelinesOpen(false)} />
