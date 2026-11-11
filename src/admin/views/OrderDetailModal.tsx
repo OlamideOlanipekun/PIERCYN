@@ -573,8 +573,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setRiderSaving(true);
       setError(null);
       const updated = await AdminApi.dispatchOrder(order.id, {
+        logisticsProvider: riderName.trim(),
         riderName: riderName.trim(),
         riderPhone: riderPhone.trim(),
+        dispatchNote: dispatchNote.trim() || undefined,
         note: dispatchNote.trim() || undefined,
       });
       setOrder(updated);

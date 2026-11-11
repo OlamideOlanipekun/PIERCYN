@@ -241,11 +241,24 @@ class AdminApiClient {
 
   public async dispatchOrder(
     orderId: string,
-    data?: { riderName?: string; riderPhone?: string; note?: string }
+    data?: {
+      riderName?: string;
+      riderPhone?: string;
+      note?: string;
+      logisticsProvider?: string;
+      dispatchReference?: string;
+      dispatchNote?: string;
+    }
   ): Promise<AdminOrder> {
+    const payload = {
+      ...data,
+      logisticsProvider: data?.logisticsProvider || data?.riderName || 'Standard Delivery',
+      riderName: data?.riderName || data?.logisticsProvider,
+      dispatchNote: data?.dispatchNote || data?.note,
+    };
     return this.request<AdminOrder>(`/orders/${orderId}/dispatch`, {
       method: 'POST',
-      body: JSON.stringify(data || {}),
+      body: JSON.stringify(payload),
     });
   }
 

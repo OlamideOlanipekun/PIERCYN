@@ -469,9 +469,12 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/reject', requireAdmin, as
 // ── POST /admin/orders/:id/dispatch ───────────────────────────────────────────
 
 const DispatchSchema = z.object({
-  logisticsProvider: z.string().min(1),
-  dispatchReference: z.string().optional(),
-  dispatchNote: z.string().optional(),
+  logisticsProvider: z.string().trim().optional(),
+  riderName: z.string().trim().optional(),
+  riderPhone: z.string().trim().optional(),
+  dispatchReference: z.string().trim().optional(),
+  dispatchNote: z.string().trim().optional(),
+  note: z.string().trim().optional(),
 });
 
 checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Request, res: Response) => {
@@ -527,6 +530,9 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
     }
 
     const validated = DispatchSchema.parse(req.body);
+    const provider = validated.logisticsProvider?.trim() || validated.riderName?.trim() || order.riderName || 'Standard Delivery';
+    const riderPhone = validated.riderPhone?.trim() || order.riderPhone || null;
+    const dispatchNote = validated.dispatchNote?.trim() || validated.note?.trim() || order.dispatchNote || null;
     const now = new Date();
 
     await prisma.$transaction(async (tx) => {
@@ -534,16 +540,19 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
         where: { id: order.id },
         data: {
           status: 'DISPATCHED',
-          riderName: validated.logisticsProvider,
+          riderName: provider,
+          riderPhone,
           dispatchedAt: now,
-          dispatchNote: validated.dispatchNote || null,
+          dispatchNote,
         },
       });
       await tx.orderStatusHistory.create({
         data: {
-          orderId: order.id, fromStatus: order.status, toStatus: 'DISPATCHED',
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'DISPATCHED',
           changedBy: adminId,
-          note: `Order dispatched via ${validated.logisticsProvider}${validated.dispatchReference ? ` | Ref: ${validated.dispatchReference}` : ''}`,
+          note: `Order dispatched via ${provider}${validated.dispatchReference ? ` | Ref: ${validated.dispatchReference}` : ''}`,
         },
       });
 
@@ -553,11 +562,11 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
           orderId: order.id,
           type: 'ORDER_DISPATCHED',
           title: 'Order Dispatched',
-          description: `Dispatched via ${validated.logisticsProvider}`,
+          description: `Dispatched via ${provider}`,
           actorType: 'ADMIN',
           actorId: adminId,
           metadata: {
-            logisticsProvider: validated.logisticsProvider,
+            logisticsProvider: provider,
             dispatchReference: validated.dispatchReference,
           },
         },
@@ -574,7 +583,7 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
           customerEmail: order.customerEmail,
           deliveryCity: order.deliveryCity,
           deliveryState: order.deliveryState,
-          logisticsProvider: validated.logisticsProvider,
+          logisticsProvider: provider,
         },
       });
     });
@@ -584,21 +593,23 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
       `🚚 *PIERCYN* — Your Order is on the Way!\n\n` +
       `Hi ${order.customerFirstName},\n\n` +
       `Your order *${order.orderNumber}* has been dispatched!\n\n` +
-      `*Logistics:* ${validated.logisticsProvider}\n` +
+      `*Logistics:* ${provider}\n` +
       (validated.dispatchReference ? `*Reference:* ${validated.dispatchReference}\n` : '') +
       `\nDelivery timeframe will be confirmed by our team shortly.\n\n` +
       `Thank you for shopping with PIERCYN! 🛍`;
     await WhatsAppService.sendMessage({ to: order.customerPhone, body: waMsg });
 
     await WhatsAppService.sendToMerchant(
-      `🚚 *Order dispatched*\nOrder: *${order.orderNumber}*\nLogistics: ${validated.logisticsProvider}\n${validated.dispatchReference ? `Ref: ${validated.dispatchReference}\n` : ''}By: ${adminId}`
+      `🚚 *Order dispatched*\nOrder: *${order.orderNumber}*\nLogistics: ${provider}\n${validated.dispatchReference ? `Ref: ${validated.dispatchReference}\n` : ''}By: ${adminId}`
     );
 
     triggerNotificationProcessingAsync();
 
-    return res.json({ success: true, data: { status: 'DISPATCHED', dispatchedAt: now, logisticsProvider: validated.logisticsProvider } });
+    return res.json({ success: true, data: { status: 'DISPATCHED', dispatchedAt: now, logisticsProvider: provider } });
   } catch (err: any) {
-    const msg = err.errors ? err.errors[0].message : err.message;
+    const msg = err instanceof z.ZodError
+      ? err.issues.map((i: any) => i.message).join('; ')
+      : (err.errors ? err.errors[0].message : err.message);
     return res.status(400).json({ success: false, error: msg });
   }
 });
