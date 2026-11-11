@@ -59,6 +59,14 @@ describe('InventoryService.restockAll', () => {
         updateMany: vi.fn().mockResolvedValue({ count: 2 }),
       },
       inventoryTransaction: { createMany: vi.fn().mockResolvedValue({ count: 2 }) },
+      // syncProductSoldOutFlag needs productVariant + $queryRaw + product
+      productVariant: {
+        findUnique: vi.fn().mockResolvedValue({ productId: 'prod-1' }),
+      },
+      $queryRaw: vi.fn().mockResolvedValue([{ available: 5 }]),
+      product: {
+        update: vi.fn().mockResolvedValue({}),
+      },
     };
     mocks.transaction.mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
 

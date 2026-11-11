@@ -77,3 +77,66 @@ describe('ProductService.mapPrismaProduct inventory status', () => {
     expect(mapped.isSoldOut).toBe(true);
   });
 });
+
+// ─── syncProductSoldOutFlag integration (mocked transaction) ─────────────────
+
+describe('InventoryService.syncProductSoldOutFlag', () => {
+  it('is a callable static method on InventoryService', async () => {
+    const { InventoryService } = await import('../apps/api/src/modules/inventory/inventoryService');
+    expect(typeof InventoryService.syncProductSoldOutFlag).toBe('function');
+  });
+
+  it('marks product sold out when available stock query returns 0', async () => {
+    const updateMock = vi.fn().mockResolvedValue({});
+    const tx = {
+      productVariant: {
+        findUnique: vi.fn().mockResolvedValue({ productId: 'prod-1' }),
+      },
+      $queryRaw: vi.fn().mockResolvedValue([{ available: 0 }]),
+      product: { update: updateMock },
+    };
+
+    const { InventoryService } = await import('../apps/api/src/modules/inventory/inventoryService');
+    await InventoryService.syncProductSoldOutFlag('variant-1', tx);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: 'prod-1' },
+      data: { isSoldOut: true },
+    });
+  });
+
+  it('marks product NOT sold out when available stock is positive', async () => {
+    const updateMock = vi.fn().mockResolvedValue({});
+    const tx = {
+      productVariant: {
+        findUnique: vi.fn().mockResolvedValue({ productId: 'prod-1' }),
+      },
+      $queryRaw: vi.fn().mockResolvedValue([{ available: 4 }]),
+      product: { update: updateMock },
+    };
+
+    const { InventoryService } = await import('../apps/api/src/modules/inventory/inventoryService');
+    await InventoryService.syncProductSoldOutFlag('variant-1', tx);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: 'prod-1' },
+      data: { isSoldOut: false },
+    });
+  });
+
+  it('does nothing when variantId does not resolve to a product', async () => {
+    const updateMock = vi.fn();
+    const tx = {
+      productVariant: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $queryRaw: vi.fn(),
+      product: { update: updateMock },
+    };
+
+    const { InventoryService } = await import('../apps/api/src/modules/inventory/inventoryService');
+    await InventoryService.syncProductSoldOutFlag('nonexistent', tx);
+
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+});

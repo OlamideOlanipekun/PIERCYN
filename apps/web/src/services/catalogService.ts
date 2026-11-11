@@ -41,16 +41,16 @@ export function mapServerProduct(p: any): Product {
     });
   }
 
-  const colors = colorsMap.size > 0 
-    ? Array.from(colorsMap.values()) 
+  const colors = colorsMap.size > 0
+    ? Array.from(colorsMap.values())
     : (p.colors || [{ name: 'Default', hex: '#111111', image: p.images?.[0] || '' }]);
 
-  const sizes = sizesSet.size > 0 
-    ? (Array.from(sizesSet) as any[]) 
+  const sizes = sizesSet.size > 0
+    ? (Array.from(sizesSet) as any[])
     : (p.sizes || ['XS', 'S', 'M', 'L', 'XL', 'XXL']);
 
-  const totalStock = typeof p.totalAvailableStock === 'number' 
-    ? p.totalAvailableStock 
+  const totalStock = typeof p.totalAvailableStock === 'number'
+    ? p.totalAvailableStock
     : (typeof p.stock === 'number' ? p.stock : 25);
 
   return {
@@ -84,8 +84,9 @@ export function mapServerProduct(p: any): Product {
 }
 
 export const catalogService = {
-  async getProducts(params?: { category?: string; collection?: string }): Promise<Product[]> {
-    const res = await api.getProducts(params);
+  async getProducts(params?: { category?: string; collection?: string; sort?: string }): Promise<Product[]> {
+    // Default to availability-first + price-asc. Any explicit sort param overrides this.
+    const res = await api.getProducts({ sort: 'availability', ...params });
     if (res.success && Array.isArray(res.data)) {
       return res.data.map(mapServerProduct);
     }

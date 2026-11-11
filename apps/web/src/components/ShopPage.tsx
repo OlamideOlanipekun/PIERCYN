@@ -21,7 +21,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'all');
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(100000);
-  const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high'>('featured');
+  const [sortBy, setSortBy] = useState<'availability' | 'newest' | 'price-low' | 'price-high'>('availability');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
@@ -67,6 +67,12 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
       return true;
     }).sort((a, b) => {
+      // Always put in-stock products before sold-out products in every sort mode
+      const aAvail = a.isSoldOut ? 1 : 0;
+      const bAvail = b.isSoldOut ? 1 : 0;
+      if (aAvail !== bAvail) return aAvail - bAvail;
+
+      // Within each availability group, apply the selected secondary sort
       if (sortBy === 'newest') {
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       }
@@ -76,7 +82,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       if (sortBy === 'price-high') {
         return b.priceNGN - a.priceNGN;
       }
-      return 0; // featured default
+      // 'availability' default: price ascending within each group
+      return a.priceNGN - b.priceNGN;
     });
   }, [products, selectedCategory, selectedSize, maxPrice, sortBy, searchQuery]);
 
@@ -98,7 +105,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
     setSelectedSize(null);
     setMaxPrice(100000);
     setSearchQuery('');
-    setSortBy('featured');
+    setSortBy('availability');
   };
 
   return (
@@ -163,11 +170,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   <button
                     key={cat.value}
                     onClick={() => handleCategorySelect(cat.value)}
-                    className={`w-full text-left py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center justify-between ${
-                      selectedCategory === cat.value
+                    className={`w-full text-left py-1.5 px-2.5 rounded-md text-xs font-medium transition-colors flex items-center justify-between ${selectedCategory === cat.value
                         ? 'bg-[#141414] text-[#F2F0EB]'
                         : 'text-[#141414]/80 hover:bg-[#E8E6E1]'
-                    }`}
+                      }`}
                   >
                     <span>{cat.label}</span>
                     {selectedCategory === cat.value && <Check className="w-3.5 h-3.5" />}
@@ -186,11 +192,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   <button
                     key={sz}
                     onClick={() => handleSizeSelect(sz)}
-                    className={`py-1.5 text-xs font-mono font-semibold rounded border transition-all ${
-                      selectedSize === sz
+                    className={`py-1.5 text-xs font-mono font-semibold rounded border transition-all ${selectedSize === sz
                         ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                         : 'bg-[#E8E6E1]/60 text-[#141414] border-[#DAD8D1] hover:border-[#141414]'
-                    }`}
+                      }`}
                   >
                     {sz}
                   </button>
@@ -229,7 +234,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="w-full bg-[#E8E6E1] border border-[#DAD8D1] rounded-lg p-2 text-xs font-semibold focus:outline-none cursor-pointer"
               >
-                <option value="featured">FEATURED CURATION</option>
+                <option value="availability">AVAILABILITY: IN STOCK FIRST</option>
                 <option value="newest">NEWEST ARRIVALS</option>
                 <option value="price-low">PRICE: LOW TO HIGH</option>
                 <option value="price-high">PRICE: HIGH TO LOW</option>
@@ -301,9 +306,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                     <button
                       key={cat.value}
                       onClick={() => handleCategorySelect(cat.value)}
-                      className={`w-full text-left py-2 px-3 rounded text-xs font-medium flex items-center justify-between ${
-                        selectedCategory === cat.value ? 'bg-[#141414] text-[#F2F0EB]' : 'bg-[#E8E6E1]'
-                      }`}
+                      className={`w-full text-left py-2 px-3 rounded text-xs font-medium flex items-center justify-between ${selectedCategory === cat.value ? 'bg-[#141414] text-[#F2F0EB]' : 'bg-[#E8E6E1]'
+                        }`}
                     >
                       <span>{cat.label}</span>
                       {selectedCategory === cat.value && <Check className="w-3.5 h-3.5" />}
@@ -320,9 +324,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                     <button
                       key={sz}
                       onClick={() => handleSizeSelect(sz)}
-                      className={`py-2 text-xs font-mono rounded border ${
-                        selectedSize === sz ? 'bg-[#141414] text-[#F2F0EB]' : 'bg-[#E8E6E1]'
-                      }`}
+                      className={`py-2 text-xs font-mono rounded border ${selectedSize === sz ? 'bg-[#141414] text-[#F2F0EB]' : 'bg-[#E8E6E1]'
+                        }`}
                     >
                       {sz}
                     </button>

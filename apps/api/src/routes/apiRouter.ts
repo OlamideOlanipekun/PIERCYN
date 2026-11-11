@@ -216,7 +216,7 @@ apiRouter.get('/products', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Invalid price range.' });
     }
     const sort = req.query.sort;
-    if (sort !== undefined && !['featured', 'newest', 'price-asc', 'price-desc'].includes(String(sort))) {
+    if (sort !== undefined && !['featured', 'newest', 'price-asc', 'price-desc', 'availability'].includes(String(sort))) {
       return res.status(400).json({ success: false, error: 'Invalid sort option.' });
     }
     const catalog = await ProductService.getCatalog({

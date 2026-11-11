@@ -61,8 +61,8 @@ export class InventoryService {
       available <= 0
         ? 'SOLD_OUT'
         : available <= threshold
-        ? 'LOW_STOCK'
-        : 'IN_STOCK';
+          ? 'LOW_STOCK'
+          : 'IN_STOCK';
 
     return {
       variantId: inv.variantId,
@@ -120,7 +120,7 @@ export class InventoryService {
     const client = txPrisma || prisma;
 
     if (!txPrisma) {
-      await InventoryService.expireReservations().catch(() => {});
+      await InventoryService.expireReservations().catch(() => { });
     }
 
     const execute = async (tx: any) => {
@@ -222,6 +222,10 @@ export class InventoryService {
               reason: terminalStatus === 'EXPIRED' ? 'Reservation expired' : 'Reservation released',
             },
           });
+
+          // Releasing a reservation increases available stock; sync isSoldOut so a
+          // previously-sold-out product can return to the available storefront section
+          await InventoryService.syncProductSoldOutFlag(res.variantId, tx);
         }
 
         await tx.inventoryReservation.update({
@@ -348,6 +352,9 @@ export class InventoryService {
         }
       }
 
+      // Sync the product-level isSoldOut flag so the storefront sort stays accurate
+      await InventoryService.syncProductSoldOutFlag(variantId, tx);
+
       return { finalized: true, alreadyFinalized: false, shortfall: 0 };
     };
 
@@ -426,6 +433,10 @@ export class InventoryService {
               reason: `Order ${orderNumber} cancelled/refunded, inventory restored`,
             },
           });
+
+          // Sync the product-level isSoldOut flag so restocked products return
+          // to the available section of the storefront automatically
+          await InventoryService.syncProductSoldOutFlag(saleTx.variantId, tx);
         }
       }
 
@@ -519,47 +530,47 @@ export class InventoryService {
 
       const didRelease = order
         ? await prisma.$transaction(async (tx) => {
-            const locked = await tx.$queryRaw<Array<{ id: string }>>`
+          const locked = await tx.$queryRaw<Array<{ id: string }>>`
               SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE
             `;
-            if (!locked || locked.length === 0) return false;
+          if (!locked || locked.length === 0) return false;
 
-            const fresh = await tx.order.findUnique({
-              where: { id: order.id },
-              select: { status: true, paymentStatus: true },
+          const fresh = await tx.order.findUnique({
+            where: { id: order.id },
+            select: { status: true, paymentStatus: true },
+          });
+          if (!fresh || fresh.paymentStatus === 'PAID') return false;
+          if (
+            fresh.status === 'AWAITING_PAYMENT_VERIFICATION' ||
+            fresh.paymentStatus === 'AWAITING_VERIFICATION'
+          ) {
+            return false;
+          }
+
+          const stillExpired = await tx.inventoryReservation.findFirst({
+            where: { id: reservation.id, status: 'ACTIVE', expiresAt: { lte: now } },
+            select: { id: true },
+          });
+          if (!stillExpired) return false;
+
+          const result = await this.releaseReservation(reservation.reference, tx, 'EXPIRED');
+          if (result && fresh.status === 'PENDING_PAYMENT') {
+            await tx.order.updateMany({
+              where: { id: order.id, status: 'PENDING_PAYMENT' },
+              data: { status: 'CANCELLED', paymentStatus: 'FAILED' },
             });
-            if (!fresh || fresh.paymentStatus === 'PAID') return false;
-            if (
-              fresh.status === 'AWAITING_PAYMENT_VERIFICATION' ||
-              fresh.paymentStatus === 'AWAITING_VERIFICATION'
-            ) {
-              return false;
-            }
-
-            const stillExpired = await tx.inventoryReservation.findFirst({
-              where: { id: reservation.id, status: 'ACTIVE', expiresAt: { lte: now } },
-              select: { id: true },
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                fromStatus: 'PENDING_PAYMENT',
+                toStatus: 'CANCELLED',
+                changedBy: 'SYSTEM',
+                note: 'Payment window expired before a receipt was submitted. Reservation released.',
+              },
             });
-            if (!stillExpired) return false;
-
-            const result = await this.releaseReservation(reservation.reference, tx, 'EXPIRED');
-            if (result && fresh.status === 'PENDING_PAYMENT') {
-              await tx.order.updateMany({
-                where: { id: order.id, status: 'PENDING_PAYMENT' },
-                data: { status: 'CANCELLED', paymentStatus: 'FAILED' },
-              });
-              await tx.orderStatusHistory.create({
-                data: {
-                  orderId: order.id,
-                  fromStatus: 'PENDING_PAYMENT',
-                  toStatus: 'CANCELLED',
-                  changedBy: 'SYSTEM',
-                  note: 'Payment window expired before a receipt was submitted. Reservation released.',
-                },
-              });
-            }
-            return result;
-          })
+          }
+          return result;
+        })
         : false;
 
       if (didRelease) released += 1;
@@ -662,9 +673,9 @@ export class InventoryService {
 
       const txType =
         type === 'PURCHASE' || type === 'RESTOCK' ? 'RESTOCK' :
-        type === 'DAMAGE' ? 'DAMAGE' :
-        type === 'RETURN' ? 'RETURN' :
-        type === 'ADJUSTMENT' || type === 'SET_EXACT' ? 'ADJUSTMENT' : 'RESTOCK';
+          type === 'DAMAGE' ? 'DAMAGE' :
+            type === 'RETURN' ? 'RETURN' :
+              type === 'ADJUSTMENT' || type === 'SET_EXACT' ? 'ADJUSTMENT' : 'RESTOCK';
 
       const invTx = await tx.inventoryTransaction.create({
         data: {
@@ -698,6 +709,10 @@ export class InventoryService {
           );
         }
       }
+
+      // Sync the product-level isSoldOut flag so admin stock adjustments and
+      // restocks are immediately reflected in storefront availability ordering
+      await InventoryService.syncProductSoldOutFlag(variantId, tx);
 
       return true;
     };
@@ -967,8 +982,8 @@ export class InventoryService {
         available <= 0
           ? 'SOLD_OUT'
           : available <= threshold
-          ? 'LOW_STOCK'
-          : 'IN_STOCK';
+            ? 'LOW_STOCK'
+            : 'IN_STOCK';
 
       result.push({
         variantId: inv.variantId,
@@ -1076,6 +1091,13 @@ export class InventoryService {
         }),
       });
 
+      // Sync isSoldOut on every product touched by the bulk restock so that
+      // previously sold-out products automatically return to the available
+      // section of the storefront without requiring manual admin intervention.
+      for (const item of after) {
+        await InventoryService.syncProductSoldOutFlag(item.variantId, tx);
+      }
+
       const resultingPhysicalStock = after.reduce((sum, item) => sum + item.stockQuantity, 0);
       const currentPhysicalStock = after.reduce((sum, item) => sum + item.stockQuantity - quantity, 0);
       const currentAvailableStock = after.reduce(
@@ -1121,6 +1143,43 @@ export class InventoryService {
     return prisma.inventory.findUnique({
       where: { variantId },
       include: { variant: { select: { sku: true } } },
+    });
+  }
+
+  /**
+   * Recalculates and writes the product-level isSoldOut flag based on current
+   * live inventory across ALL active variants of the product.
+   *
+   * Called inside the same DB transaction after every stock mutation so the
+   * Product.isSoldOut column is never stale. The storefront query and
+   * availability-first sort both rely on this being accurate.
+   *
+   * Safe to call with either a Prisma transaction client (txPrisma) or the
+   * global prisma client for standalone use.
+   */
+  public static async syncProductSoldOutFlag(variantId: string, tx: any): Promise<void> {
+    const variantRow = await tx.productVariant.findUnique({
+      where: { id: variantId },
+      select: { productId: true },
+    });
+    if (!variantRow) return;
+
+    // Compute total available stock across all active variants of this product.
+    // available = stockQuantity - reservedQuantity  (must be > 0 to count as in-stock)
+    const rows = await tx.$queryRaw<Array<{ available: bigint | number }>>`
+      SELECT COALESCE(SUM(i."stockQuantity" - i."reservedQuantity"), 0) AS available
+      FROM "ProductVariant" pv
+      JOIN "Inventory" i ON i."variantId" = pv."id"
+      WHERE pv."productId" = ${variantRow.productId}
+        AND pv."isActive" = true
+    `;
+
+    const totalAvailable = Number(rows[0]?.available ?? 0);
+    const isSoldOut = totalAvailable <= 0;
+
+    await tx.product.update({
+      where: { id: variantRow.productId },
+      data: { isSoldOut },
     });
   }
 }

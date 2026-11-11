@@ -680,6 +680,11 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear cart & applied promo only upon confirmed backend creation
     clearCart();
     removePromoCode();
+
+    // Refresh the catalog so storefront availability reflects the purchase
+    // (stock was reserved at order creation; this keeps the UI in sync)
+    refreshProducts().catch(() => { /* non-blocking */ });
+
     return mappedOrder;
   };
 

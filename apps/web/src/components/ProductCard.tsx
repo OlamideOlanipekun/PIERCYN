@@ -127,11 +127,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           style={{ objectPosition }}
-          className={`w-full h-full object-cover transition-all duration-500 ease-out will-change-transform motion-reduce:transition-none ${
-            isHovered && alternateImage && alternateImage !== primaryImage
+          className={`w-full h-full object-cover transition-all duration-500 ease-out will-change-transform motion-reduce:transition-none ${isHovered && alternateImage && alternateImage !== primaryImage
               ? 'opacity-0 scale-[1.02]'
               : 'opacity-100 scale-100 group-hover:scale-[1.02]'
-          }`}
+            }`}
         />
 
         {/* Alternate Image on Desktop Hover */}
@@ -142,16 +141,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             loading="lazy"
             decoding="async"
             style={{ objectPosition }}
-            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out will-change-transform motion-reduce:transition-none ${
-              isHovered ? 'opacity-100 scale-[1.02]' : 'opacity-0 scale-100 pointer-events-none'
-            }`}
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out will-change-transform motion-reduce:transition-none ${isHovered ? 'opacity-100 scale-[1.02]' : 'opacity-0 scale-100 pointer-events-none'
+              }`}
           />
         )}
 
         {/* Small floating badge in top-left corner */}
         {badge && (
           <div className="absolute top-2 sm:top-2.5 left-2 sm:left-2.5 z-10 pointer-events-none">
-            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-[#141414]/90 text-[#F2F0EB] text-[8.5px] sm:text-[9.5px] font-sans font-bold tracking-[0.14em] uppercase rounded-[3px] backdrop-blur-xs shadow-xs">
+            <span
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[#F2F0EB] text-[8.5px] sm:text-[9.5px] font-sans font-bold tracking-[0.14em] uppercase rounded-[3px] backdrop-blur-xs shadow-xs ${badge === 'SOLD OUT'
+                  ? 'bg-[#141414]/55'   // muted — premium, not alarming
+                  : 'bg-[#141414]/90'
+                }`}
+            >
               {badge}
             </span>
           </div>
@@ -168,9 +171,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
         >
           <Heart
-            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
-              wishlisted ? 'fill-[#141414] text-[#141414]' : 'text-[#141414]'
-            }`}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${wishlisted ? 'fill-[#141414] text-[#141414]' : 'text-[#141414]'
+              }`}
           />
         </button>
       </div>
@@ -214,11 +216,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   key={c.name}
                   type="button"
                   onClick={() => setSelectedColorIdx(idx)}
-                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border transition-all cursor-pointer ${
-                    isSelected
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border transition-all cursor-pointer ${isSelected
                       ? 'border-[#141414] ring-1 ring-[#141414] ring-offset-2 ring-offset-[#F2F0EB] scale-105'
                       : 'border-black/20 opacity-80 hover:opacity-100 hover:scale-105'
-                  }`}
+                    }`}
                   style={{ backgroundColor: c.hex }}
                   title={c.name}
                   aria-label={`Select color ${c.name}`}
@@ -269,13 +270,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               type="button"
               onClick={handleQuickAddClick}
               disabled={isAdding || product.isSoldOut}
-              className={`w-full h-9 sm:h-9.5 px-3 rounded-[4px] text-[10.5px] sm:text-[11.5px] font-sans font-semibold uppercase tracking-[0.14em] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#141414] ${
-                product.isSoldOut
+              className={`w-full h-9 sm:h-9.5 px-3 rounded-[4px] text-[10.5px] sm:text-[11.5px] font-sans font-semibold uppercase tracking-[0.14em] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#141414] ${product.isSoldOut
                   ? 'bg-[#E5E0D6] text-[#777777] cursor-not-allowed'
                   : justAdded
-                  ? 'bg-[#141414] text-emerald-400'
-                  : 'bg-[#141414] text-[#F2F0EB] hover:bg-black active:scale-[0.99]'
-              }`}
+                    ? 'bg-[#141414] text-emerald-400'
+                    : 'bg-[#141414] text-[#F2F0EB] hover:bg-black active:scale-[0.99]'
+                }`}
               aria-label={`Add ${product.name} to cart`}
             >
               {isAdding ? (

@@ -97,7 +97,7 @@ export interface EnrichedProduct {
   updatedAt: string;
 }
 
-export type CatalogSort = 'featured' | 'newest' | 'price-asc' | 'price-desc';
+export type CatalogSort = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'availability';
 
 export interface CatalogFilter {
   category?: string;
@@ -263,77 +263,89 @@ export class ProductService {
     }
 
     try {
-        const where: any = {};
+      const where: any = {};
 
-        if (!filter?.includeInactive && !filter?.status) {
-          where.status = 'ACTIVE';
-          where.category = { isActive: true };
-        } else if (filter?.status) {
-          where.status = filter.status;
-        }
-
-        if (filter?.category) {
-          where.category = {
-            OR: [
-              { slug: filter.category.toLowerCase() },
-              { name: { equals: filter.category, mode: 'insensitive' } },
-            ],
-          };
-        }
-
-        if (filter?.collection) {
-          where.collection = { equals: filter.collection, mode: 'insensitive' };
-        }
-
-        if (filter?.search) {
-          where.OR = [
-            { name: { contains: filter.search, mode: 'insensitive' } },
-            { description: { contains: filter.search, mode: 'insensitive' } },
-            { tag: { contains: filter.search, mode: 'insensitive' } },
-            { category: { name: { contains: filter.search, mode: 'insensitive' } } },
-            { variants: { some: { sku: { contains: filter.search, mode: 'insensitive' } } } },
-          ];
-        }
-
-        if (filter?.minPrice !== undefined || filter?.maxPrice !== undefined) {
-          where.priceNGN = {
-            ...(filter.minPrice !== undefined ? { gte: filter.minPrice } : {}),
-            ...(filter.maxPrice !== undefined ? { lte: filter.maxPrice } : {}),
-          };
-        }
-
-        const variantConditions: any[] = [];
-        if (filter?.sizes?.length) variantConditions.push({ variants: { some: { size: { in: filter.sizes } } } });
-        if (filter?.colours?.length) variantConditions.push({ variants: { some: { colour: { in: filter.colours, mode: 'insensitive' } } } });
-        if (filter?.inStock) variantConditions.push({ variants: { some: { isActive: true, inventory: { stockQuantity: { gt: 0 } } } } });
-        if (variantConditions.length) where.AND = [...(where.AND || []), ...variantConditions];
-
-        const orderBy = filter?.sort === 'newest'
-          ? [{ createdAt: 'desc' }, { sortOrder: 'asc' }]
-          : filter?.sort === 'price-asc'
-            ? [{ priceNGN: 'asc' }, { sortOrder: 'asc' }]
-            : filter?.sort === 'price-desc'
-              ? [{ priceNGN: 'desc' }, { sortOrder: 'asc' }]
-              : [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
-
-        const products = await prisma.product.findMany({
-          where,
-          include: {
-            category: true,
-            variants: {
-              include: { inventory: true },
-              orderBy: { sortOrder: 'asc' },
-            },
-          },
-          orderBy: orderBy as any,
-        });
-
-        return products.map((p) => this.mapPrismaProduct(p, Boolean(filter?.includePhysicalStock)));
-      } catch (err) {
-        console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
-        markDatabaseUnavailable();
-        throw new CatalogUnavailableError();
+      if (!filter?.includeInactive && !filter?.status) {
+        where.status = 'ACTIVE';
+        where.category = { isActive: true };
+      } else if (filter?.status) {
+        where.status = filter.status;
       }
+
+      if (filter?.category) {
+        where.category = {
+          OR: [
+            { slug: filter.category.toLowerCase() },
+            { name: { equals: filter.category, mode: 'insensitive' } },
+          ],
+        };
+      }
+
+      if (filter?.collection) {
+        where.collection = { equals: filter.collection, mode: 'insensitive' };
+      }
+
+      if (filter?.search) {
+        where.OR = [
+          { name: { contains: filter.search, mode: 'insensitive' } },
+          { description: { contains: filter.search, mode: 'insensitive' } },
+          { tag: { contains: filter.search, mode: 'insensitive' } },
+          { category: { name: { contains: filter.search, mode: 'insensitive' } } },
+          { variants: { some: { sku: { contains: filter.search, mode: 'insensitive' } } } },
+        ];
+      }
+
+      if (filter?.minPrice !== undefined || filter?.maxPrice !== undefined) {
+        where.priceNGN = {
+          ...(filter.minPrice !== undefined ? { gte: filter.minPrice } : {}),
+          ...(filter.maxPrice !== undefined ? { lte: filter.maxPrice } : {}),
+        };
+      }
+
+      const variantConditions: any[] = [];
+      if (filter?.sizes?.length) variantConditions.push({ variants: { some: { size: { in: filter.sizes } } } });
+      if (filter?.colours?.length) variantConditions.push({ variants: { some: { colour: { in: filter.colours, mode: 'insensitive' } } } });
+      if (filter?.inStock) variantConditions.push({ variants: { some: { isActive: true, inventory: { stockQuantity: { gt: 0 } } } } });
+      if (variantConditions.length) where.AND = [...(where.AND || []), ...variantConditions];
+
+      const orderBy = filter?.sort === 'newest'
+        ? [{ createdAt: 'desc' }, { sortOrder: 'asc' }]
+        : filter?.sort === 'price-asc'
+          ? [{ priceNGN: 'asc' }, { sortOrder: 'asc' }]
+          : filter?.sort === 'price-desc'
+            ? [{ priceNGN: 'desc' }, { sortOrder: 'asc' }]
+            : [{ priceNGN: 'asc' }, { sortOrder: 'asc' }]; // default & 'availability': price-asc base, partitioned below
+
+      const products = await prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          variants: {
+            include: { inventory: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+        orderBy: orderBy as any,
+      });
+
+      const enriched = products.map((p) => this.mapPrismaProduct(p, Boolean(filter?.includePhysicalStock)));
+
+      // Availability-first partition: in-stock products appear before sold-out
+      // products for the default sort and the explicit 'availability' sort.
+      // Within each group the DB-level price-asc ordering is already applied.
+      const needsAvailabilitySort = !filter?.sort || filter.sort === 'featured' || filter.sort === 'availability';
+      if (needsAvailabilitySort) {
+        const inStock = enriched.filter((p) => !p.isSoldOut);
+        const soldOut = enriched.filter((p) => p.isSoldOut);
+        return [...inStock, ...soldOut];
+      }
+
+      return enriched;
+    } catch (err) {
+      console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
+      markDatabaseUnavailable();
+      throw new CatalogUnavailableError();
+    }
   }
 
 
@@ -417,55 +429,55 @@ export class ProductService {
     }
 
     try {
-        const variant = await prisma.productVariant.findFirst({
-          where: {
-            OR: [{ id: identifier }, { sku: identifier }],
-          },
-          include: {
-            product: { include: { category: true } },
-            inventory: true,
-          },
-        });
+      const variant = await prisma.productVariant.findFirst({
+        where: {
+          OR: [{ id: identifier }, { sku: identifier }],
+        },
+        include: {
+          product: { include: { category: true } },
+          inventory: true,
+        },
+      });
 
-        if (!variant) return null;
+      if (!variant) return null;
 
-        const stockQty = variant.inventory ? variant.inventory.stockQuantity : 0;
-        const reservedQty = variant.inventory ? variant.inventory.reservedQuantity : 0;
-        const available = Math.max(0, stockQty - reservedQty);
+      const stockQty = variant.inventory ? variant.inventory.stockQuantity : 0;
+      const reservedQty = variant.inventory ? variant.inventory.reservedQuantity : 0;
+      const available = Math.max(0, stockQty - reservedQty);
 
-        return {
-          id: variant.id,
-          productId: variant.productId,
-          sku: variant.sku,
-          size: variant.size,
-          colour: variant.colour,
-          colourHex: variant.colourHex,
-          priceNGN: variant.priceNGN,
-          costPriceNGN: variant.costPriceNGN,
-          priceUSD: variant.priceUSD,
-          priceGBP: variant.priceGBP,
-          priceEUR: variant.priceEUR,
-          image: variant.image,
-          altImage: variant.altImage,
-          active: variant.isActive,
-          sortOrder: variant.sortOrder,
+      return {
+        id: variant.id,
+        productId: variant.productId,
+        sku: variant.sku,
+        size: variant.size,
+        colour: variant.colour,
+        colourHex: variant.colourHex,
+        priceNGN: variant.priceNGN,
+        costPriceNGN: variant.costPriceNGN,
+        priceUSD: variant.priceUSD,
+        priceGBP: variant.priceGBP,
+        priceEUR: variant.priceEUR,
+        image: variant.image,
+        altImage: variant.altImage,
+        active: variant.isActive,
+        sortOrder: variant.sortOrder,
+        availableStock: available,
+        stock: {
           availableStock: available,
-          stock: {
-            availableStock: available,
-            reservedStock: reservedQty,
-            soldStock: variant.inventory?.soldQuantity ?? 0,
-            damagedStock: variant.inventory?.damagedQuantity ?? 0,
-            returnedStock: variant.inventory?.returnedQuantity ?? 0,
-          },
-          isAvailable: variant.isActive && available > 0,
-          createdAt: variant.createdAt.toISOString(),
-          updatedAt: variant.updatedAt.toISOString(),
-        };
-      } catch (err) {
-        console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
-        markDatabaseUnavailable();
-        throw new CatalogUnavailableError();
-      }
+          reservedStock: reservedQty,
+          soldStock: variant.inventory?.soldQuantity ?? 0,
+          damagedStock: variant.inventory?.damagedQuantity ?? 0,
+          returnedStock: variant.inventory?.returnedQuantity ?? 0,
+        },
+        isAvailable: variant.isActive && available > 0,
+        createdAt: variant.createdAt.toISOString(),
+        updatedAt: variant.updatedAt.toISOString(),
+      };
+    } catch (err) {
+      console.error('[ProductService] DB query failed; refusing to serve a stale catalogue:', (err as any)?.message);
+      markDatabaseUnavailable();
+      throw new CatalogUnavailableError();
+    }
   }
 
   private static async resolveUniqueSlug(baseSlug: string, tx: any, excludeId?: string): Promise<string> {
