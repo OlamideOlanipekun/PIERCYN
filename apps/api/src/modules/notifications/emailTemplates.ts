@@ -7,6 +7,9 @@ import {
   PaymentDecisionPayload,
   FulfilmentNotificationPayload,
 } from './types';
+
+// Re-export ReceiptUploadedPayload so callers can import it from this module
+export type { ReceiptUploadedPayload };
 import { COMMERCE_CONFIG } from '../../config/constants';
 
 function formatNGN(amount: number): string {
@@ -521,6 +524,71 @@ Customer: ${p.customerName}
 Delivery Address: ${p.deliveryAddress}, ${p.deliveryCity}, ${p.deliveryState}
 ${p.logisticsProvider ? `Logistics: ${p.logisticsProvider}\n` : ''}
 ${p.dispatchReference ? `Ref: ${p.dispatchReference}\n` : ''}
+`;
+
+  return { subject, html, text };
+}
+
+/**
+ * Customer-facing receipt submission acknowledgement.
+ * Sent to the customer when they upload a bank transfer receipt,
+ * confirming that PIERCYN has received it and will verify within 24 hours.
+ * The admin internal alert for the same event is handled separately by
+ * renderReceiptUploadedEmail (admin path → notificationWorker).
+ */
+export function renderReceiptSubmittedCustomerEmail(p: ReceiptUploadedPayload): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `[PIERCYN] Payment Receipt Received — Order #${p.orderNumber}`;
+  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const orderUrl = `${siteUrl}/account/orders/${escapeHtml(p.orderId)}`;
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><style>${BASE_STYLES}</style></head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1 class="brand">PIERCYN</h1>
+        <div class="eyebrow">Payment Review • Receipt Received</div>
+      </div>
+      <div class="h1">Your Payment Receipt Is Under Review</div>
+      <p style="font-size: 14px; line-height: 1.6; color: #44403C; margin: 0 0 16px 0;">
+        Dear ${escapeHtml(p.customerName)}, we have received your bank transfer receipt
+        for Order #${escapeHtml(p.orderNumber)}. Our team will verify your payment within 24 hours
+        and you will be notified by email once the review is complete.
+      </p>
+
+      <table class="meta-grid">
+        <tr><td class="meta-label">Order Number</td><td class="meta-val">#${escapeHtml(p.orderNumber)}</td></tr>
+        <tr><td class="meta-label">Amount Expected</td><td class="meta-val">${escapeHtml(formatNGN(p.totalNGN))}</td></tr>
+        <tr><td class="meta-label">Transfer Reference</td><td class="meta-val"><code>${escapeHtml(p.providerReference)}</code></td></tr>
+        <tr><td class="meta-label">Submitted At</td><td class="meta-val">${escapeHtml(new Date(p.uploadedAt).toLocaleString('en-NG'))}</td></tr>
+        <tr><td class="meta-label">Review Deadline</td><td class="meta-val"><span class="badge badge-amber">${escapeHtml(new Date(p.reviewDeadlineAt).toLocaleString('en-NG'))}</span></td></tr>
+      </table>
+
+      <div style="text-align: center; margin: 24px 0 12px 0;">
+        <a href="${orderUrl}" class="button">View Order</a>
+      </div>
+    </div>
+    <div class="footer">PIERCYN Luxury Atelier • piercyn@gmail.com</div>
+  </div>
+</body>
+</html>`;
+
+  const text = `PIERCYN - PAYMENT RECEIPT RECEIVED
+=================================================
+Order: #${p.orderNumber}
+Amount Expected: ${formatNGN(p.totalNGN)}
+Transfer Reference: ${p.providerReference}
+Submitted At: ${p.uploadedAt}
+Review Deadline: ${p.reviewDeadlineAt}
+
+Your receipt is under review. We will notify you within 24 hours.
+View your order: ${orderUrl}
 `;
 
   return { subject, html, text };

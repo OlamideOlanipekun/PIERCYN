@@ -1,11 +1,12 @@
 import crypto from 'node:crypto';
 import { prisma } from '@piercyn/db';
-import { getSmtpConfig, getMailTransporter, sanitizeError } from './emailConfig';
+import { getCustomerSmtpConfig, getCustomerMailTransporter, sanitizeError } from './emailConfig';
 import { telegramService } from '../telegram/telegramService';
 import {
   renderWelcomeEmail,
   renderOrderCreatedEmail,
   renderReceiptUploadedEmail,
+  renderReceiptSubmittedCustomerEmail,
   renderPaymentVerifiedEmail,
   renderOutOfStockEmail,
   renderPaymentDecisionEmail,
@@ -151,8 +152,8 @@ export class OutboxProcessor {
       return { claimed: 0, sent: 0, failed: 0, retried: 0, recovered, skipped: false };
     }
 
-    const smtpConfig = getSmtpConfig();
-    const transporter = getMailTransporter();
+    const smtpConfig = getCustomerSmtpConfig();
+    const transporter = getCustomerMailTransporter();
 
     let sent = 0;
     let failed = 0;
@@ -336,7 +337,10 @@ export class OutboxProcessor {
         return renderOrderCreatedEmail(payload as any);
 
       case 'RECEIPT_UPLOADED':
-        return renderReceiptUploadedEmail(payload as any);
+        // Customer-facing acknowledgement: "we received your receipt, under review".
+        // The admin internal alert for the same event is sent separately by
+        // notificationWorker (admin-only path) using renderReceiptUploadedEmail.
+        return renderReceiptSubmittedCustomerEmail(payload as any);
 
       case 'PAYMENT_VERIFIED':
         return renderPaymentVerifiedEmail(payload as any);

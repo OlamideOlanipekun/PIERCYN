@@ -3,10 +3,15 @@ import crypto from 'crypto';
 import {
   renderOrderCreatedEmail,
   renderReceiptUploadedEmail,
+  renderReceiptSubmittedCustomerEmail,
   renderPaymentVerifiedEmail,
   renderOutOfStockEmail,
 } from '../apps/api/src/modules/notifications/emailTemplates';
-import { sanitizeError } from '../apps/api/src/modules/notifications/emailConfig';
+import {
+  sanitizeError,
+  getSmtpConfig,
+  getCustomerSmtpConfig,
+} from '../apps/api/src/modules/notifications/emailConfig';
 import {
   OrderCreatedPayload,
   ReceiptUploadedPayload,
@@ -111,6 +116,36 @@ describe('PIERCYN Notification Engine - Email Template Rendering', () => {
     expect(rendered.text).toContain('/uploads/receipts/proof.jpg');
   });
 
+  it('renders customer-facing receipt confirmation email acknowledging review within 24 hours', () => {
+    const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const payload: ReceiptUploadedPayload = {
+      orderId: 'ord_cust_receipt_99',
+      orderNumber: 'PCY-2026-RECEIPT-CUST',
+      customerName: 'Chidinma Okeke',
+      customerEmail: 'chidinma@example.com',
+      customerPhone: '+2348055556666',
+      totalNGN: 92000,
+      providerReference: 'PROV_REF_CHIDINMA',
+      receiptPath: '/uploads/receipts/chidinma.pdf',
+      uploadedAt: new Date().toISOString(),
+      reviewDeadlineAt: deadline,
+    };
+
+    const rendered = renderReceiptSubmittedCustomerEmail(payload);
+
+    expect(rendered.subject).toContain('Payment Receipt Received');
+    expect(rendered.subject).toContain('PCY-2026-RECEIPT-CUST');
+    expect(rendered.html).toContain('Chidinma Okeke');
+    expect(rendered.html).toContain('Your Payment Receipt Is Under Review');
+    expect(rendered.html).toContain('92,000');
+    expect(rendered.html).toContain('PROV_REF_CHIDINMA');
+    expect(rendered.html).toContain('24 hours');
+    expect(rendered.html).toContain('piercyn@gmail.com');
+    expect(rendered.text).toContain('PCY-2026-RECEIPT-CUST');
+    expect(rendered.text).toContain('PROV_REF_CHIDINMA');
+    expect(rendered.text).toContain('24 hours');
+  });
+
   it('renders PAYMENT_VERIFIED email with confirmation and gateway reference', () => {
     const payload: PaymentVerifiedPayload = {
       orderId: 'ord_test_789',
@@ -197,5 +232,32 @@ describe('PIERCYN Notification Engine - Security & Sanitization', () => {
     expect(verify(validHeader, serverSecret)).toBe(true);
     expect(verify(invalidHeader, serverSecret)).toBe(false);
     expect(verify('Bearer short', serverSecret)).toBe(false);
+  });
+
+  it('correctly configures dedicated customer SMTP settings for Gmail STARTTLS', () => {
+    const originalEnv = { ...process.env };
+    try {
+      process.env.SMTP_HOST = 'smtp.gmail.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'piercyn@gmail.com';
+      process.env.SMTP_PASSWORD = 'abcd efgh ijkl mnop';
+      process.env.SMTP_FROM_EMAIL = 'piercyn@gmail.com';
+      process.env.SMTP_FROM_NAME = 'PIERCYN';
+      process.env.SMTP_REPLY_TO = 'piercyn@gmail.com';
+      delete process.env.SMTP_SECURE;
+
+      const config = getCustomerSmtpConfig();
+      expect(config).not.toBeNull();
+      expect(config?.host).toBe('smtp.gmail.com');
+      expect(config?.port).toBe(587);
+      expect(config?.secure).toBe(false); // STARTTLS on 587
+      expect(config?.user).toBe('piercyn@gmail.com');
+      expect(config?.pass).toBe('abcdefghijklmnop'); // Strips spaces
+      expect(config?.fromEmail).toBe('piercyn@gmail.com');
+      expect(config?.fromName).toBe('PIERCYN');
+      expect(config?.replyTo).toBe('piercyn@gmail.com');
+    } finally {
+      process.env = originalEnv;
+    }
   });
 });

@@ -221,5 +221,37 @@ export class AffiliateNotificationService {
     );
     return this.sendEmail(affiliate.email, 'Withdrawal Request Update', html);
   }
+
+  /**
+   * Notifies an affiliate when a previously approved commission is reversed.
+   * Triggered by CommissionService.reverseCommissions() — fire-and-forget,
+   * never called inside a database transaction.
+   */
+  public static async notifyCommissionReversed(
+    affiliate: { email: string; firstName: string },
+    details: { orderNumber: string; amountNGN: number; reason?: string }
+  ) {
+    const portalUrl = process.env.PUBLIC_APP_URL || 'https://piercyn.vercel.app';
+    const html = emailWrapper(
+      'Commission Reversal Notice',
+      `
+      <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Commission Reversal</h2>
+      <p>Dear ${affiliate.firstName},</p>
+      <p>A previously recorded commission on your PIERCYN Creator account has been reversed.</p>
+      <div class="card">
+        <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Order Number</p>
+        <p style="margin: 2px 0 10px; color: #141414; font-family: monospace; font-weight: 600;">#${details.orderNumber}</p>
+        <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Amount Reversed</p>
+        <p style="margin: 2px 0 0; color: #991B1B; font-size: 20px; font-weight: 700;">₦${details.amountNGN.toLocaleString()}</p>
+        ${details.reason ? `<p style="margin: 10px 0 0; font-size: 12px; color: #78716C;"><strong>Reason:</strong> ${details.reason}</p>` : ''}
+      </div>
+      <p>Your available balance has been updated. Please log into your Creator Portal to review your current earnings.</p>
+      <div style="text-align: center; margin: 25px 0;">
+        <a href="${portalUrl}/affiliate" class="btn">View Affiliate Dashboard</a>
+      </div>
+      `
+    );
+    return this.sendEmail(affiliate.email, `Commission Reversal — Order #${details.orderNumber}`, html);
+  }
 }
 

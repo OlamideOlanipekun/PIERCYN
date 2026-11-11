@@ -45,6 +45,17 @@ export interface WorkerRunResult {
 
 export class NotificationWorker {
   /**
+   * ADMIN ALERT PATH — sends to smtpConfig.adminEmail (ADMIN_NOTIFICATION_EMAIL).
+   * Handles internal operational events: RECEIPT_UPLOADED admin notice,
+   * PRODUCT_OUT_OF_STOCK, and other admin-only alerts queued via
+   * NotificationQueueService.
+   *
+   * Customer-facing transactional emails (welcome, order confirmation, payment
+   * decisions, delivery quotes, dispatch/delivered) are delivered exclusively
+   * by OutboxProcessor using the dedicated customer sender (piercyn@gmail.com).
+   */
+
+  /**
    * Reclaims jobs that were abandoned by crashed workers.
    */
   public static async recoverStaleLocks(): Promise<number> {

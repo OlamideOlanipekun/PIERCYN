@@ -90,6 +90,58 @@ export function getMailTransporter(): Transporter | null {
   return cachedTransporter;
 }
 
+/**
+ * Returns the SMTP config for the dedicated customer-facing sender (piercyn@gmail.com).
+ * Reads from the same SMTP_* environment variables as getSmtpConfig().
+ * Named separately so the two paths can be split to independent env var blocks
+ * in the future without touching call sites.
+ */
+export function getCustomerSmtpConfig(): SmtpConfig | null {
+  return getSmtpConfig();
+}
+
+let cachedCustomerTransporter: Transporter | null = null;
+
+/**
+ * Returns a nodemailer transporter for customer-facing transactional emails.
+ * Used by OutboxProcessor exclusively. Cached independently of the admin
+ * transporter so both can be active at the same time.
+ */
+export function getCustomerMailTransporter(): Transporter | null {
+  const config = getCustomerSmtpConfig();
+  if (!config) {
+    return null;
+  }
+
+  if (cachedCustomerTransporter) {
+    return cachedCustomerTransporter;
+  }
+
+  cachedCustomerTransporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: !config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    socketTimeout: 20000,
+  });
+
+  // Non-blocking SMTP connection validation on first transporter creation
+  cachedCustomerTransporter.verify().then(() => {
+    console.log(`[SMTP_CUSTOMER] ✓ Connected ${config.host}:${config.port} as ${config.user} (customer sender)`);
+  }).catch((err: unknown) => {
+    console.warn(`[SMTP_CUSTOMER] ✗ Connection failed: ${sanitizeError(err)}`);
+  });
+
+  return cachedCustomerTransporter;
+}
+
 export function sanitizeError(error: unknown): string {
   if (!error) return 'Unknown error';
   const msg = error instanceof Error ? error.message : String(error);
