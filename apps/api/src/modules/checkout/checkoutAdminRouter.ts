@@ -480,15 +480,43 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
     const order = await loadAdminOrder(req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
-    // STRICT prerequisite enforcement — must be enforced here even if frontend already checks
+    // CONTEXT-AWARE prerequisite enforcement
+    // New checkout flow: order has a separate DELIVERY payment record (bank-transfer split flow).
+    // Legacy/Paystack flow: full amount paid as a single transaction — no DELIVERY payment record.
     const productPayment = order.payments.find(p => p.paymentType === 'PRODUCT');
     const deliveryPayment = order.payments.find(p => p.paymentType === 'DELIVERY');
     const acceptedQuote = order.deliveryQuotes.find(q => q.status === 'ACCEPTED');
+    const hasDeliveryPaymentRecord = !!deliveryPayment;
 
     const prereqErrors: string[] = [];
-    if (productPayment?.status !== 'VERIFIED') prereqErrors.push('Product payment is not verified.');
-    if (!acceptedQuote) prereqErrors.push('Delivery quotation has not been accepted by the customer.');
-    if (deliveryPayment?.status !== 'VERIFIED') prereqErrors.push('Delivery payment is not verified.');
+
+    if (hasDeliveryPaymentRecord) {
+      // ── New split-payment flow ──────────────────────────────────────────────
+      // All three conditions must be satisfied before dispatch is allowed.
+      if (productPayment?.status !== 'VERIFIED') {
+        prereqErrors.push('Product payment is not verified.');
+      }
+      if (!acceptedQuote) {
+        prereqErrors.push('Delivery quotation has not been accepted by the customer.');
+      }
+      if (deliveryPayment.status !== 'VERIFIED') {
+        prereqErrors.push('Delivery payment is not verified.');
+      }
+    } else {
+      // ── Legacy / Paystack single-payment flow ───────────────────────────────
+      // The full amount was collected in one transaction. Only require paymentStatus === 'PAID'.
+      if (order.paymentStatus !== 'PAID') {
+        prereqErrors.push('Order payment is not confirmed. Payment must be fully verified before dispatch.');
+      }
+      // If a quote was sent but not yet accepted, block dispatch.
+      // PENDING (no quote sent yet) and ACCEPTED are both fine to dispatch.
+      const blockedQuoteStatuses = ['SET', 'SENT', 'REJECTED', 'EXPIRED'];
+      if (blockedQuoteStatuses.includes(order.quoteStatus)) {
+        prereqErrors.push(
+          `Delivery quotation must be accepted by the customer before dispatch. Current quote status: ${order.quoteStatus}.`
+        );
+      }
+    }
 
     if (prereqErrors.length > 0) {
       return res.status(400).json({
