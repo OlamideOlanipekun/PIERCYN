@@ -132,7 +132,10 @@ export class CartService {
             include: { items: true },
           });
 
-          if (guestCart && guestCart.id !== customerCart.id && guestCart.items.length > 0) {
+          if (guestCart && guestCart.id !== customerCart.id) {
+            // Merge any guest lines, then always remove the guest cart. An
+            // empty guest cart still owns the unique sessionId and would make
+            // the customer-cart update below fail with Prisma P2002.
             for (const gItem of guestCart.items) {
               const existing = customerCart.items.find((i) => i.variantId === gItem.variantId);
               if (existing) {
