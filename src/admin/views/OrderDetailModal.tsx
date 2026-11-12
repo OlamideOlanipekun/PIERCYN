@@ -596,7 +596,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     const cleanPhone = riderPhone.replace(/\D/g, '');
     const intlPhone = cleanPhone.startsWith('0') ? `234${cleanPhone.slice(1)}` : cleanPhone;
 
-    const itemsSummary = order.items
+    const itemsSummary = (order.items ?? [])
       .map((it) => `• ${it.quantity}x ${it.productName} (${it.colour}/${it.size})`)
       .join('\n');
 
@@ -1518,12 +1518,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               {/* --------------------------------------------------------- */}
               <div className="p-3.5 sm:p-4 rounded-xl bg-[#181818] border border-[#262626]">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#A3A199] block mb-2 sm:mb-3">
-                  ORDERED PIECES ({order.items.reduce((s, it) => s + it.quantity, 0)})
+                  ORDERED PIECES ({(order.items ?? []).reduce((s, it) => s + it.quantity, 0)})
                 </span>
 
                 {/* Mobile Pieces Card View (< sm) */}
                 <div className="sm:hidden space-y-2.5">
-                  {order.items.map((it) => (
+                  {(order.items ?? []).map((it) => (
                     <div key={it.id} className="p-3 rounded-lg bg-white/5 border border-white/5 flex gap-3 items-center">
                       {it.image && (
                         <img
@@ -1564,7 +1564,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#242424]">
-                      {order.items.map((it) => (
+                      {(order.items ?? []).map((it) => (
                         <tr key={it.id}>
                           <td className="py-3 px-2.5">
                             <div className="flex items-center gap-3">

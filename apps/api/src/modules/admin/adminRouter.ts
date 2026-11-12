@@ -1504,6 +1504,7 @@ adminRouter.get('/alerts', requireAdmin, async (_req: Request, res: Response) =>
           { paymentStatus: 'PENDING' },
         ],
       },
+      include: { items: true },
     });
 
     const ordersNeedingAttention = orders.filter(

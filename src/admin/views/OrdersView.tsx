@@ -306,7 +306,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
                   <div className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-mono font-bold text-neutral-300 text-[11px] block">
-                        {ord.items.reduce((sum, it) => sum + it.quantity, 0)} pcs • {ord.items[0]?.productName || 'Garments'}
+                        {(ord.items ?? []).reduce((sum, it) => sum + it.quantity, 0)} pcs • {ord.items?.[0]?.productName || 'Garments'}
                       </span>
                       <span
                         className={`inline-block mt-1 text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded ${
@@ -391,7 +391,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({ onOpenOrder }) => {
 
                       <td className="py-3.5 px-3">
                         <span className="font-mono text-neutral-300 font-bold">
-                          {ord.items.reduce((sum, it) => sum + it.quantity, 0)} pcs
+                          {(ord.items ?? []).reduce((sum, it) => sum + it.quantity, 0)} pcs
                         </span>
                         <p className="text-[10px] text-neutral-500 truncate max-w-[130px]">
                           {ord.items[0]?.productName || 'Garments'}

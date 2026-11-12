@@ -105,7 +105,7 @@ export const AdminDrawer: React.FC = () => {
                   {/* ITEMS SUMMARY */}
                   <div className="pt-2 border-t border-[#DAD8D1]/60 space-y-1">
                     <span className="text-[#141414]/60 uppercase text-[9px] block">ORDERED PIECES</span>
-                    {ord.items.map((it, idx) => (
+                    {(ord.items ?? []).map((it, idx) => (
                       <div key={idx} className="flex justify-between text-[#141414] font-mono text-[11px]">
                         <span>{it.quantity}x {it.productName} ({it.size}, {it.color})</span>
                         <span>₦{(it.totalPriceNGN || (it.unitPriceNGN * it.quantity) || 0).toLocaleString()}</span>

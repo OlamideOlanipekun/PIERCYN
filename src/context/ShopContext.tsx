@@ -243,7 +243,14 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [products]);
 
   // Initialize & sync server cart from GET /api/cart
+  // Skip on affiliate and admin routes — they don't use the storefront cart.
   useEffect(() => {
+    const isNonStorefrontRoute = typeof window !== 'undefined' &&
+      (window.location.pathname.startsWith('/affiliate') ||
+       window.location.pathname.startsWith('/admin'));
+
+    if (isNonStorefrontRoute) return;
+
     const initServerCart = async () => {
       try {
         const res = await api.getCart();
@@ -266,6 +273,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initServerCart();
 
     const handleAuthChange = () => {
+      // Re-check route — user might have navigated
+      if (window.location.pathname.startsWith('/affiliate') ||
+          window.location.pathname.startsWith('/admin')) return;
       initServerCart();
     };
     window.addEventListener('piercyn_auth_changed', handleAuthChange);

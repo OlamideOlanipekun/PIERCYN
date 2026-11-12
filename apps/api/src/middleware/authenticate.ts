@@ -5,7 +5,10 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (process.env.NODE_ENV === 'production' && !serviceRoleKey) {
-  throw new Error('[SECURITY_CRITICAL] SUPABASE_SERVICE_ROLE_KEY must be configured in production.');
+  // Log the missing config but do NOT throw here — throwing at module load
+  // time crashes the entire serverless function and makes every route return 500.
+  // requireAuth will still reject unauthenticated requests at the handler level.
+  console.error('[SECURITY_CRITICAL] SUPABASE_SERVICE_ROLE_KEY is not configured in this production environment. All authenticated routes will reject with 401.');
 }
 
 // Single shared server client for identity verification

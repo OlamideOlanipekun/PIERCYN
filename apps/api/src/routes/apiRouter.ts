@@ -297,6 +297,7 @@ apiRouter.get('/cart', optionalAuth, async (req: Request, res: Response) => {
     const cart = await CartService.calculateCart(sessionId, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
+    console.error('[CART_GET_ERROR]', err?.code, err?.message, err?.meta);
     res.status(500).json({ success: false, error: err.message });
   }
 });
