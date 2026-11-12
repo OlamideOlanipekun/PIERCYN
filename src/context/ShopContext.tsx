@@ -418,8 +418,23 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     quantity: number = 1,
     explicitVariantId?: string
   ): Promise<boolean> => {
-    const resolved = resolveProductVariant(product, colorName, size);
-    const variantId = explicitVariantId || resolved.id;
+    // Editorial sections can still provide legacy static product objects.
+    // Prefer the matching live catalog product so the variant ID sent to the
+    // API is guaranteed to come from the current database catalog.
+    const productKey = (value: string | undefined) =>
+      (value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const liveProduct = products.find((candidate) =>
+      candidate.id === product.id ||
+      candidate.slug === product.slug ||
+      productKey(candidate.name) === productKey(product.name) ||
+      productKey(candidate.slug) === productKey(product.slug)
+    );
+    const catalogProduct = liveProduct || product;
+    const resolved = resolveProductVariant(catalogProduct, colorName, size);
+    const explicitVariantIsCurrent = Boolean(
+      explicitVariantId && catalogProduct.variants?.some((variant) => variant.id === explicitVariantId)
+    );
+    const variantId = explicitVariantIsCurrent ? explicitVariantId! : resolved.id;
     const selectedSize = resolved.size;
 
     setIsCartLoading(true);
@@ -433,16 +448,16 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCartCount(calculated.itemCount || 0);
 
         eventTracker.track('add_to_cart', {
-          productId: product.id,
+          productId: catalogProduct.id,
           variantId,
-          productName: product.name,
-          priceNGN: product.priceNGN,
+          productName: catalogProduct.name,
+          priceNGN: catalogProduct.priceNGN,
           selectedColor: resolved.colour,
           selectedSize: resolved.size,
           quantity,
         });
 
-        showToast(`Added ${product.name} (${selectedSize}) to bag`);
+        showToast(`Added ${catalogProduct.name} (${selectedSize}) to bag`);
         setIsCartOpen(true);
         setIsCartLoading(false);
         return true;

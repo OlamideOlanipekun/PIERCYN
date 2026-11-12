@@ -328,7 +328,12 @@ apiRouter.post('/cart/items', optionalAuth, async (req: Request, res: Response) 
     // Log to Vercel function logs so we can diagnose variant resolution issues
     console.error('[CART_ADD_ERROR]', err?.code, err?.message, JSON.stringify(req.body));
     const msg = err.issues ? err.issues[0]?.message : (err.errors ? err.errors[0]?.message : err.message);
-    res.status(400).json({ success: false, error: msg });
+    const isValidationError = Boolean(err?.issues || err?.errors);
+    const isNotFound = typeof msg === 'string' && /variant .* not found/i.test(msg);
+    const isStockError = typeof msg === 'string' && /insufficient stock/i.test(msg);
+    const isDatabaseUnavailable = err?.name === 'CatalogUnavailableError' || err?.code === 'P1001' || err?.code === 'P2024';
+    const status = isDatabaseUnavailable ? 503 : isStockError ? 409 : isNotFound ? 404 : isValidationError ? 400 : 500;
+    res.status(status).json({ success: false, error: msg || 'Unable to add item to cart.' });
   }
 });
 
