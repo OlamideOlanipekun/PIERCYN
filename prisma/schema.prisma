@@ -341,8 +341,8 @@ model ProductVariant {
   product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   sku          String    @unique   // e.g. PC-TEE-BLK-M
   size         String              // XS, S, M, L, XL, XXL, ONE_SIZE
-  colour       String              // "Pitch Black", "Washed Sand"
-  colourHex    String              // "#111111"
+  colour       String    @default("Default") // Retained for schema & historical backward compatibility
+  colourHex    String    @default("#111111")
 
   // Optional variant-level price override (falls back to product price if null)
   priceNGN     Int?

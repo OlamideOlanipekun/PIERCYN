@@ -294,7 +294,7 @@ export const InventoryView: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by SKU, product name, color, or size..."
+              placeholder="Search by SKU, product name, or size..."
               className="w-full bg-[#0A0A0A] border border-[#2D2D2D] rounded-lg pl-9 pr-3 py-2 text-xs text-[#F2F0EB] placeholder:text-neutral-600 outline-hidden font-sans"
             />
           </div>
@@ -495,15 +495,17 @@ export const InventoryView: React.FC = () => {
                         <span className="font-mono bg-white/10 px-2 py-0.5 rounded font-bold text-[#F2F0EB]">
                           Size {item.size}
                         </span>
-                        <div className="flex items-center gap-1.5 font-sans text-neutral-300">
-                          {item.colourHex && (
-                            <span
-                              className="w-3 h-3 rounded-full border border-white/20 shrink-0"
-                              style={{ backgroundColor: item.colourHex }}
-                            />
-                          )}
-                          <span>{item.colour}</span>
-                        </div>
+                        {item.colour && item.colour !== 'Default' && (
+                          <div className="flex items-center gap-1.5 font-sans text-neutral-300">
+                            {item.colourHex && (
+                              <span
+                                className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                                style={{ backgroundColor: item.colourHex }}
+                              />
+                            )}
+                            <span>{item.colour}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Stock counts */}
@@ -600,15 +602,19 @@ export const InventoryView: React.FC = () => {
                           </td>
 
                           <td className="py-3.5 font-sans">
-                            <div className="flex items-center gap-2">
-                              {item.colourHex && (
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/20 shrink-0"
-                                  style={{ backgroundColor: item.colourHex }}
-                                />
-                              )}
-                              <span className="text-neutral-300">{item.colour}</span>
-                            </div>
+                            {item.colour && item.colour !== 'Default' ? (
+                              <div className="flex items-center gap-2">
+                                {item.colourHex && (
+                                  <span
+                                    className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                                    style={{ backgroundColor: item.colourHex }}
+                                  />
+                                )}
+                                <span className="text-neutral-300">{item.colour}</span>
+                              </div>
+                            ) : (
+                              <span className="text-neutral-500 font-mono text-[11px]">—</span>
+                            )}
                           </td>
 
                           <td className="py-3.5 font-mono text-neutral-300">
@@ -817,7 +823,7 @@ export const InventoryView: React.FC = () => {
                   RESTOCK INVENTORY
                 </span>
                 <h3 className="font-bold text-sm text-[#F2F0EB]">
-                  {restockingItem.productName} ({restockingItem.colour} / {restockingItem.size})
+                  {restockingItem.productName} ({restockingItem.colour && restockingItem.colour !== 'Default' ? `${restockingItem.colour} / ` : ''}{restockingItem.size})
                 </h3>
               </div>
               <button
@@ -912,7 +918,7 @@ export const InventoryView: React.FC = () => {
                   MANUAL INVENTORY ADJUSTMENT
                 </span>
                 <h3 className="font-bold text-sm text-[#F2F0EB]">
-                  {adjustingItem.productName} ({adjustingItem.colour} / {adjustingItem.size})
+                  {adjustingItem.productName} ({adjustingItem.colour && adjustingItem.colour !== 'Default' ? `${adjustingItem.colour} / ` : ''}{adjustingItem.size})
                 </h3>
               </div>
               <button

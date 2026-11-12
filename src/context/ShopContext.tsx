@@ -28,13 +28,17 @@ interface ShopContextType {
   isCartLoading: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
-  addToCart: (product: Product, colorName?: string, size?: string, quantity?: number, variantId?: string) => Promise<boolean>;
+  addToCart: {
+    (product: Product, size: string, quantity?: number, variantId?: string): Promise<boolean>;
+    (product: Product, colorName: string, size: string, quantity?: number, variantId?: string): Promise<boolean>;
+    (product: Product, colorOrSize?: string, sizeOrQuantity?: string | number, quantityOrVariantId?: number | string, explicitVariantId?: string): Promise<boolean>;
+  };
   removeFromCart: (param1: string, param2?: string, param3?: string) => Promise<void>;
-  updateQuantity: (param1: string, param2: string | number, param3?: string, param4?: number) => Promise<void>;
+  updateQuantity: (param1: string, param2: string | number, param3?: string | number, param4?: number) => Promise<void>;
   clearCart: () => Promise<void>;
   cartCount: number;
   cartSubtotal: number;
-  
+
   // Promo code & discount
   appliedPromoCode: string | null;
   promoDiscountNGN: number;
@@ -66,16 +70,16 @@ interface ShopContextType {
   // Modals & Drawers
   quickViewProduct: Product | null;
   setQuickViewProduct: (product: Product | null) => void;
-  
+
   activeLook: LookbookLook | null;
   setActiveLook: (look: LookbookLook | null) => void;
-  
+
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
-  
+
   isStoryOpen: boolean;
   setIsStoryOpen: (open: boolean) => void;
-  
+
   isSizeGuideOpen: boolean;
   setIsSizeGuideOpen: (open: boolean) => void;
 
@@ -247,7 +251,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const isNonStorefrontRoute = typeof window !== 'undefined' &&
       (window.location.pathname.startsWith('/affiliate') ||
-       window.location.pathname.startsWith('/admin'));
+        window.location.pathname.startsWith('/admin'));
 
     if (isNonStorefrontRoute) return;
 
@@ -275,7 +279,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleAuthChange = () => {
       // Re-check route — user might have navigated
       if (window.location.pathname.startsWith('/affiliate') ||
-          window.location.pathname.startsWith('/admin')) return;
+        window.location.pathname.startsWith('/admin')) return;
       initServerCart();
     };
     window.addEventListener('piercyn_auth_changed', handleAuthChange);
@@ -413,9 +417,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Authoritative Server-Synced Add to Cart
   const addToCart = async (
     product: Product,
-    colorName?: string,
-    size?: string,
-    quantity: number = 1,
+    colorOrSize?: string,
+    sizeOrQuantity?: string | number,
+    quantityOrVariantId?: number | string,
     explicitVariantId?: string
   ): Promise<boolean> => {
     // Editorial sections can still provide legacy static product objects.
@@ -430,24 +434,43 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       productKey(candidate.slug) === productKey(product.slug)
     );
     const catalogProduct = liveProduct || product;
-    const resolved = resolveProductVariant(catalogProduct, colorName, size);
+
+    // Normalizing parameters: supports addToCart(product, size, qty) as well as legacy addToCart(product, color, size, qty)
+    let selectedSize: string;
+    let explicitVariant: string | undefined = explicitVariantId;
+    let quantity: number = 1;
+    let legacyColor: string | undefined;
+
+    if (typeof sizeOrQuantity === 'number') {
+      // Form: addToCart(product, size, quantity, explicitVariantId)
+      selectedSize = colorOrSize || catalogProduct.sizes?.[0] || 'M';
+      quantity = sizeOrQuantity;
+      if (typeof quantityOrVariantId === 'string') {
+        explicitVariant = quantityOrVariantId;
+      }
+    } else if (typeof sizeOrQuantity === 'string') {
+      // Legacy Form: addToCart(product, colorName, size, quantity, explicitVariantId)
+      legacyColor = colorOrSize;
+      selectedSize = sizeOrQuantity || catalogProduct.sizes?.[0] || 'M';
+      quantity = typeof quantityOrVariantId === 'number' ? quantityOrVariantId : 1;
+    } else {
+      selectedSize = colorOrSize || catalogProduct.sizes?.[0] || 'M';
+      quantity = typeof quantityOrVariantId === 'number' ? quantityOrVariantId : 1;
+    }
+
+    const resolved = resolveProductVariant(catalogProduct, legacyColor, selectedSize);
     const explicitVariantIsCurrent = Boolean(
-      explicitVariantId && catalogProduct.variants?.some((variant) => variant.id === explicitVariantId)
+      explicitVariant && catalogProduct.variants?.some((variant) => variant.id === explicitVariant)
     );
-    const selectedColor = (colorName || catalogProduct.colors?.[0]?.name || 'Default').toLowerCase().trim();
-    const selectedSize = (size || catalogProduct.sizes?.[0] || 'M').toLowerCase().trim();
+    const cleanSize = selectedSize.toLowerCase().trim();
     const selectedLiveVariant = catalogProduct.variants?.find((variant) =>
-      variant.size.toLowerCase().trim() === selectedSize &&
-      (variant.colour.toLowerCase().trim() === selectedColor ||
-        variant.colour.toLowerCase().includes(selectedColor) ||
-        selectedColor.includes(variant.colour.toLowerCase().trim()))
+      variant.size.toLowerCase().trim() === cleanSize
     );
     if (catalogProduct.variants?.length && !explicitVariantIsCurrent && !selectedLiveVariant) {
-      showToast('That colour and size combination is currently unavailable.');
+      showToast('That size is currently unavailable.');
       return false;
     }
-    const variantId = explicitVariantIsCurrent ? explicitVariantId! : resolved.id;
-    const resolvedSize = resolved.size;
+    const variantId = explicitVariantIsCurrent ? explicitVariant! : resolved.id;
 
     setIsCartLoading(true);
     try {
@@ -469,7 +492,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           quantity,
         });
 
-        showToast(`Added ${catalogProduct.name} (${resolvedSize}) to bag`);
+        showToast(`Added ${catalogProduct.name} (${resolved.size}) to bag`);
         setIsCartOpen(true);
         setIsCartLoading(false);
         return true;
@@ -489,13 +512,12 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Authoritative Server-Synced Remove From Cart
   const removeFromCart = async (param1: string, param2?: string, param3?: string) => {
     let targetVariantId = param1;
-    if (param2 && param3) {
+    if (param2) {
       const productId = param1;
-      const colorName = param2;
-      const size = param3;
+      const targetSize = param3 || param2;
       const item = cart.find(
-        (it) => it.product.id === productId && it.selectedColor === colorName && it.selectedSize === size
-      );
+        (it) => it.product.id === productId && it.selectedSize.toUpperCase() === targetSize.toUpperCase()
+      ) || cart.find((it) => it.variantId === param1);
       if (!item) return;
       targetVariantId = item.variantId;
     }
@@ -529,11 +551,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (typeof param2 === 'string') {
       const productId = param1;
-      const colorName = param2;
-      const size = param3;
+      const targetSize = param3 || param2;
       const item = cart.find(
-        (it) => it.product.id === productId && it.selectedColor === colorName && it.selectedSize === size
-      );
+        (it) => it.product.id === productId && it.selectedSize.toUpperCase() === targetSize.toUpperCase()
+      ) || cart.find((it) => it.variantId === param1);
       if (!item) return;
       targetVariantId = item.variantId;
     }

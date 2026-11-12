@@ -211,46 +211,43 @@ async function main() {
 
     productCount++;
 
-    // ── Variants + Inventory ──────────────────────────────
-    const colors =
+    // ── Variants + Inventory (Size Only) ──────────────────────────────
+    const primaryColor =
       p.colors && p.colors.length > 0
-        ? p.colors
-        : [{ name: 'Default', hex: '#111111', image: p.images?.[0] ?? '' }];
+        ? p.colors[0]
+        : { name: 'Default', hex: '#111111', image: p.images?.[0] ?? '' };
     const sizes =
       p.sizes && p.sizes.length > 0 ? p.sizes : ['M'];
 
-    for (const col of colors) {
-      for (const sz of sizes) {
-        // SKU format: PCY-{PRODUCT_ID}-{COL}-{SIZE}
-        const sku = `PCY-${slugify(p.id).toUpperCase()}-${slugify(col.name)
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, '')}-${slugify(sz).toUpperCase()}`;
+    for (const sz of sizes) {
+      // SKU format: PCY-{PRODUCT_ID}-{SIZE}
+      const sku = `PCY-${slugify(p.id).toUpperCase()}-${slugify(sz).toUpperCase()}`;
 
-        const variant = await prisma.productVariant.upsert({
-          where: {
-            productId_size_colour: {
-              productId: product.id,
-              size: sz,
-              colour: col.name,
-            },
-          },
-          update: {
-            sku,
-            colourHex: col.hex,
-            image: col.image || p.images?.[0],
-            isActive: !p.isSoldOut,
-          },
-          create: {
+      const variant = await prisma.productVariant.upsert({
+        where: {
+          productId_size_colour: {
             productId: product.id,
-            sku,
             size: sz,
-            colour: col.name,
-            colourHex: col.hex,
-            image: col.image || p.images?.[0],
-            altImage: (col as any).altImage,
-            isActive: !p.isSoldOut,
+            colour: primaryColor.name,
           },
-        });
+        },
+        update: {
+          sku,
+          colourHex: primaryColor.hex,
+          image: primaryColor.image || p.images?.[0],
+          isActive: !p.isSoldOut,
+        },
+        create: {
+          productId: product.id,
+          sku,
+          size: sz,
+          colour: primaryColor.name,
+          colourHex: primaryColor.hex,
+          image: primaryColor.image || p.images?.[0],
+          altImage: (primaryColor as any).altImage,
+          isActive: !p.isSoldOut,
+        },
+      });
 
         // Initial stock: 20 units for active, 0 for sold-out
         const initialStock = p.isSoldOut ? 0 : 20;

@@ -49,7 +49,6 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   onBackToShop,
 }) => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [selectedProductColors, setSelectedProductColors] = useState<Record<string, number>>({});
   const [ordersPerMonth, setOrdersPerMonth] = useState<number>(40);
   const [calcTimeframe, setCalcTimeframe] = useState<'monthly' | 'weekly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -585,9 +584,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
 
             <div data-reveal-stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredProducts.map((product) => {
-                const colorIdx = selectedProductColors[product.id] || 0;
-                const activeColor = product.colors?.[colorIdx];
-                const img = activeColor?.image || product.images?.[0] || '';
+                const img = product.images?.[0] || '';
                 const isCopied = copiedLinkIndex === product.slug;
 
                 return (
@@ -639,25 +636,6 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                       <div className="text-xs font-serif font-bold text-[#141414]">
                         {formatNGN(product.priceNGN)}
                       </div>
-
-                      {/* Interactive Colorway Switcher */}
-                      {product.colors && product.colors.length > 1 && (
-                        <div className="flex items-center gap-1.5 pt-1">
-                          {product.colors.map((c, idx) => (
-                            <button
-                              key={c.name}
-                              onClick={() =>
-                                setSelectedProductColors((prev) => ({ ...prev, [product.id]: idx }))
-                              }
-                              className={`w-3.5 h-3.5 rounded-full border transition-all ${
-                                colorIdx === idx ? 'border-[#141414] scale-110 ring-1 ring-[#141414]' : 'border-black/20'
-                              }`}
-                              style={{ backgroundColor: c.hex }}
-                              title={c.name}
-                            />
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );

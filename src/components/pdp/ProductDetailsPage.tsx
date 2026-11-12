@@ -49,7 +49,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     showToast,
   } = useShop();
 
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
@@ -57,11 +56,10 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   // Initialize variant selection & analytics
   useEffect(() => {
     if (product) {
-      setSelectedColorIdx(0);
       setQuantity(1);
       if (product.sizes && product.sizes.length > 0) {
         const firstAvailableSize = product.sizes.find((size) => {
-          const variant = findProductVariant(product, product.colors?.[0]?.name, size);
+          const variant = findProductVariant(product, size);
           return isSupplierFulfilled
             ? product.supplierVerified !== false && (!variant || variant.active !== false)
             : Boolean(
@@ -129,13 +127,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
         return (aIndex < 0 ? sizeOrder.length : aIndex) - (bIndex < 0 ? sizeOrder.length : bIndex);
       })
     : product.sizes;
-  const currentColor = product.colors[selectedColorIdx] || product.colors[0];
-
   // Stock status determination
   const isInactive = product.status === 'archived' || (product.status as string) === 'inactive';
   const isSupplierFulfilled = product.availabilityType === 'available_to_order';
   const hasVariants = Boolean(product.variants?.length);
-  const selectedVariant = findProductVariant(product, currentColor?.name, selectedSize);
+  const selectedVariant = findProductVariant(product, selectedSize);
   const selectedStock = hasVariants ? selectedVariant?.availableStock : product.stock;
 
   // A product with variants is ONLY completely sold out if ALL variants are inactive or 0 stock
@@ -177,11 +173,10 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, quantity);
+    addToCart(product, selectedSize, quantity);
     eventTracker.track('add_to_cart', {
       productId: product.id,
       productName: product.name,
-      color: currentColor?.name,
       size: selectedSize,
       quantity,
       priceNGN: product.priceNGN,
@@ -199,12 +194,11 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
       return;
     }
 
-    addToCart(product, currentColor?.name, selectedSize, quantity);
+    addToCart(product, selectedSize, quantity);
     onSelectPage('checkout');
     eventTracker.track('buy_now_clicked', {
       productId: product.id,
       productName: product.name,
-      color: currentColor?.name,
       size: selectedSize,
       quantity,
       priceNGN: product.priceNGN,
@@ -253,7 +247,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             <ProductGallery
               images={product.images}
               productName={product.name}
-              activeColor={currentColor}
               gsm={product.gsm}
             />
           </div>
@@ -319,44 +312,6 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               </p>
             </div>
 
-            {/* COLOR SELECTOR */}
-            {!isSizeOnlyProduct && product.colors && product.colors.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[#DAD8D1]">
-                <div className="flex items-center justify-between text-[11px] font-sans uppercase tracking-[0.14em] font-semibold text-[#141414]">
-                  <span>COLOR: <strong className="font-bold">{currentColor?.name}</strong></span>
-                  <span className="text-[10px] font-mono text-[#7A7771]">{selectedColorIdx + 1} of {product.colors.length}</span>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  {product.colors.map((color, idx) => (
-                    <button
-                      key={color.name}
-                      onClick={() => {
-                        setSelectedColorIdx(idx);
-                        eventTracker.track('color_selected', {
-                          productId: product.id,
-                          color: color.name,
-                        });
-                      }}
-                      className={`min-w-[44px] min-h-[44px] rounded-full border-2 p-1 transition-all cursor-pointer flex items-center justify-center ${
-                        selectedColorIdx === idx
-                          ? 'border-[#141414] scale-105 ring-1 ring-[#141414]'
-                          : 'border-transparent opacity-75 hover:opacity-100'
-                      }`}
-                      title={color.name}
-                      aria-label={`Select color ${color.name}`}
-                    >
-                      <span
-                        className="w-6 h-6 rounded-full block border border-black/15 shadow-2xs"
-                        style={{ backgroundColor: color.hex }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-
             {product.sizes && product.sizes.length > 0 && (
               <section className="space-y-2 border-t border-[#DAD8D1] pt-3" aria-label="Choose size">
                 <div className="flex items-center justify-between">
@@ -365,7 +320,7 @@ export const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sizeOptions.map((size) => {
-                    const variant = findProductVariant(product, currentColor?.name, size);
+                    const variant = findProductVariant(product, size);
                     const inStock = isSupplierFulfilled
                       ? product.supplierVerified !== false && (!variant || variant.active !== false)
                       : Boolean(!variant || (variant.active !== false && (variant.availableStock === undefined || variant.availableStock > 0)));

@@ -28,21 +28,25 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   ...overrides,
 });
 
-describe('size-only bottoms variants', () => {
-  it('identifies trousers, shorts, and jeans by their catalog category', () => {
+describe('size-only variants across catalog', () => {
+  it('treats all categories as size-only in storefront', () => {
     expect(usesSizeOnlyOptions({ category: 'trousers', categoryName: 'Short jeans' })).toBe(true);
     expect(usesSizeOnlyOptions({ category: 'jeans', categoryName: 'Baggy Jeans' })).toBe(true);
-    expect(usesSizeOnlyOptions({ category: 'hoodies', categoryName: 'Hoodies' })).toBe(false);
+    expect(usesSizeOnlyOptions({ category: 'hoodies', categoryName: 'Hoodies' })).toBe(true);
   });
 
-  it('resolves a size-only variant without exposing a color choice', () => {
+  it('resolves a size-only variant by size alone or legacy (color, size) call', () => {
     const product = makeProduct();
+    // Size-only signature
+    expect(findProductVariant(product, '3XL')?.id).toBe('variant-3xl-no-colour');
+    expect(resolveProductVariant(product, '3XL').id).toBe('variant-3xl-no-colour');
+    // Legacy dual-param signature
     expect(findProductVariant(product, 'Pitch Black', '3XL')?.id).toBe('variant-3xl-no-colour');
     expect(resolveProductVariant(product, 'Pitch Black', '3XL').id).toBe('variant-3xl-no-colour');
   });
 
   it('retains zero-stock size variants as unavailable inventory records', () => {
-    const variant = findProductVariant(makeProduct(), 'Pitch Black', '2XL');
+    const variant = findProductVariant(makeProduct(), '2XL');
     expect(variant?.id).toBe('variant-2xl-no-colour');
     expect(variant?.availableStock).toBe(0);
     expect(variant?.active).toBe(false);

@@ -278,38 +278,6 @@ export const MenFilterSortBar: React.FC<MenFilterSortBarProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Color Filter */}
-                <div>
-                  <h4 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#141414] mb-3">
-                    COLORWAY
-                  </h4>
-                  <div className="space-y-1.5">
-                    {AVAILABLE_COLORS.map((c) => {
-                      const isSelected = filters.colors.includes(c.name);
-                      return (
-                        <button
-                          key={c.name}
-                          onClick={() => {
-                            const newColors = isSelected
-                              ? filters.colors.filter((cn) => cn !== c.name)
-                              : [...filters.colors, c.name];
-                            onFiltersChange({ ...filters, colors: newColors });
-                          }}
-                          className="flex items-center gap-2.5 text-[11px] uppercase tracking-[0.08em] hover:text-black cursor-pointer py-1"
-                        >
-                          <span
-                            className={`w-3.5 h-3.5 rounded-full border ${isSelected ? 'ring-2 ring-[#141414]' : 'border-black/20'}`}
-                            style={{ backgroundColor: c.hex }}
-                          />
-                          <span className={isSelected ? 'font-bold text-[#141414]' : 'text-[#6E6B65]'}>
-                            {c.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* 3. Price Filter */}
                 <div>
                   <h4 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#141414] mb-3">
@@ -450,35 +418,6 @@ export const MenFilterSortBar: React.FC<MenFilterSortBarProps> = ({
                         }`}
                       >
                         {sz}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Colorways */}
-              <div>
-                <h4 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#141414] mb-2.5">
-                  COLORWAY
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {AVAILABLE_COLORS.map((c) => {
-                    const isSelected = tempFilters.colors.includes(c.name);
-                    return (
-                      <button
-                        key={c.name}
-                        onClick={() => handleToggleColor(c.name)}
-                        className={`min-h-[44px] px-3 rounded-full border text-[11px] font-medium uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2.5 ${
-                          isSelected
-                            ? 'border-[#141414] bg-[#141414] text-[#F2F0EB] font-bold'
-                            : 'border-[#DAD8D1] bg-[#FAF8F5] text-[#141414]'
-                        }`}
-                      >
-                        <span 
-                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0" 
-                          style={{ backgroundColor: c.hex }} 
-                        />
-                        <span className="truncate">{c.name.split('/')[0]}</span>
                       </button>
                     );
                   })}

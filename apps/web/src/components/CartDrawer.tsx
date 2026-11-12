@@ -143,7 +143,7 @@ export const CartDrawer: React.FC = () => {
             ) : (
               cart.map((item) => (
                 <div 
-                  key={`${item.product.id}-${item.selectedColor}-${item.selectedSize}`}
+                  key={`${item.product.id}-${item.selectedSize}`}
                   className="flex gap-4 pb-4 border-b border-[#E3DEC3]/60 items-start"
                 >
                   <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#E7E2D6] rounded-md overflow-hidden shrink-0">
@@ -161,7 +161,7 @@ export const CartDrawer: React.FC = () => {
                           {item.product.name}
                         </h4>
                         <button
-                          onClick={() => removeFromCart(item.product.id, item.selectedColor, item.selectedSize)}
+                          onClick={() => removeFromCart(item.product.id, item.selectedSize)}
                           className="text-[#6E6B65] hover:text-[#141414] p-1 cursor-pointer transition-colors"
                           aria-label="Remove item"
                         >
@@ -171,8 +171,6 @@ export const CartDrawer: React.FC = () => {
 
                       <div className="flex items-center gap-3 text-[11px] text-[#6E6B65] uppercase font-mono mt-1">
                         <span>SIZE: {item.selectedSize}</span>
-                        <span>•</span>
-                        <span>COLOR: {item.selectedColor}</span>
                       </div>
                     </div>
 
@@ -180,7 +178,7 @@ export const CartDrawer: React.FC = () => {
                       {/* Quantity Selector */}
                       <div className="flex items-center border border-[#141414]/20 rounded-full h-7">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, -1)}
+                          onClick={() => updateQuantity(item.product.id, item.selectedSize, -1)}
                           className="w-7 h-full flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 rounded-l-full cursor-pointer"
                           aria-label="Decrease quantity"
                         >
@@ -190,7 +188,7 @@ export const CartDrawer: React.FC = () => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.selectedColor, item.selectedSize, 1)}
+                          onClick={() => updateQuantity(item.product.id, item.selectedSize, 1)}
                           className="w-7 h-full flex items-center justify-center text-[#141414] hover:bg-[#141414]/10 rounded-r-full cursor-pointer"
                           aria-label="Increase quantity"
                         >

@@ -7,15 +7,14 @@ import { Plus, Check, ArrowRight, Sparkles, Layers, Scissors, Info } from 'lucid
 export const ThePieceSection: React.FC = () => {
   const { currency, addToCart, setQuickViewProduct, setIsCraftsmanshipOpen, setIsSizeGuideOpen } = useShop();
   const signatureHoodie = PRODUCTS.find((p) => p.id === 'piercyn-sig-hoodie') || PRODUCTS[0];
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '2XL' | '3XL'>('L');
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
 
-  const currentColor = signatureHoodie.colors[selectedColorIdx] || signatureHoodie.colors[0];
+  const mainImage = signatureHoodie.images?.[0] || signatureHoodie.colors?.[0]?.image || '';
 
   return (
-    <section 
-      id="the-piece-section" 
+    <section
+      id="the-piece-section"
       className="relative w-full bg-[#EBE7E0] py-20 sm:py-28 lg:py-32 overflow-hidden border-b border-[#E3DEC3]/70 flex flex-col justify-between"
     >
       {/* Top Header & Micro Identifier */}
@@ -34,7 +33,7 @@ export const ThePieceSection: React.FC = () => {
 
       {/* Main Showcase Stage with Center Hoodie Image & Floating Editorial Annotation Tags */}
       <div className="piercyn-container w-full my-auto py-8 sm:py-12 lg:py-14">
-        
+
         {/* Top Left Huge Serif: THE PIECE */}
         <div className="relative z-20 select-none mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-baseline justify-between">
           <h2 className="font-editorial text-[14vw] sm:text-[12vw] lg:text-[9vw] xl:text-[130px] leading-[0.84] tracking-[-0.03em] uppercase text-[#141414]">
@@ -47,11 +46,11 @@ export const ThePieceSection: React.FC = () => {
 
         {/* Central Hoodie Visual & Floating Technical Callouts */}
         <div className="relative w-full max-w-4xl mx-auto aspect-[4/3.8] sm:aspect-[16/11] flex items-center justify-center">
-          
+
           {/* Main Giant Hoodie Photography */}
           <div className="relative w-[92%] sm:w-[75%] lg:w-[68%] h-full flex items-center justify-center">
             <img
-              src={currentColor.image}
+              src={mainImage}
               alt={signatureHoodie.name}
               className="max-w-full max-h-full object-contain filter drop-shadow-[0_25px_40px_rgba(0,0,0,0.18)] transition-all duration-700 hover:scale-105"
               loading="lazy"
@@ -135,7 +134,7 @@ export const ThePieceSection: React.FC = () => {
 
       {/* Bottom Bar: Narrative on Left, Color/Size & Add on Right */}
       <div className="piercyn-container w-full pt-6 sm:pt-8 border-t border-[#DCD5C5] flex flex-col md:flex-row items-start md:items-end justify-between gap-6 sm:gap-8">
-        
+
         {/* Bottom Left Narrative */}
         <div className="max-w-md font-sans">
           <div className="flex items-center gap-2">
@@ -164,30 +163,6 @@ export const ThePieceSection: React.FC = () => {
 
         {/* Bottom Right Interactive Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-10 w-full md:w-auto font-sans">
-          {/* Color Selector */}
-          <div className="flex flex-col space-y-1.5">
-            <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.15em] uppercase text-[#6E6B65]">
-              COLORWAY: {currentColor.name}
-            </span>
-            <div className="flex items-center space-x-2.5">
-              {signatureHoodie.colors.map((c, i) => (
-                <button
-                  key={c.name}
-                  onClick={() => setSelectedColorIdx(i)}
-                  className={`min-w-[36px] min-h-[36px] rounded-full border-2 p-0.5 transition-all cursor-pointer flex items-center justify-center ${
-                    selectedColorIdx === i ? 'border-[#141414] scale-110' : 'border-transparent opacity-70'
-                  }`}
-                  title={c.name}
-                >
-                  <span
-                    className="w-6 h-6 rounded-full block border border-black/10"
-                    style={{ backgroundColor: c.hex }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Size Selector */}
           <div className="flex flex-col space-y-1.5">
             <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.15em] uppercase text-[#6E6B65]">
@@ -198,11 +173,10 @@ export const ThePieceSection: React.FC = () => {
                 <button
                   key={s}
                   onClick={() => setSelectedSize(s)}
-                  className={`min-w-[40px] min-h-[40px] px-3 py-1.5 text-[11px] font-sans font-semibold uppercase tracking-[0.05em] rounded-full border transition-all cursor-pointer flex items-center justify-center ${
-                    selectedSize === s
+                  className={`min-w-[40px] min-h-[40px] px-3 py-1.5 text-[11px] font-sans font-semibold uppercase tracking-[0.05em] rounded-full border transition-all cursor-pointer flex items-center justify-center ${selectedSize === s
                       ? 'border-[#141414] bg-[#141414] text-[#F2F0EB] font-bold'
                       : 'border-[#D5CFBF] text-[#141414] hover:border-[#141414] bg-white/50'
-                  }`}
+                    }`}
                 >
                   {s}
                 </button>
@@ -213,7 +187,7 @@ export const ThePieceSection: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2 sm:pt-0">
             <button
-              onClick={() => addToCart(signatureHoodie, currentColor.name, selectedSize)}
+              onClick={() => addToCart(signatureHoodie, selectedSize)}
               className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-full bg-[#141414] text-[#F2F0EB] text-[12px] sm:text-[13px] tracking-[0.18em] uppercase font-semibold hover:bg-black transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <span>ADD TO BAG</span>

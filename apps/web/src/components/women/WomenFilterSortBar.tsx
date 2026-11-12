@@ -88,7 +88,7 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
     });
   };
 
-  const activeFilterCount = 
+  const activeFilterCount =
     (filters.category !== 'ALL' ? 1 : 0) +
     filters.sizes.length +
     filters.colors.length +
@@ -97,15 +97,15 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
 
   return (
     <>
-      <div 
-        id="women-filter-sort-bar" 
+      <div
+        id="women-filter-sort-bar"
         className="w-full bg-[#F2F0EB] border-b border-[#E2DDD3] py-4 transition-all"
       >
         <div className="piercyn-container">
-          
+
           {/* Desktop & Tablet Top Bar */}
           <div className="hidden sm:flex items-center justify-between gap-4">
-            
+
             {/* Left: Product Count */}
             <div className="flex items-center gap-3">
               <span className="text-[13px] font-mono tracking-[0.2em] text-[#141414] uppercase font-semibold">
@@ -126,11 +126,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
               {/* Filter Toggle */}
               <button
                 onClick={() => setIsDesktopFilterOpen(!isDesktopFilterOpen)}
-                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-[12px] font-sans uppercase tracking-[0.15em] font-medium border transition-all cursor-pointer ${
-                  isDesktopFilterOpen || activeFilterCount > 0
+                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-[12px] font-sans uppercase tracking-[0.15em] font-medium border transition-all cursor-pointer ${isDesktopFilterOpen || activeFilterCount > 0
                     ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                     : 'bg-transparent text-[#141414] border-[#D0CBC0] hover:border-[#141414]'
-                }`}
+                  }`}
                 aria-expanded={isDesktopFilterOpen}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -157,9 +156,9 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
 
                 {isDesktopSortOpen && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setIsDesktopSortOpen(false)} 
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsDesktopSortOpen(false)}
                     />
                     <div className="absolute right-0 mt-2 w-60 bg-[#F2F0EB] border border-[#D0CBC0] shadow-md rounded-2xl p-2 z-50 animate-fadeIn">
                       {SORT_OPTIONS.map((option) => (
@@ -169,11 +168,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                             onSortChange(option);
                             setIsDesktopSortOpen(false);
                           }}
-                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[12px] font-sans tracking-[0.12em] uppercase font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                            sortBy === option
+                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[12px] font-sans tracking-[0.12em] uppercase font-medium flex items-center justify-between transition-colors cursor-pointer ${sortBy === option
                               ? 'bg-[#141414] text-[#F2F0EB]'
                               : 'text-[#141414] hover:bg-[#E5E0D5]'
-                          }`}
+                            }`}
                         >
                           <span>{option}</span>
                           {sortBy === option && <Check className="w-3.5 h-3.5" />}
@@ -202,52 +200,17 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                       <button
                         key={size}
                         onClick={() => {
-                          const newSizes = isSelected 
+                          const newSizes = isSelected
                             ? filters.sizes.filter(s => s !== size)
                             : [...filters.sizes, size];
                           onFiltersChange({ ...filters, sizes: newSizes });
                         }}
-                        className={`w-9 h-9 rounded-lg text-xs font-mono font-medium border flex items-center justify-center transition-all cursor-pointer ${
-                          isSelected
+                        className={`w-9 h-9 rounded-lg text-xs font-mono font-medium border flex items-center justify-center transition-all cursor-pointer ${isSelected
                             ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                             : 'bg-transparent text-[#141414] border-[#D0CBC0] hover:border-[#141414]'
-                        }`}
+                          }`}
                       >
                         {size}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Colorway Filter */}
-              <div className="space-y-3">
-                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#706E6B] font-semibold block">
-                  COLORWAY
-                </span>
-                <div className="flex flex-wrap gap-2.5">
-                  {AVAILABLE_COLORS.map((col) => {
-                    const isSelected = filters.colors.includes(col.name);
-                    return (
-                      <button
-                        key={col.name}
-                        onClick={() => {
-                          const newColors = isSelected 
-                            ? filters.colors.filter(c => c !== col.name)
-                            : [...filters.colors, col.name];
-                          onFiltersChange({ ...filters, colors: newColors });
-                        }}
-                        className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-[11px] font-sans transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#141414] bg-[#E2DDD3] text-[#141414] font-medium' 
-                            : 'border-[#D0CBC0] text-[#706E6B] hover:text-[#141414]'
-                        }`}
-                      >
-                        <span 
-                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs" 
-                          style={{ backgroundColor: col.hex }} 
-                        />
-                        <span>{col.name}</span>
                       </button>
                     );
                   })}
@@ -269,11 +232,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                     <button
                       key={range.id}
                       onClick={() => onFiltersChange({ ...filters, priceRange: range.id as any })}
-                      className={`text-left text-xs font-sans py-1 transition-colors cursor-pointer flex items-center justify-between ${
-                        filters.priceRange === range.id
+                      className={`text-left text-xs font-sans py-1 transition-colors cursor-pointer flex items-center justify-between ${filters.priceRange === range.id
                           ? 'text-[#141414] font-bold'
                           : 'text-[#706E6B] hover:text-[#141414]'
-                      }`}
+                        }`}
                     >
                       <span>{range.label}</span>
                       {filters.priceRange === range.id && <Check className="w-3 h-3 text-[#141414]" />}
@@ -315,11 +277,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
           <div className="sm:hidden grid grid-cols-2 gap-2">
             <button
               onClick={openMobileFilter}
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-xs font-sans uppercase tracking-[0.14em] font-semibold transition-all cursor-pointer min-h-[48px] ${
-                activeFilterCount > 0
+              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-xs font-sans uppercase tracking-[0.14em] font-semibold transition-all cursor-pointer min-h-[48px] ${activeFilterCount > 0
                   ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                   : 'bg-[#EAE5D9] text-[#141414] border-[#D0CBC0]'
-              }`}
+                }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               <span>FILTER</span>
@@ -346,14 +307,14 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
       {isMobileFilterOpen && (
         <div className="fixed inset-0 z-50 sm:hidden flex flex-col justify-end">
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fadeIn"
-            onClick={() => setIsMobileFilterOpen(false)} 
+            onClick={() => setIsMobileFilterOpen(false)}
           />
 
           {/* Bottom Sheet Container */}
           <div className="relative bg-[#F2F0EB] w-full rounded-t-[24px] max-h-[85vh] flex flex-col overflow-hidden shadow-2xl z-10 animate-slideUp">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2DDD3]">
               <div>
@@ -394,11 +355,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                     <button
                       key={cat}
                       onClick={() => setTempFilters((prev) => ({ ...prev, category: cat as WomenCategory }))}
-                      className={`px-3 py-2 rounded-lg text-xs font-sans uppercase tracking-[0.1em] border transition-all cursor-pointer ${
-                        tempFilters.category === cat
+                      className={`px-3 py-2 rounded-lg text-xs font-sans uppercase tracking-[0.1em] border transition-all cursor-pointer ${tempFilters.category === cat
                           ? 'bg-[#141414] text-[#F2F0EB] border-[#141414] font-semibold'
                           : 'bg-white/60 text-[#706E6B] border-[#D0CBC0]'
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -418,42 +378,12 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                       <button
                         key={size}
                         onClick={() => handleToggleSize(size)}
-                        className={`w-11 h-11 rounded-xl text-sm font-mono font-medium border flex items-center justify-center transition-all cursor-pointer ${
-                          isSelected
+                        className={`w-11 h-11 rounded-xl text-sm font-mono font-medium border flex items-center justify-center transition-all cursor-pointer ${isSelected
                             ? 'bg-[#141414] text-[#F2F0EB] border-[#141414]'
                             : 'bg-white/60 text-[#141414] border-[#D0CBC0]'
-                        }`}
+                          }`}
                       >
                         {size}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Colors */}
-              <div className="space-y-3">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#706E6B] font-semibold block">
-                  COLORWAY
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_COLORS.map((col) => {
-                    const isSelected = tempFilters.colors.includes(col.name);
-                    return (
-                      <button
-                        key={col.name}
-                        onClick={() => handleToggleColor(col.name)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-sans transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#141414] bg-[#141414] text-[#F2F0EB]' 
-                            : 'border-[#D0CBC0] bg-white/60 text-[#141414]'
-                        }`}
-                      >
-                        <span 
-                          className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0" 
-                          style={{ backgroundColor: col.hex }} 
-                        />
-                        <span>{col.name}</span>
                       </button>
                     );
                   })}
@@ -475,11 +405,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                     <button
                       key={range.id}
                       onClick={() => setTempFilters((prev) => ({ ...prev, priceRange: range.id as any }))}
-                      className={`p-2.5 rounded-xl border text-xs font-sans text-left transition-all cursor-pointer ${
-                        tempFilters.priceRange === range.id
+                      className={`p-2.5 rounded-xl border text-xs font-sans text-left transition-all cursor-pointer ${tempFilters.priceRange === range.id
                           ? 'bg-[#141414] text-[#F2F0EB] border-[#141414] font-semibold'
                           : 'bg-white/60 text-[#706E6B] border-[#D0CBC0]'
-                      }`}
+                        }`}
                     >
                       {range.label}
                     </button>
@@ -532,9 +461,9 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
       {/* Mobile Sort Bottom Sheet */}
       {isMobileSortOpen && (
         <div className="fixed inset-0 z-50 sm:hidden flex flex-col justify-end">
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fadeIn"
-            onClick={() => setIsMobileSortOpen(false)} 
+            onClick={() => setIsMobileSortOpen(false)}
           />
           <div className="relative bg-[#F2F0EB] w-full rounded-t-[24px] p-6 pb-8 shadow-2xl z-10 space-y-4 animate-slideUp">
             <div className="flex items-center justify-between pb-2 border-b border-[#E2DDD3]">
@@ -556,11 +485,10 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                     onSortChange(opt);
                     setIsMobileSortOpen(false);
                   }}
-                  className={`w-full text-left py-3.5 px-4 rounded-xl text-xs font-sans uppercase tracking-[0.12em] font-medium flex items-center justify-between transition-colors min-h-[48px] cursor-pointer ${
-                    sortBy === opt
+                  className={`w-full text-left py-3.5 px-4 rounded-xl text-xs font-sans uppercase tracking-[0.12em] font-medium flex items-center justify-between transition-colors min-h-[48px] cursor-pointer ${sortBy === opt
                       ? 'bg-[#141414] text-[#F2F0EB]'
                       : 'text-[#141414] hover:bg-[#E2DDD3]'
-                  }`}
+                    }`}
                 >
                   <span>{opt}</span>
                   {sortBy === opt && <Check className="w-4 h-4" />}

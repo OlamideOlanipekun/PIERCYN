@@ -5,19 +5,20 @@ export function slugify(text: string): string {
 }
 
 /**
- * Deterministically compute the variant SKU from productId, colorName, and size
- * Exactly matching backend `dbStore.ts` generation:
- * SKU: `PCY-${slugify(productId).toUpperCase()}-${slugify(colorName).toUpperCase().slice(0, 3)}-${size}`
+ * Deterministically compute the variant SKU from productId, size, and optional legacy colorName
  */
 export function getVariantSku(productId: string, colorName: string = 'Default', size: string = 'M'): string {
   const pSlug = slugify(productId).toUpperCase();
-  const cSlug = slugify(colorName || 'Default').toUpperCase().slice(0, 3);
-  return `PCY-${pSlug}-${cSlug}-${size || 'M'}`;
+  const cleanSize = size || 'M';
+  if (!colorName || colorName.toLowerCase() === 'default' || colorName.toLowerCase() === 'no colour') {
+    return `PCY-${pSlug}-${cleanSize}`;
+  }
+  const cSlug = slugify(colorName).toUpperCase().slice(0, 3);
+  return `PCY-${pSlug}-${cSlug}-${cleanSize}`;
 }
 
 /**
- * Deterministically compute the variant ID from productId, colorName, and size
- * Matching backend `dbStore.ts` generation: `var-${slugify(sku)}`
+ * Deterministically compute the variant ID from productId, size, and optional legacy colorName
  */
 export function getVariantId(productId: string, colorName: string = 'Default', size: string = 'M'): string {
   const sku = getVariantSku(productId, colorName, size);
@@ -25,28 +26,67 @@ export function getVariantId(productId: string, colorName: string = 'Default', s
 }
 
 /**
+ * PIERCYN operates entirely on size-only variant selection for all categories.
+ */
+export function usesSizeOnlyOptions(_product?: Pick<Product, 'category' | 'categoryName'>): boolean {
+  return true;
+}
+
+/**
+ * Find product variant by size (with backward compatibility for legacy colorName parameter order)
+ */
+export function findProductVariant(product: Product, param2?: string, param3?: string) {
+  // Overload 1: findProductVariant(product, size) -> param2 is size, param3 is undefined
+  // Overload 2: findProductVariant(product, colorName, size) -> param2 is colorName, param3 is size
+  const size = (param3 !== undefined ? param3 : param2)?.trim();
+  const legacyColor = param3 !== undefined ? param2 : undefined;
+  if (!size || !product.variants?.length) return undefined;
+
+  const matchingSize = product.variants.filter(
+    (variant) => variant.size.toUpperCase() === size.toUpperCase()
+  );
+  if (!matchingSize.length) return undefined;
+
+  // 1. Prefer an active variant with available stock
+  const stocked = matchingSize.find((variant) => variant.active !== false && (variant.availableStock ?? 0) > 0);
+  if (stocked) return stocked;
+
+  // 2. If legacy color was passed, check for exact match
+  if (legacyColor) {
+    const normalizedColor = legacyColor.toLowerCase().trim();
+    const colorMatch = matchingSize.find((variant) =>
+      variant.colour.toLowerCase().trim() === normalizedColor ||
+      variant.colourHex === legacyColor
+    );
+    if (colorMatch) return colorMatch;
+  }
+
+  // 3. Fallback to first active variant
+  const active = matchingSize.find((variant) => variant.active !== false);
+  if (active) return active;
+
+  return matchingSize[0];
+}
+
+/**
  * Resolve the real variant details for a given product selection
  */
 export function resolveProductVariant(
   product: Product,
-  colorName?: string,
-  size?: string
+  param2?: string,
+  param3?: string
 ): { id: string; sku: string; colour: string; size: string; productId: string; availableStock?: number } {
-  const selectedColor = colorName || product.colors?.[0]?.name || 'Default';
-  const selectedSize = size || product.sizes?.[0] || 'M';
+  const selectedSize = (param3 !== undefined ? param3 : param2) || product.sizes?.[0] || 'M';
+  const legacyColor = param3 !== undefined ? param2 : undefined;
 
   // If product already contains enriched variants from the backend, find exact match
   if (product.variants && product.variants.length > 0) {
-    const match = product.variants.find(
-      (v) =>
-        (v.colour.toLowerCase() === selectedColor.toLowerCase() || v.colourHex === selectedColor) &&
-        v.size.toUpperCase() === selectedSize.toUpperCase()
-    );
+    const match = findProductVariant(product, legacyColor, selectedSize);
     if (match) {
       return {
         id: match.id,
         sku: match.sku,
-        colour: match.colour,
+        colour: match.colour || 'Default',
         size: match.size,
         productId: match.productId || product.id,
         availableStock: match.availableStock,
@@ -55,13 +95,13 @@ export function resolveProductVariant(
   }
 
   // Fallback to deterministic generation
-  const sku = getVariantSku(product.id, selectedColor, selectedSize);
+  const sku = getVariantSku(product.id, legacyColor || 'Default', selectedSize);
   const id = `var-${slugify(sku)}`;
 
   return {
     id,
     sku,
-    colour: selectedColor,
+    colour: legacyColor || 'Default',
     size: selectedSize,
     productId: product.id,
     availableStock: product.stock,

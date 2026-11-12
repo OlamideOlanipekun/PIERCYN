@@ -220,40 +220,6 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                 </div>
               </div>
 
-              {/* Colorway Filter */}
-              <div className="space-y-3">
-                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#706E6B] font-semibold block">
-                  COLORWAY
-                </span>
-                <div className="flex flex-wrap gap-2.5">
-                  {AVAILABLE_COLORS.map((col) => {
-                    const isSelected = filters.colors.includes(col.name);
-                    return (
-                      <button
-                        key={col.name}
-                        onClick={() => {
-                          const newColors = isSelected 
-                            ? filters.colors.filter(c => c !== col.name)
-                            : [...filters.colors, col.name];
-                          onFiltersChange({ ...filters, colors: newColors });
-                        }}
-                        className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-[11px] font-sans transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#141414] bg-[#E2DDD3] text-[#141414] font-medium' 
-                            : 'border-[#D0CBC0] text-[#706E6B] hover:text-[#141414]'
-                        }`}
-                      >
-                        <span 
-                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs" 
-                          style={{ backgroundColor: col.hex }} 
-                        />
-                        <span>{col.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Price Filter */}
               <div className="space-y-3">
                 <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#706E6B] font-semibold block">
@@ -425,35 +391,6 @@ export const WomenFilterSortBar: React.FC<WomenFilterSortBarProps> = ({
                         }`}
                       >
                         {size}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Colors */}
-              <div className="space-y-3">
-                <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#706E6B] font-semibold block">
-                  COLORWAY
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_COLORS.map((col) => {
-                    const isSelected = tempFilters.colors.includes(col.name);
-                    return (
-                      <button
-                        key={col.name}
-                        onClick={() => handleToggleColor(col.name)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-sans transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#141414] bg-[#141414] text-[#F2F0EB]' 
-                            : 'border-[#D0CBC0] bg-white/60 text-[#141414]'
-                        }`}
-                      >
-                        <span 
-                          className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0" 
-                          style={{ backgroundColor: col.hex }} 
-                        />
-                        <span>{col.name}</span>
                       </button>
                     );
                   })}

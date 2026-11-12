@@ -136,7 +136,7 @@ const CreateProductSchema = z.object({
       z.object({
         sku: z.string().optional(),
         size: z.string(),
-        colour: z.string(),
+        colour: z.string().default('Default').optional(),
         colourHex: z.string().optional(),
         priceNGN: z.number().int().optional(),
         costPriceNGN: z.number().int().optional(),
@@ -152,8 +152,8 @@ const CreateVariantSchema = z.object({
   productId: z.string().min(1),
   sku: z.string().trim().min(1).max(100).optional(),
   size: z.string().trim().min(1).max(30),
-  colour: z.string().trim().min(1).max(60),
-  colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  colour: z.string().trim().min(1).max(60).default('Default'),
+  colourHex: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#111111'),
   priceNGN: z.number().int().positive().optional(),
   priceUSD: z.number().int().positive().optional(),
   priceGBP: z.number().int().positive().optional(),
@@ -960,21 +960,25 @@ adminRouter.post('/variants', requireAdmin, async (req: AuthenticatedAdminReques
     const product = await prisma.product.findUnique({ where: { id: input.productId }, select: { id: true, name: true, priceNGN: true, costPriceNGN: true, images: true } });
     if (!product) return res.status(404).json({ success: false, error: 'Product not found.' });
     const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').toUpperCase().slice(0, 8);
-    const sku = input.sku || `PCY-${slug(product.name)}-${slug(input.colour).slice(0, 3)}-${input.size.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+    const sku = input.sku || `PCY-${slug(product.name)}-${input.size.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
     const created = await prisma.$transaction(async (tx) => {
-      const variant = await tx.productVariant.create({ data: {
-        productId: product.id, sku, size: input.size, colour: input.colour,
-        colourHex: input.colourHex || '#111111', priceNGN: input.priceNGN ?? null,
-        priceUSD: input.priceUSD ?? null, priceGBP: input.priceGBP ?? null, priceEUR: input.priceEUR ?? null,
-        costPriceNGN: input.costPriceNGN ?? product.costPriceNGN,
-        image: input.image || product.images[0] || null, altImage: input.altImage || null, isActive: true,
-      }});
-      const inventory = await tx.inventory.create({ data: { variantId: variant.id, stockQuantity: input.initialStock, reservedQuantity: 0, soldQuantity: 0, damagedQuantity: 0, returnedQuantity: 0, reorderLevel: 5 }});
-      await tx.inventoryTransaction.create({ data: {
-        inventoryId: inventory.id, variantId: variant.id, quantity: input.initialStock,
-        type: 'RESTOCK', previousStock: 0, newStock: input.initialStock,
-        referenceType: 'MANUAL', reason: 'Initial stock from admin variant creation',
-      }});
+      const variant = await tx.productVariant.create({
+        data: {
+          productId: product.id, sku, size: input.size, colour: input.colour,
+          colourHex: input.colourHex || '#111111', priceNGN: input.priceNGN ?? null,
+          priceUSD: input.priceUSD ?? null, priceGBP: input.priceGBP ?? null, priceEUR: input.priceEUR ?? null,
+          costPriceNGN: input.costPriceNGN ?? product.costPriceNGN,
+          image: input.image || product.images[0] || null, altImage: input.altImage || null, isActive: true,
+        }
+      });
+      const inventory = await tx.inventory.create({ data: { variantId: variant.id, stockQuantity: input.initialStock, reservedQuantity: 0, soldQuantity: 0, damagedQuantity: 0, returnedQuantity: 0, reorderLevel: 5 } });
+      await tx.inventoryTransaction.create({
+        data: {
+          inventoryId: inventory.id, variantId: variant.id, quantity: input.initialStock,
+          type: 'RESTOCK', previousStock: 0, newStock: input.initialStock,
+          referenceType: 'MANUAL', reason: 'Initial stock from admin variant creation',
+        }
+      });
       return tx.productVariant.findUniqueOrThrow({ where: { id: variant.id }, include: { product: { select: { id: true, name: true, status: true } }, inventory: true } });
     });
     await AuditService.log({ adminId: req.admin?.id || 'admin', adminEmail: req.admin?.email || 'admin@piercyn.com', action: 'VARIANT_CREATED', resource: 'PRODUCT', resourceId: created.id, newValue: created.sku, note: `Created variant for ${product.name}` });
@@ -1129,7 +1133,7 @@ adminRouter.post('/products/bulk', requireAdmin, async (req: AuthenticatedAdminR
     await prisma.$transaction(preview.items.map((item) => {
       const data = input.operation === 'SET_CATEGORY' ? { categoryId: input.categoryId! }
         : input.operation === 'SET_STATUS' ? { status: input.status! }
-        : { priceNGN: item.nextPriceNGN };
+          : { priceNGN: item.nextPriceNGN };
       return prisma.product.update({ where: { id: item.id }, data });
     }));
     if (input.operation === 'SET_STATUS' && input.status === 'ARCHIVED') {

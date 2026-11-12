@@ -12,24 +12,16 @@ interface ProductGalleryProps {
 export const ProductGallery: React.FC<ProductGalleryProps> = ({
   images,
   productName,
-  activeColor,
   gsm,
 }) => {
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
 
-  // Combine active color images and base images
-  const galleryImages = [
-    activeColor?.image,
-    activeColor?.altImage,
-    ...images,
-  ].filter((img, idx, arr): img is string => Boolean(img) && arr.indexOf(img) === idx);
+  // Curated product images represent the piece's aesthetic & appearance
+  const galleryImages = (images || []).filter(
+    (img, idx, arr): img is string => Boolean(img) && arr.indexOf(img) === idx
+  );
 
-  // Reset index when color changes
-  useEffect(() => {
-    setSelectedImageIdx(0);
-  }, [activeColor?.name]);
-
-  const currentImage = galleryImages[selectedImageIdx] || galleryImages[0] || images[0];
+  const currentImage = galleryImages[selectedImageIdx] || galleryImages[0] || images?.[0] || '';
 
   const handleNext = () => {
     setSelectedImageIdx((prev) => (prev + 1) % galleryImages.length);

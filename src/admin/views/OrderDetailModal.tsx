@@ -597,7 +597,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     const intlPhone = cleanPhone.startsWith('0') ? `234${cleanPhone.slice(1)}` : cleanPhone;
 
     const itemsSummary = (order.items ?? [])
-      .map((it) => `• ${it.quantity}x ${it.productName} (${it.colour}/${it.size})`)
+      .map((it) => `• ${it.quantity}x ${it.productName} (${it.colour && it.colour !== 'Default' ? `${it.colour}/` : ''}${it.size})`)
       .join('\n');
 
     const msg =
@@ -1536,7 +1536,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         <div className="font-medium text-[#F2F0EB] truncate">{it.productName}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">
-                            {it.colour} / {it.size}
+                            {it.colour && it.colour !== 'Default' ? `${it.colour} / ` : ''}{it.size}
                           </span>
                           <span className="font-mono text-neutral-400 text-[10px]">
                             {it.quantity} × ₦{(it.unitPriceNGN || 0).toLocaleString()}
@@ -1581,7 +1581,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           <td className="py-3 px-2.5 font-mono text-neutral-400">{it.sku}</td>
                           <td className="py-3 px-2.5">
                             <span className="font-mono bg-white/5 px-2 py-0.5 rounded text-[11px]">
-                              {it.colour} / {it.size}
+                              {it.colour && it.colour !== 'Default' ? `${it.colour} / ` : ''}{it.size}
                             </span>
                           </td>
                           <td className="py-3 px-2.5 font-mono font-bold text-[#F2F0EB]">{it.quantity}</td>

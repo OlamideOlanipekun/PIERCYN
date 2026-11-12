@@ -475,7 +475,7 @@ export const ProductsView: React.FC = () => {
         ? [
             {
               size: 'ONE_SIZE',
-              colour: 'Original Piece',
+              colour: 'Default',
               colourHex: '#121212',
               priceNGN: formPriceNGN,
               costPriceNGN: formCostPriceNGN,
@@ -484,8 +484,16 @@ export const ProductsView: React.FC = () => {
           ]
         : [
             {
+              size: 'S',
+              colour: 'Default',
+              colourHex: '#121212',
+              priceNGN: formPriceNGN,
+              costPriceNGN: formCostPriceNGN,
+              initialStock: initStock,
+            },
+            {
               size: 'M',
-              colour: 'Onyx Black',
+              colour: 'Default',
               colourHex: '#121212',
               priceNGN: formPriceNGN,
               costPriceNGN: formCostPriceNGN,
@@ -493,16 +501,16 @@ export const ProductsView: React.FC = () => {
             },
             {
               size: 'L',
-              colour: 'Onyx Black',
+              colour: 'Default',
               colourHex: '#121212',
               priceNGN: formPriceNGN,
               costPriceNGN: formCostPriceNGN,
               initialStock: initStock,
             },
             {
-              size: 'M',
-              colour: 'Bone White',
-              colourHex: '#F2F0EB',
+              size: 'XL',
+              colour: 'Default',
+              colourHex: '#121212',
               priceNGN: formPriceNGN,
               costPriceNGN: formCostPriceNGN,
               initialStock: initStock,
@@ -1244,7 +1252,7 @@ export const ProductsView: React.FC = () => {
                   >
                     {stockAdjustProduct.variants.map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.sku} — {v.colour}{v.size ? ` / ${v.size}` : ''} (physical: {physicalStockForVariant(v)}, avail: {v.stock?.availableStock ?? 0})
+                        {v.sku} — Size: {v.size} (physical: {physicalStockForVariant(v)}, avail: {v.stock?.availableStock ?? 0})
                       </option>
                     ))}
                   </select>
@@ -1557,7 +1565,7 @@ export const ProductsView: React.FC = () => {
                 </div>
               </details>
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-neutral-400 text-[11px]">
-                ℹ️ Initial variants (Onyx Black M/L, Bone White M) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[COLOR]-[SIZE].
+                ℹ️ Initial size variants (S, M, L, XL) will be automatically generated with SKU format PCY-[SLUG]-[SIZE].
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-[#242424]">

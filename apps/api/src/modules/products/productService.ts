@@ -149,7 +149,7 @@ export interface CreateProductInput {
   variants?: Array<{
     sku?: string;
     size: string;
-    colour: string;
+    colour?: string;
     colourHex?: string;
     priceNGN?: number;
     costPriceNGN?: number;
@@ -563,12 +563,12 @@ export class ProductService {
 
       const variantInputs = input.variants && input.variants.length > 0
         ? input.variants
-        : [{ size: 'M', colour: 'Black', colourHex: '#111111', initialStock: 10 }];
+        : [{ size: 'M', colour: 'Default', colourHex: '#111111', initialStock: 10 }];
 
       for (let idx = 0; idx < variantInputs.length; idx++) {
         const vInput = variantInputs[idx];
-        const colourSlug = slugify(vInput.colour).toUpperCase().slice(0, 3);
-        const rawSku = vInput.sku || `PCY-${slugify(product.name).toUpperCase().slice(0, 8)}-${colourSlug}-${vInput.size.toUpperCase()}`;
+        const colour = vInput.colour || 'Default';
+        const rawSku = vInput.sku || `PCY-${slugify(product.name).toUpperCase().slice(0, 8)}-${vInput.size.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
         const sku = await this.resolveUniqueSku(rawSku, tx);
         const stockQty = vInput.initialStock ?? 10;
 
@@ -577,7 +577,7 @@ export class ProductService {
             productId: product.id,
             sku,
             size: vInput.size,
-            colour: vInput.colour,
+            colour,
             colourHex: vInput.colourHex || '#111111',
             priceNGN: vInput.priceNGN,
             costPriceNGN: vInput.costPriceNGN ?? costPriceNGN,

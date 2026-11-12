@@ -15,7 +15,6 @@ export const QuickViewModal: React.FC = () => {
     setIsSizeGuideOpen
   } = useShop();
 
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string>('L');
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
@@ -39,7 +38,6 @@ export const QuickViewModal: React.FC = () => {
 
   useEffect(() => {
     if (quickViewProduct) {
-      setSelectedColorIdx(0);
       setActiveImageIdx(0);
       if (quickViewProduct.sizes && quickViewProduct.sizes.length > 0) {
         setSelectedSize(quickViewProduct.sizes[0]);
@@ -49,17 +47,11 @@ export const QuickViewModal: React.FC = () => {
 
   if (!quickViewProduct) return null;
 
-  const currentColor = quickViewProduct.colors[selectedColorIdx] || quickViewProduct.colors[0];
-  const galleryImages = [
-    currentColor?.image || quickViewProduct.images[0],
-    currentColor?.altImage || quickViewProduct.images[1] || quickViewProduct.images[0],
-    ...quickViewProduct.images.slice(2)
-  ].filter(Boolean);
-
-  const displayImage = galleryImages[activeImageIdx] || galleryImages[0];
+  const galleryImages = (quickViewProduct.images || []).filter(Boolean);
+  const displayImage = galleryImages[activeImageIdx] || galleryImages[0] || '';
 
   const handleAddToCart = () => {
-    addToCart(quickViewProduct, currentColor.name, selectedSize);
+    addToCart(quickViewProduct, selectedSize);
     setQuickViewProduct(null);
   };
 
@@ -162,35 +154,6 @@ export const QuickViewModal: React.FC = () => {
                   <span className="font-bold text-[#141414]">TRUE TO SIZE</span>
                 </div>
               </div>
-
-              {/* Select Color with 44px touch targets */}
-              <div>
-                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] font-semibold mb-1.5">
-                  <span>COLOR: <strong className="text-[#141414] font-bold">{currentColor.name}</strong></span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {quickViewProduct.colors.map((c, idx) => (
-                    <button
-                      key={c.name}
-                      onClick={() => {
-                        setSelectedColorIdx(idx);
-                        setActiveImageIdx(0);
-                      }}
-                      className={`min-w-[44px] min-h-[44px] rounded-full border-2 p-1 transition-all cursor-pointer flex items-center justify-center ${
-                        selectedColorIdx === idx ? 'border-[#141414] scale-105 ring-1 ring-[#141414]' : 'border-transparent opacity-75'
-                      }`}
-                      title={c.name}
-                    >
-                      <span
-                        className="w-6 h-6 rounded-full block border border-black/10"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-
 
               {/* Add to Bag Action with 48px height Pill Button */}
               <div className="flex items-center gap-3 pt-1">

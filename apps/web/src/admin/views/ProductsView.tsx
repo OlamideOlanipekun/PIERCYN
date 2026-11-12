@@ -94,31 +94,31 @@ export const ProductsView: React.FC = () => {
 
       const defaultVariants = [
         {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-BLK-M`,
-          size: 'M',
-          colour: 'Onyx Black',
+          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-S`,
+          size: 'S',
+          colour: 'Default',
           colourHex: '#121212',
-          priceNGN: formPriceNGN,
-          costPriceNGN: formCostPriceNGN,
-          initialStock: 15,
-        },
-        {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-BLK-L`,
-          size: 'L',
-          colour: 'Onyx Black',
-          colourHex: '#121212',
-          priceNGN: formPriceNGN,
-          costPriceNGN: formCostPriceNGN,
-          initialStock: 15,
-        },
-        {
-          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-WHT-M`,
-          size: 'M',
-          colour: 'Bone White',
-          colourHex: '#F2F0EB',
           priceNGN: formPriceNGN,
           costPriceNGN: formCostPriceNGN,
           initialStock: 10,
+        },
+        {
+          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-M`,
+          size: 'M',
+          colour: 'Default',
+          colourHex: '#121212',
+          priceNGN: formPriceNGN,
+          costPriceNGN: formCostPriceNGN,
+          initialStock: 15,
+        },
+        {
+          sku: `PCY-${formName.replace(/\s+/g, '-').toUpperCase()}-L`,
+          size: 'L',
+          colour: 'Default',
+          colourHex: '#121212',
+          priceNGN: formPriceNGN,
+          costPriceNGN: formCostPriceNGN,
+          initialStock: 15,
         },
       ];
 
@@ -658,7 +658,7 @@ export const ProductsView: React.FC = () => {
               </div>
 
               <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-neutral-400 text-[11px]">
-                ℹ️ Initial variants (Onyx Black M/L, Bone White M) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[COLOR]-[SIZE].
+                ℹ️ Initial size variants (S, M, L) with 40 total pieces will be automatically generated with SKU format PCY-[SLUG]-[SIZE].
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-[#242424]">

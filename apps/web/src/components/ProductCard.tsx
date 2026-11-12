@@ -19,25 +19,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const { currency, toggleWishlist, isWishlisted, addToCart } = useShop();
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-
-  const colors = product.colors || [];
-  const activeColor = colors[selectedColorIdx] || colors[0];
   const wishlisted = isWishlisted(product.id);
 
   // Garment photography image selection
-  const primaryImage = activeColor?.image || product.productShotUrl || product.images?.[0] || '';
+  const primaryImage = product.productShotUrl || product.images?.[0] || '';
   const alternateImage =
-    activeColor?.altImage ||
-    (product.images && product.images.length > 1 && product.images[1] !== primaryImage
+    product.images && product.images.length > 1 && product.images[1] !== primaryImage
       ? product.images[1]
-      : null);
+      : null;
 
-  const objectPosition =
-    product.objectPosition || activeColor?.objectPosition || 'center 20%';
+  const objectPosition = product.objectPosition || 'center 20%';
 
   // Determine Badge: ONLY real, appropriate badges (NEW, BESTSELLER, LIMITED, SOLD OUT)
   const getBadgeText = (): string | null => {
@@ -89,7 +83,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const performAddToCart = async (sizeToUse: string) => {
     setIsAdding(true);
     try {
-      const success = await addToCart(product, activeColor?.name, sizeToUse, 1);
+      const success = await addToCart(product, sizeToUse, 1);
       if (success) {
         setJustAdded(true);
         setShowSizeSelector(false);
@@ -202,37 +196,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
         </div>
-
-        {/* 2.C Color Variants Swatches */}
-        {colors.length > 1 && (
-          <div
-            className="flex items-center gap-1.5 py-0.5 sm:py-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {colors.map((c, idx) => {
-              const isSelected = selectedColorIdx === idx;
-              return (
-                <button
-                  key={c.name}
-                  type="button"
-                  onClick={() => setSelectedColorIdx(idx)}
-                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border transition-all cursor-pointer ${isSelected
-                      ? 'border-[#141414] ring-1 ring-[#141414] ring-offset-2 ring-offset-[#F2F0EB] scale-105'
-                      : 'border-black/20 opacity-80 hover:opacity-100 hover:scale-105'
-                    }`}
-                  style={{ backgroundColor: c.hex }}
-                  title={c.name}
-                  aria-label={`Select color ${c.name}`}
-                />
-              );
-            })}
-            {colors.length > 4 && (
-              <span className="text-[9.5px] font-mono text-[#777777] ml-0.5">
-                +{colors.length}
-              </span>
-            )}
-          </div>
-        )}
 
         {/* 2.D Quick Add to Cart Button */}
         <div className="pt-1 mt-auto" onClick={(e) => e.stopPropagation()}>
