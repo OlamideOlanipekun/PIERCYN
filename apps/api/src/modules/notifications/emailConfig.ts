@@ -36,6 +36,8 @@ export function getSmtpConfig(): SmtpConfig | null {
     : port === 465;
 
   const fromEmail = process.env.SMTP_FROM_EMAIL || user;
+  // Do not permit an unverified From identity that differs from SMTP auth.
+  if (fromEmail.toLowerCase() !== user.toLowerCase()) return null;
   const fromName = process.env.SMTP_FROM_NAME || 'PIERCYN';
   const replyTo = process.env.SMTP_REPLY_TO || fromEmail;
 

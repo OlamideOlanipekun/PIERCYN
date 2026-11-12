@@ -12,6 +12,7 @@ import {
   getSmtpConfig,
   getCustomerSmtpConfig,
 } from '../apps/api/src/modules/notifications/emailConfig';
+import { escapeAffiliateHtml } from '../apps/api/src/modules/affiliate/affiliateNotificationService';
 import {
   OrderCreatedPayload,
   ReceiptUploadedPayload,
@@ -256,6 +257,22 @@ describe('PIERCYN Notification Engine - Security & Sanitization', () => {
       expect(config?.fromEmail).toBe('piercyn@gmail.com');
       expect(config?.fromName).toBe('PIERCYN');
       expect(config?.replyTo).toBe('piercyn@gmail.com');
+    } finally {
+      process.env = originalEnv;
+    }
+  });
+  it('escapes affiliate-provided HTML metacharacters', () => {
+    expect(escapeAffiliateHtml(`<img src=x onerror="x"> & 'name'`)).toBe(
+      '&lt;img src=x onerror=&quot;x&quot;&gt; &amp; &#39;name&#39;'
+    );
+  });
+  it('rejects a From address that differs from the authenticated SMTP user', () => {
+    const originalEnv = { ...process.env };
+    try {
+      process.env.SMTP_USER = 'piercyn@gmail.com';
+      process.env.SMTP_PASSWORD = 'test-app-password';
+      process.env.SMTP_FROM_EMAIL = 'unverified@example.com';
+      expect(getSmtpConfig()).toBeNull();
     } finally {
       process.env = originalEnv;
     }

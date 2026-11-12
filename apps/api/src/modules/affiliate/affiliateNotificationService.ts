@@ -7,6 +7,17 @@
 import crypto from 'crypto';
 import { prisma } from '../../db/prisma';
 
+export function escapeAffiliateHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"\\']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]!);
+}
+
+function appBaseUrl(): string {
+  return (process.env.APP_BASE_URL || 'https://piercyn.vercel.app').replace(/\/$/, '');
+}
+
+
 function emailWrapper(title: string, bodyContent: string): string {
   return `
 <!DOCTYPE html>
@@ -54,6 +65,7 @@ export class AffiliateNotificationService {
       const text = html
         .replace(/<style[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'")
         .replace(/\s+/g, ' ')
         .trim();
       const dedupeKey = `affiliate-email:${crypto.createHash('sha256').update(`${to}\n${subject}\n${html}`).digest('hex')}`;
@@ -84,7 +96,7 @@ export class AffiliateNotificationService {
       'Creator Application Received',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Application Received</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>Thank you for applying to the PIERCYN Creator &amp; Affiliate Partner Program. Our team is reviewing your profile and audience channels.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; font-weight: 700; text-transform: uppercase;">Review Window</p>
@@ -100,17 +112,17 @@ export class AffiliateNotificationService {
     affiliate: { email: string; firstName: string },
     referralCode: string
   ) {
-    const portalUrl = process.env.PUBLIC_APP_URL || 'https://piercyn.vercel.app';
+    const portalUrl = appBaseUrl();
     const html = emailWrapper(
       'Welcome to PIERCYN Creator Club',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Welcome to the Creator Club</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>We are delighted to approve your application to the PIERCYN Creator Partner Program. You can now earn flat ₦800 commissions on every qualifying customer order referred through your links.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Your Primary Referral Code</p>
-        <p style="margin: 6px 0 0; font-family: monospace; font-size: 18px; color: #141414; font-weight: 700;">${referralCode}</p>
-        <p style="margin: 8px 0 0; font-size: 12px; color: #78716C;">Link: ${portalUrl}/?ref=${referralCode}</p>
+        <p style="margin: 6px 0 0; font-family: monospace; font-size: 18px; color: #141414; font-weight: 700;">${escapeAffiliateHtml(referralCode)}</p>
+        <p style="margin: 8px 0 0; font-size: 12px; color: #78716C;">Link: ${portalUrl}/?ref=${escapeAffiliateHtml(referralCode)}</p>
       </div>
       <p>Log into your Creator Portal to track real-time orders, manage custom campaigns, and withdraw your earnings with zero minimum restrictions.</p>
       <div style="text-align: center; margin: 25px 0;">
@@ -129,11 +141,11 @@ export class AffiliateNotificationService {
       'Creator Application Status',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Application Status Update</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>Thank you for your interest in partnering with PIERCYN. At this time, we are unable to accept your creator application.</p>
       ${
         reason
-          ? `<div class="card"><p style="margin: 0; color: #991B1B; font-size: 12px;"><strong>Note:</strong> ${reason}</p></div>`
+          ? `<div class="card"><p style="margin: 0; color: #991B1B; font-size: 12px;"><strong>Note:</strong> ${escapeAffiliateHtml(reason)}</p></div>`
           : ''
       }
       <p>We invite you to reapply in the future as your audience channels and content portfolio evolve.</p>
@@ -150,13 +162,13 @@ export class AffiliateNotificationService {
       'New Royalty Available',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Royalty Now Available</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>Good news! A customer order referred through your link has cleared the 7-day return cooling window and your commission is now available for withdrawal.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Order Number</p>
-        <p style="margin: 2px 0 10px; color: #141414; font-family: monospace; font-weight: 600;">#${details.orderNumber}</p>
+        <p style="margin: 2px 0 10px; color: #141414; font-family: monospace; font-weight: 600;">#${escapeAffiliateHtml(details.orderNumber)}</p>
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Commission Cleared</p>
-        <p style="margin: 2px 0 0; color: #166534; font-size: 20px; font-weight: 700;">₦${details.amountNGN.toLocaleString()}</p>
+        <p style="margin: 2px 0 0; color: #166534; font-size: 20px; font-weight: 700;">₦${escapeAffiliateHtml(details.amountNGN.toLocaleString())}</p>
       </div>
       <p>You can withdraw this balance to your Nigerian bank account anytime with zero minimum restrictions.</p>
       `
@@ -172,13 +184,13 @@ export class AffiliateNotificationService {
       'Withdrawal Request Received',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Withdrawal Request Received</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>We have received your withdrawal request. Our finance team will review and disburse your funds to your registered bank account.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Requested Amount</p>
-        <p style="margin: 2px 0 10px; color: #141414; font-size: 20px; font-weight: 700;">₦${payout.amountNGN.toLocaleString()}</p>
+        <p style="margin: 2px 0 10px; color: #141414; font-size: 20px; font-weight: 700;">₦${escapeAffiliateHtml(payout.amountNGN.toLocaleString())}</p>
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Destination Account</p>
-        <p style="margin: 2px 0 0; color: #44403C; font-size: 13px;">${payout.bankName} • ****${payout.accountNumber.slice(-4)}</p>
+        <p style="margin: 2px 0 0; color: #44403C; font-size: 13px;">${escapeAffiliateHtml(payout.bankName)} • ****${payout.accountNumber.slice(-4)}</p>
       </div>
       <p>Payouts are reviewed and disbursed weekly. You will receive an email confirmation once the transfer is completed.</p>
       `
@@ -194,11 +206,11 @@ export class AffiliateNotificationService {
       'Payment Completed',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Withdrawal Completed</h2>
-      <p>Dear ${affiliate.firstName},</p>
-      <p>Your withdrawal of <strong>₦${payout.amountNGN.toLocaleString()}</strong> has been successfully processed and transferred to your bank account.</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
+      <p>Your withdrawal of <strong>₦${escapeAffiliateHtml(payout.amountNGN.toLocaleString())}</strong> has been successfully processed and transferred to your bank account.</p>
       ${
         payout.paymentReference
-          ? `<div class="card"><p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Payment Reference</p><p style="margin: 2px 0 0; color: #141414; font-family: monospace; font-weight: 600;">${payout.paymentReference}</p></div>`
+          ? `<div class="card"><p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Payment Reference</p><p style="margin: 2px 0 0; color: #141414; font-family: monospace; font-weight: 600;">${escapeAffiliateHtml(payout.paymentReference)}</p></div>`
           : ''
       }
       <p>Thank you for partnering with PIERCYN.</p>
@@ -216,11 +228,11 @@ export class AffiliateNotificationService {
       'Withdrawal Request Update',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Withdrawal Request Update</h2>
-      <p>Dear ${affiliate.firstName},</p>
-      <p>Your withdrawal request for ₦${payout.amountNGN.toLocaleString()} could not be completed.</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
+      <p>Your withdrawal request for ₦${escapeAffiliateHtml(payout.amountNGN.toLocaleString())} could not be completed.</p>
       ${
         reason
-          ? `<div class="card"><p style="margin: 0; color: #991B1B; font-size: 12px;"><strong>Reason:</strong> ${reason}</p></div>`
+          ? `<div class="card"><p style="margin: 0; color: #991B1B; font-size: 12px;"><strong>Reason:</strong> ${escapeAffiliateHtml(reason)}</p></div>`
           : ''
       }
       <p>The reserved funds have been automatically released back to your available balance. Please verify your banking details in your Creator Portal and submit a new request if appropriate.</p>
@@ -238,19 +250,19 @@ export class AffiliateNotificationService {
     affiliate: { email: string; firstName: string },
     details: { orderNumber: string; amountNGN: number; reason?: string }
   ) {
-    const portalUrl = process.env.PUBLIC_APP_URL || 'https://piercyn.vercel.app';
+    const portalUrl = appBaseUrl();
     const html = emailWrapper(
       'Commission Reversal Notice',
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Commission Reversal</h2>
-      <p>Dear ${affiliate.firstName},</p>
+      <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
       <p>A previously recorded commission on your PIERCYN Creator account has been reversed.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Order Number</p>
-        <p style="margin: 2px 0 10px; color: #141414; font-family: monospace; font-weight: 600;">#${details.orderNumber}</p>
+        <p style="margin: 2px 0 10px; color: #141414; font-family: monospace; font-weight: 600;">#${escapeAffiliateHtml(details.orderNumber)}</p>
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Amount Reversed</p>
-        <p style="margin: 2px 0 0; color: #991B1B; font-size: 20px; font-weight: 700;">₦${details.amountNGN.toLocaleString()}</p>
-        ${details.reason ? `<p style="margin: 10px 0 0; font-size: 12px; color: #78716C;"><strong>Reason:</strong> ${details.reason}</p>` : ''}
+        <p style="margin: 2px 0 0; color: #991B1B; font-size: 20px; font-weight: 700;">₦${escapeAffiliateHtml(details.amountNGN.toLocaleString())}</p>
+        ${details.reason ? `<p style="margin: 10px 0 0; font-size: 12px; color: #78716C;"><strong>Reason:</strong> ${escapeAffiliateHtml(details.reason)}</p>` : ''}
       </div>
       <p>Your available balance has been updated. Please log into your Creator Portal to review your current earnings.</p>
       <div style="text-align: center; margin: 25px 0;">
