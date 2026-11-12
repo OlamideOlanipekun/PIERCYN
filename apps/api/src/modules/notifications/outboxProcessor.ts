@@ -28,6 +28,7 @@ const RETRY_DELAYS_MS = [
 function classifyNotificationError(error: any): string {
   if (error?.errorCode === 429 || error?.status === 429) return 'RATE_LIMITED';
   if (error?.errorCode === 401 || error?.errorCode === 404) return 'TELEGRAM_CONFIGURATION';
+  if (typeof error?.message === 'string' && /SMTP_UNCONFIGURED|EMAIL_TEMPLATE_MISSING/.test(error.message)) return 'EMAIL_CONFIGURATION';
   if (error?.name === 'AbortError' || error?.code === 'ETIMEDOUT') return 'TIMEOUT';
   if (error?.code === 'ENOTFOUND' || error?.code === 'ECONNRESET') return 'NETWORK';
   return 'PROVIDER_ERROR';
@@ -99,12 +100,14 @@ export class OutboxProcessor {
       }
 
       // 2. Telegram Admin Deliveries (independent per approved admin)
-      for (const admin of activeTelegramAdmins) {
-        deliveriesToCreate.push({
-          eventId: event.id,
-          channel: 'TELEGRAM',
-          recipientKey: admin.chatId,
-        });
+      if (payload.notifyTelegram !== false) {
+        for (const admin of activeTelegramAdmins) {
+          deliveriesToCreate.push({
+            eventId: event.id,
+            channel: 'TELEGRAM',
+            recipientKey: admin.chatId,
+          });
+        }
       }
 
       for (const delivery of deliveriesToCreate) {
@@ -184,7 +187,8 @@ export class OutboxProcessor {
         const payload = (delivery.event.payload || {}) as Record<string, any>;
         const attempt = (delivery.attempts || 0) + 1;
         const orderReference = payload.orderNumber || payload.orderId || 'unknown';
-        console.info('[TELEGRAM_NOTIFICATION_ATTEMPTED]', JSON.stringify({
+        const logPrefix = delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL';
+        console.info(`[${logPrefix}_NOTIFICATION_ATTEMPTED]`, JSON.stringify({
           orderReference,
           recipient: delivery.recipientKey,
           eventId: delivery.event.id,
@@ -203,21 +207,21 @@ export class OutboxProcessor {
           }
         } else if (delivery.channel === 'EMAIL') {
           // Send transactional Email
-          if (transporter && smtpConfig) {
-            const emailContent = this.formatEmailMessage(delivery.event.eventType, payload);
-            if (emailContent) {
-              await transporter.sendMail({
-                from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
-                replyTo: smtpConfig.replyTo,
-                to: delivery.recipientKey,
-                subject: emailContent.subject,
-                html: emailContent.html,
-                text: emailContent.text,
-              });
-            }
-          } else {
-            console.warn('[OUTBOX_SMTP_UNCONFIGURED] Email delivery skipped; SMTP not configured');
+          if (!transporter || !smtpConfig) {
+            throw new Error('SMTP_UNCONFIGURED: customer email transporter is unavailable');
           }
+          const emailContent = this.formatEmailMessage(delivery.event.eventType, payload);
+          if (!emailContent) {
+            throw new Error(`EMAIL_TEMPLATE_MISSING: ${delivery.event.eventType}`);
+          }
+          await transporter.sendMail({
+            from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
+            replyTo: smtpConfig.replyTo,
+            to: delivery.recipientKey,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+          });
         }
 
         // Mark SENT
@@ -231,7 +235,7 @@ export class OutboxProcessor {
             lastError: null,
           },
         });
-        console.info('[TELEGRAM_NOTIFICATION_ACCEPTED]', JSON.stringify({
+        console.info(`[${logPrefix}_NOTIFICATION_ACCEPTED]`, JSON.stringify({
           orderReference,
           recipient: delivery.recipientKey,
           eventId: delivery.event.id,
@@ -257,7 +261,7 @@ export class OutboxProcessor {
               lastError: errorMsg,
             },
           });
-          console.error('[TELEGRAM_NOTIFICATION_FAILED]', JSON.stringify({
+          console.error(`[${delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL'}_NOTIFICATION_FAILED]`, JSON.stringify({
             orderReference,
             recipient: delivery.recipientKey,
             eventId: delivery.event.id,
@@ -281,7 +285,7 @@ export class OutboxProcessor {
               lastError: errorMsg,
             },
           });
-          console.warn('[TELEGRAM_NOTIFICATION_RETRY]', JSON.stringify({
+          console.warn(`[${delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL'}_NOTIFICATION_RETRY]`, JSON.stringify({
             orderReference,
             recipient: delivery.recipientKey,
             eventId: delivery.event.id,
@@ -392,6 +396,13 @@ export class OutboxProcessor {
           firstName: payload.firstName,
           email: payload.email || payload.customerEmail,
         });
+
+      case 'AFFILIATE_EMAIL':
+        return {
+          subject: String(payload.subject || 'PIERCYN Notification'),
+          html: String(payload.html || ''),
+          text: String(payload.text || ''),
+        };
 
       case 'ORDER_CREATED':
         return renderOrderCreatedEmail(payload as any);

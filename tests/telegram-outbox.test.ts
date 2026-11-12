@@ -3,6 +3,8 @@ process.env.DATABASE_URL_TEST = process.env.DATABASE_URL_TEST || 'postgresql://m
 import { OutboxProcessor } from '../apps/api/src/modules/notifications/outboxProcessor';
 import { telegramService } from '../apps/api/src/modules/telegram/telegramService';
 import { prisma } from '../packages/db/src/client';
+import * as emailConfig from '../apps/api/src/modules/notifications/emailConfig';
+import { AffiliateNotificationService } from '../apps/api/src/modules/affiliate/affiliateNotificationService';
 
 describe('Telegram transactional outbox', () => {
   it('renders the required new-order details and escapes Telegram HTML', () => {
@@ -58,5 +60,64 @@ describe('Telegram transactional outbox', () => {
     expect(result.sent).toBe(1);
     expect(sendSpy).toHaveBeenCalledOnce();
     expect(sendSpy).toHaveBeenCalledWith('987654321', expect.stringContaining('PCY-123456'));
+  });
+
+  it('keeps customer email pending when SMTP is unavailable', async () => {
+    vi.spyOn(OutboxProcessor, 'recoverStaleLocks').mockResolvedValue(0);
+    vi.spyOn(OutboxProcessor, 'fanOutEvents').mockResolvedValue(0);
+    vi.spyOn(emailConfig, 'getCustomerSmtpConfig').mockReturnValue(null);
+    vi.spyOn(emailConfig, 'getCustomerMailTransporter').mockReturnValue(null);
+    vi.spyOn(prisma.notificationDelivery, 'findMany').mockResolvedValueOnce([
+      {
+        id: 'email_delivery_1',
+        channel: 'EMAIL',
+        recipientKey: 'customer@example.com',
+        status: 'PENDING',
+        attempts: 0,
+        maxAttempts: 5,
+        nextAttemptAt: new Date(),
+        event: {
+          id: 'event_email_1',
+          eventType: 'ORDER_CREATED',
+          payload: { orderId: 'order_email_1', orderNumber: 'PCY-EMAIL-1', customerEmail: 'customer@example.com' },
+        },
+      },
+    ] as any);
+    const updateManySpy = vi.spyOn(prisma.notificationDelivery, 'updateMany').mockResolvedValue({ count: 1 } as any);
+    const updateSpy = vi.spyOn(prisma.notificationDelivery, 'update').mockResolvedValue({} as any);
+
+    const result = await OutboxProcessor.processDeliveries(1);
+
+    expect(result.sent).toBe(0);
+    expect(result.retried).toBe(1);
+    expect(updateManySpy).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'PROCESSING' }),
+    }));
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'PENDING', attempts: 1 }),
+    }));
+    expect(updateSpy).not.toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'SENT' }),
+    }));
+  });
+
+  it('queues affiliate email content as a durable outbox event', async () => {
+    const upsertSpy = vi.spyOn(prisma.notificationEvent, 'upsert').mockResolvedValue({ id: 'affiliate_event_1' } as any);
+
+    await AffiliateNotificationService.notifyApplicationSubmitted({
+      email: 'creator@example.com',
+      firstName: 'Creator',
+    });
+
+    expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        eventType: 'AFFILIATE_EMAIL',
+        payload: expect.objectContaining({
+          email: 'creator@example.com',
+          notifyTelegram: false,
+          text: expect.any(String),
+        }),
+      }),
+    }));
   });
 });

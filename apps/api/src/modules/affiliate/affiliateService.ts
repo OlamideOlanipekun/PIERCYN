@@ -99,10 +99,10 @@ export class AffiliateService {
       createdAt: affiliate.createdAt,
     });
 
-    AffiliateNotificationService.notifyApplicationSubmitted({
+    await AffiliateNotificationService.notifyApplicationSubmitted({
       email: affiliate.email,
       firstName: affiliate.firstName,
-    }).catch(() => null);
+    });
 
     return {
       affiliate: {
@@ -194,10 +194,10 @@ export class AffiliateService {
       },
     });
 
-    AffiliateNotificationService.notifyApplicationSubmitted({
+    await AffiliateNotificationService.notifyApplicationSubmitted({
       email: updated.email,
       firstName: updated.firstName,
-    }).catch(() => null);
+    });
 
     return {
       success: true,
@@ -971,10 +971,10 @@ export class AffiliateService {
         },
       }).catch((e) => console.error('Failed to log affiliate audit:', e));
 
-      AffiliateNotificationService.notifyApplicationApproved(
+      await AffiliateNotificationService.notifyApplicationApproved(
         { email: affiliate.email, firstName: affiliate.firstName },
         defaultLink.referralCode
-      ).catch(() => null);
+      );
 
       return updated;
     } else {
@@ -997,10 +997,10 @@ export class AffiliateService {
         },
       }).catch((e) => console.error('Failed to log affiliate audit:', e));
 
-      AffiliateNotificationService.notifyApplicationRejected(
+      await AffiliateNotificationService.notifyApplicationRejected(
         { email: affiliate.email, firstName: affiliate.firstName },
         reason
-      ).catch(() => null);
+      );
 
       return updated;
     }

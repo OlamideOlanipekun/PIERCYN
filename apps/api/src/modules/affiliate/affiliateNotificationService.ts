@@ -1,10 +1,11 @@
 // ============================================================
 // PIERCYN AFFILIATE NOTIFICATION SERVICE
 // Transactional emails for creator/affiliate lifecycle events.
-// Fire-and-forget: notification errors never roll back transactions.
+// Queues durable notification events; SMTP delivery is handled by OutboxProcessor.
 // ============================================================
 
-import { getMailTransporter, getSmtpConfig } from '../notifications/emailConfig';
+import crypto from 'crypto';
+import { prisma } from '../../db/prisma';
 
 function emailWrapper(title: string, bodyContent: string): string {
   return `
@@ -49,25 +50,31 @@ function emailWrapper(title: string, bodyContent: string): string {
 
 export class AffiliateNotificationService {
   private static async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-    const transporter = getMailTransporter();
-    const config = getSmtpConfig();
-
-    if (!transporter || !config) {
-      console.log(`[AFFILIATE_EMAIL_DEV] Transporter not configured. Subject: "${subject}" to: ${to}`);
-      return false;
-    }
-
     try {
-      await transporter.sendMail({
-        from: `"${config.fromName}" <${config.fromEmail}>`,
-        replyTo: config.replyTo,
-        to,
-        subject: `PIERCYN · ${subject}`,
-        html,
+      const text = html
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const dedupeKey = `affiliate-email:${crypto.createHash('sha256').update(`${to}\n${subject}\n${html}`).digest('hex')}`;
+      await prisma.notificationEvent.upsert({
+        where: { eventKey: dedupeKey },
+        update: {},
+        create: {
+          eventKey: dedupeKey,
+          eventType: 'AFFILIATE_EMAIL',
+          payload: {
+            email: to,
+            subject: `PIERCYN · ${subject}`,
+            html,
+            text,
+            notifyTelegram: false,
+          },
+        },
       });
       return true;
     } catch (err: any) {
-      console.warn(`[AFFILIATE_NOTIFICATION_ERROR] Failed to send email to ${to}:`, err.message);
+      console.warn(`[AFFILIATE_NOTIFICATION_QUEUE_ERROR] Failed to queue email to ${to}:`, err.message);
       return false;
     }
   }
@@ -254,4 +261,3 @@ export class AffiliateNotificationService {
     return this.sendEmail(affiliate.email, `Commission Reversal — Order #${details.orderNumber}`, html);
   }
 }
-

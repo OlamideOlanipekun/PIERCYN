@@ -12,7 +12,11 @@ function requireCronSecret(req: Request, res: Response, next: () => void) {
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    console.error('[INTERNAL_JOB_AUTH_MISCONFIGURED] CRON_SECRET is not configured');
+    return res.status(503).json({ error: 'Internal job authorization is not configured' });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized internal job call' });
   }
   next();
