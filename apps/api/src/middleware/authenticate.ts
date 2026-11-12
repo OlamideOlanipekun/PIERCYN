@@ -1,21 +1,47 @@
 import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+let _supabaseClient: SupabaseClient | null = null;
 
-if (process.env.NODE_ENV === 'production' && !serviceRoleKey) {
-  // Log the missing config but do NOT throw here — throwing at module load
-  // time crashes the entire serverless function and makes every route return 500.
-  // requireAuth will still reject unauthenticated requests at the handler level.
-  console.error('[SECURITY_CRITICAL] SUPABASE_SERVICE_ROLE_KEY is not configured in this production environment. All authenticated routes will reject with 401.');
+export function getSupabaseAuthServer(): SupabaseClient | null {
+  if (_supabaseClient) return _supabaseClient;
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[SECURITY_WARNING] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not configured. Server-side token verification will reject or bypass.');
+    }
+    return null;
+  }
+
+  try {
+    _supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+    return _supabaseClient;
+  } catch (err: any) {
+    console.error('[SUPABASE_CLIENT_ERROR]', err?.message || err);
+    return null;
+  }
 }
 
-// Single shared server client for identity verification
-export const supabaseAuthServer = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+// Retain exported proxy for backward compatibility without throwing on module import
+export const supabaseAuthServer: any = new Proxy({}, {
+  get(_target, prop) {
+    const client = getSupabaseAuthServer();
+    if (!client) {
+      if (prop === 'auth') {
+        return {
+          getUser: async () => ({ data: { user: null }, error: new Error('Supabase client not configured') }),
+        };
+      }
+      return undefined;
+    }
+    return (client as any)[prop];
   },
 });
 
@@ -57,8 +83,14 @@ export async function requireAuth(
     return;
   }
 
+  const client = getSupabaseAuthServer();
+  if (!client) {
+    res.status(503).json({ success: false, error: 'Authentication service temporarily unavailable.' });
+    return;
+  }
+
   try {
-    const { data, error } = await supabaseAuthServer.auth.getUser(token);
+    const { data, error } = await client.auth.getUser(token);
     if (error || !data.user) {
       res.status(401).json({ success: false, error: 'Invalid or expired session. Please sign in again.' });
       return;
@@ -96,8 +128,14 @@ export async function optionalAuth(
     return next();
   }
 
+  const client = getSupabaseAuthServer();
+  if (!client) {
+    // If Supabase server auth is not configured, continue anonymously as guest
+    return next();
+  }
+
   try {
-    const { data } = await supabaseAuthServer.auth.getUser(token);
+    const { data } = await client.auth.getUser(token);
     if (data?.user) {
       req.user = {
         supabaseId: data.user.id,
