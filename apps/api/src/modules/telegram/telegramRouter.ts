@@ -1,172 +1,236 @@
 import { Router, Request, Response } from 'express';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@piercyn/db';
 import { telegramService } from './telegramService';
 import { telegramClient } from './telegramClient';
 
 export const telegramWebhookRouter = Router();
 
-telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
-  const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
-  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+const TELEGRAM_COMMANDS = ['/start', '/help', '/status', '/today', '/pending', '/unpaid', '/receipts', '/delivery'];
 
-  if (expectedSecret && secretHeader !== expectedSecret) {
+function getCommand(text: string): { command: string; args: string[] } {
+  const match = text.trim().match(/^\/([a-z0-9_]+)(?:@[a-z0-9_]+)?(?:\s+(.*))?$/i);
+  if (!match) return { command: '', args: [] };
+  return {
+    command: `/${match[1].toLowerCase()}`,
+    args: match[2] ? match[2].trim().split(/\s+/).filter(Boolean) : [],
+  };
+}
+
+function formatNGN(amount: number): string {
+  return `₦${(amount / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function allowedBootstrapChatIds(): Set<string> {
+  return new Set(
+    (process.env.TELEGRAM_ADMIN_CHAT_IDS || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+}
+
+async function sendReply(chatId: string, text: string): Promise<void> {
+  if (!telegramClient.isConfigured) {
+    console.error('[TELEGRAM_NOT_CONFIGURED] Cannot reply: TELEGRAM_BOT_TOKEN is not set');
+    return;
+  }
+  try {
+    await telegramClient.sendMessage({ chatId, text });
+  } catch (error) {
+    console.error('[TELEGRAM_REPLY_FAILED]', { chatId, error });
+  }
+}
+
+async function listPaymentOrders(where: any, title: string, emptyMessage: string): Promise<string> {
+  const orders = await prisma.order.findMany({
+    where,
+    take: 10,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      orderNumber: true,
+      totalNGN: true,
+      customerFirstName: true,
+      customerLastName: true,
+    },
+  });
+  if (orders.length === 0) return emptyMessage;
+  const list = orders.map((order) => {
+    const customer = `${order.customerFirstName} ${order.customerLastName}`.trim();
+    return `• <b>${escapeHtml(order.orderNumber)}</b> — ${formatNGN(order.totalNGN)} — ${escapeHtml(customer)}`;
+  }).join('\n');
+  return `${title} <b>(${orders.length})</b>:\n\n${list}`;
+}
+
+async function processTelegramUpdate(update: any): Promise<void> {
+  if (!update || !update.message) return;
+
+  const message = update.message;
+  const chatId = String(message.chat?.id || '');
+  if (!chatId || chatId === 'undefined') {
+    console.warn('[TELEGRAM_UPDATE_INVALID] Missing message.chat.id');
+    return;
+  }
+
+  const text = typeof message.text === 'string' ? message.text.trim() : '';
+  const username = typeof message.from?.username === 'string' ? message.from.username : undefined;
+  const { command, args } = getCommand(text);
+
+  console.info('[TELEGRAM_UPDATE_RECEIVED]', JSON.stringify({
+    updateId: update.update_id ?? null,
+    chatId,
+    command: command || '(non-command)',
+  }));
+
+  if (command === '/start') {
+    const existing = await prisma.telegramRecipient.findUnique({ where: { chatId } });
+    if (existing?.isActive) {
+      await sendReply(
+        chatId,
+        `👋 Welcome back, <b>${escapeHtml(existing.label)}</b>! You are registered for PIERCYN operational notifications.\n\nType <code>/status</code> for today's summary or <code>/help</code> for commands.`
+      );
+      return;
+    }
+
+    if (args.length > 0) {
+      const registration = await telegramService.processRegistration({
+        rawToken: args[0],
+        chatId,
+        username,
+      });
+      await sendReply(chatId, registration.message);
+      return;
+    }
+
+    const bootstrapAllowlist = allowedBootstrapChatIds();
+    const recipientCount = await prisma.telegramRecipient.count();
+    if (recipientCount === 0 && (bootstrapAllowlist.size === 0 || bootstrapAllowlist.has(chatId))) {
+      await prisma.telegramRecipient.create({
+        data: {
+          chatId,
+          label: 'Primary Admin',
+          username: username?.replace(/^@/, '').toLowerCase(),
+          isActive: true,
+        },
+      });
+      await sendReply(
+        chatId,
+        '🎉 <b>PIERCYN Admin Notifications Activated!</b>\n\nYou are registered as <b>Primary Admin</b>. Type <code>/status</code> for today\'s queue or <code>/help</code> for available commands.'
+      );
+      return;
+    }
+
+    await sendReply(
+      chatId,
+      'Welcome to PIERCYN Admin Bot. Send an administrator-issued invite using <code>/start &lt;token&gt;</code> to register.'
+    );
+    return;
+  }
+
+  const recipient = await prisma.telegramRecipient.findUnique({ where: { chatId } });
+  if (!recipient?.isActive) {
+    await sendReply(chatId, '⛔ Access restricted. You are not authorized to run PIERCYN administrative commands.');
+    return;
+  }
+
+  if (command === '/status' || command === '/today') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [orderCount, pendingReceipts, pendingQuotes] = await Promise.all([
+      prisma.order.count({ where: { createdAt: { gte: today } } }),
+      prisma.order.count({ where: { paymentStatus: 'AWAITING_VERIFICATION' } }),
+      prisma.order.count({ where: { quoteStatus: { in: ['PENDING', 'SET', 'SENT'] } } }),
+    ]);
+    await sendReply(
+      chatId,
+      `📊 <b>PIERCYN Operational Status</b>\n\n` +
+      `• Today's Orders: <b>${orderCount}</b>\n` +
+      `• Receipts Pending Review: <b>${pendingReceipts}</b>\n` +
+      `• Delivery Quotes Pending: <b>${pendingQuotes}</b>\n\n` +
+      `<i>Admin: ${escapeHtml(recipient.label)}</i>`
+    );
+    return;
+  }
+
+  if (command === '/pending' || command === '/receipts') {
+    await sendReply(
+      chatId,
+      await listPaymentOrders(
+        { paymentStatus: 'AWAITING_VERIFICATION' },
+        '⏳ <b>Pending Payment Reviews',
+        '✅ No receipts currently awaiting review.'
+      )
+    );
+    return;
+  }
+
+  if (command === '/unpaid') {
+    await sendReply(
+      chatId,
+      await listPaymentOrders(
+        { paymentStatus: { not: 'PAID' }, status: { notIn: ['CANCELLED', 'FAILED', 'REFUNDED'] } },
+        '💳 <b>Unpaid Orders',
+        '✅ No unpaid orders currently require attention.'
+      )
+    );
+    return;
+  }
+
+  if (command === '/delivery') {
+    await sendReply(
+      chatId,
+      await listPaymentOrders(
+        { quoteStatus: { in: ['PENDING', 'SET', 'SENT'] }, status: { notIn: ['CANCELLED', 'FAILED', 'REFUNDED'] } },
+        '🚚 <b>Delivery Quotes Pending',
+        '✅ No delivery quotes are currently pending.'
+      )
+    );
+    return;
+  }
+
+  if (command === '/help') {
+    await sendReply(
+      chatId,
+      `<b>PIERCYN Admin Commands:</b>\n\n` +
+      TELEGRAM_COMMANDS.map((item) => `• <code>${item}</code>`).join('\n') +
+      '\n\n<code>/status</code> and <code>/today</code> show the operational queue.\n' +
+      '<code>/pending</code> and <code>/receipts</code> show receipt reviews.\n' +
+      '<code>/unpaid</code> shows unpaid orders.\n' +
+      '<code>/delivery</code> shows pending delivery quotes.\n\n' +
+      '<i>Mutation actions remain in the admin dashboard.</i>'
+    );
+    return;
+  }
+
+  await sendReply(chatId, 'Unknown command. Use <code>/help</code> to see the available PIERCYN commands.');
+}
+
+telegramWebhookRouter.post('/webhook', async (req: Request, res: Response) => {
+  const secretHeader = req.header('x-telegram-bot-api-secret-token');
+  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+
+  if (!expectedSecret) {
+    console.error('[TELEGRAM_WEBHOOK_MISCONFIGURED] TELEGRAM_WEBHOOK_SECRET is not set');
+    return res.status(503).json({ error: 'Telegram webhook is not configured' });
+  }
+  if (secretHeader !== expectedSecret) {
     console.warn('[TELEGRAM_WEBHOOK_UNAUTHORIZED] Invalid secret token');
     return res.status(401).json({ error: 'Unauthorized webhook call' });
   }
 
-  const update = req.body;
-  if (!update || !update.message) {
-    return res.status(200).json({ ok: true });
-  }
-
-  const message = update.message;
-  const chatId = String(message.chat?.id);
-  const text: string = (message.text || '').trim();
-  const username = message.from?.username;
-
-  // Immediate 200 response to satisfy Telegram
-  res.status(200).json({ ok: true });
-
-  try {
-    // 1. Handle Registration: /start [token]
-    if (text.startsWith('/start')) {
-      // Check if already registered
-      const existing = await prisma.telegramRecipient.findUnique({
-        where: { chatId },
-      });
-
-      if (existing && existing.isActive) {
-        if (telegramClient.isConfigured) {
-          await telegramClient.sendMessage({
-            chatId,
-            text: `👋 Welcome back, <b>${existing.label}</b>! You are already registered for PIERCYN operational notifications.\n\nType <code>/status</code> for today's summary or <code>/help</code> for commands.`,
-          });
-        }
-        return;
-      }
-
-      const parts = text.split(/\s+/);
-      if (parts.length > 1) {
-        const rawToken = parts[1];
-        const regResult = await telegramService.processRegistration({
-          rawToken,
-          chatId,
-          username,
-        });
-
-        if (telegramClient.isConfigured) {
-          await telegramClient.sendMessage({
-            chatId,
-            text: regResult.message,
-          });
-        }
-        return;
-      }
-
-      // If no admin is registered yet, auto-register the first user as Primary Admin
-      const recipientCount = await prisma.telegramRecipient.count();
-      if (recipientCount === 0) {
-        const cleanUsername = username ? username.replace(/^@/, '').toLowerCase() : undefined;
-        await prisma.telegramRecipient.create({
-          data: {
-            chatId,
-            label: 'Primary Admin',
-            username: cleanUsername,
-            isActive: true,
-          },
-        });
-
-        if (telegramClient.isConfigured) {
-          await telegramClient.sendMessage({
-            chatId,
-            text: `🎉 <b>PIERCYN Admin Notifications Activated!</b>\n\nWelcome, <b>Primary Admin</b>. Your Telegram account is now registered to receive real-time alerts for incoming orders, bank transfer receipts, and dispatch updates.\n\nType <code>/status</code> to check today's queue or <code>/help</code> for available commands.`,
-          });
-        }
-        return;
-      }
-
-      if (telegramClient.isConfigured) {
-        await telegramClient.sendMessage({
-          chatId,
-          text: 'Welcome to PIERCYN Admin Bot. If you have an invite token, send <code>/start &lt;token&gt;</code> to register.',
-        });
-      }
-      return;
-    }
-
-    // 2. Authorize subsequent operational commands: recipient must be registered & active
-    const recipient = await prisma.telegramRecipient.findUnique({
-      where: { chatId },
-    });
-
-    if (!recipient || !recipient.isActive) {
-      if (telegramClient.isConfigured) {
-        await telegramClient.sendMessage({
-          chatId,
-          text: '⛔ Access restricted. You are not authorized to run PIERCYN administrative commands.',
-        });
-      }
-      return;
-    }
-
-    // 3. Operational Read-Only Commands
-    if (text === '/status' || text === '/today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const [orderCount, pendingReceipts, pendingQuotes] = await Promise.all([
-        prisma.order.count({ where: { createdAt: { gte: today } } }),
-        prisma.order.count({ where: { paymentStatus: 'AWAITING_VERIFICATION' } }),
-        prisma.order.count({ where: { quoteStatus: 'PENDING' } }),
-      ]);
-
-      const msg = `📊 <b>PIERCYN Operational Status</b>\n\n` +
-        `• Today's Orders: <b>${orderCount}</b>\n` +
-        `• Receipts Pending Review: <b>${pendingReceipts}</b>\n` +
-        `• Delivery Quotes Pending: <b>${pendingQuotes}</b>\n\n` +
-        `<i>Admin: ${recipient.label}</i>`;
-
-      await telegramClient.sendMessage({ chatId, text: msg });
-      return;
-    }
-
-    if (text === '/pending' || text === '/receipts') {
-      const orders = await prisma.order.findMany({
-        where: { paymentStatus: 'AWAITING_VERIFICATION' },
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: { orderNumber: true, totalNGN: true, customerFirstName: true, customerLastName: true },
-      });
-
-      if (orders.length === 0) {
-        await telegramClient.sendMessage({ chatId, text: '✅ No receipts currently awaiting review.' });
-        return;
-      }
-
-      const list = orders
-        .map(o => `• <b>${o.orderNumber}</b>: ₦${(o.totalNGN / 100).toLocaleString()} (${o.customerFirstName} ${o.customerLastName})`)
-        .join('\n');
-
-      await telegramClient.sendMessage({
-        chatId,
-        text: `⏳ <b>Pending Payment Reviews (${orders.length})</b>:\n\n${list}`,
-      });
-      return;
-    }
-
-    if (text === '/help') {
-      const help = `<b>PIERCYN Admin Commands:</b>\n\n` +
-        `• <code>/status</code> — Today's overview & pending queues\n` +
-        `• <code>/pending</code> — Orders awaiting payment receipt review\n` +
-        `• <code>/today</code> — Quick summary of today's activities\n` +
-        `• <code>/help</code> — Show this guide\n\n` +
-        `<i>Note: Mutation actions (approvals, refunds, payouts) must be completed in the admin dashboard.</i>`;
-
-      await telegramClient.sendMessage({ chatId, text: help });
-      return;
-    }
-
-  } catch (error) {
+  // Telegram requires a fast acknowledgement. Vercel's waitUntil keeps the
+  // database work and outbound sendMessage alive after this response returns.
+  const work = processTelegramUpdate(req.body).catch((error) => {
     console.error('[TELEGRAM_COMMAND_ERROR]', error);
-  }
+  });
+  waitUntil(work);
+  return res.status(200).json({ ok: true });
 });
