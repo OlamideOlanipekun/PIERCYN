@@ -120,4 +120,37 @@ describe('Telegram transactional outbox', () => {
       }),
     }));
   });
+
+  it('masks email recipients in logs and stores the SMTP message ID on acceptance', async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(OutboxProcessor, 'recoverStaleLocks').mockResolvedValue(0);
+    vi.spyOn(OutboxProcessor, 'fanOutEvents').mockResolvedValue(0);
+    vi.spyOn(emailConfig, 'getCustomerSmtpConfig').mockReturnValue({
+      host: 'smtp.example.test', port: 587, secure: false, user: 'sender@example.com',
+      pass: 'test-password', adminEmail: 'sender@example.com', fromEmail: 'sender@example.com',
+      fromName: 'PIERCYN', replyTo: 'sender@example.com',
+    });
+    const sendMail = vi.fn().mockResolvedValue({ messageId: '<smtp-message-123>' });
+    vi.spyOn(emailConfig, 'getCustomerMailTransporter').mockReturnValue({ sendMail } as any);
+    vi.spyOn(prisma.notificationDelivery, 'findMany').mockResolvedValueOnce([{
+      id: 'email_delivery_success', channel: 'EMAIL', recipientKey: 'customer@example.com',
+      status: 'PENDING', attempts: 0, maxAttempts: 5, nextAttemptAt: new Date(),
+      event: { id: 'event_success', eventType: 'AFFILIATE_EMAIL', payload: {
+        email: 'customer@example.com', subject: 'Test notice', html: '<p>Hello</p>', text: 'Hello',
+      } },
+    }] as any);
+    vi.spyOn(prisma.notificationDelivery, 'updateMany').mockResolvedValue({ count: 1 } as any);
+    const updateSpy = vi.spyOn(prisma.notificationDelivery, 'update').mockResolvedValue({} as any);
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const result = await OutboxProcessor.processDeliveries(1);
+
+    expect(result.sent).toBe(1);
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'SENT', providerMessageId: '<smtp-message-123>' }),
+    }));
+    const serializedLogs = infoSpy.mock.calls.map((call) => String(call[1])).join('\n');
+    expect(serializedLogs).toContain('c***@example.com');
+    expect(serializedLogs).not.toContain('customer@example.com');
+  });
 });

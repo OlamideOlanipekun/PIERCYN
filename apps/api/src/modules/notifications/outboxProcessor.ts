@@ -25,6 +25,12 @@ const RETRY_DELAYS_MS = [
   30 * 60 * 1000,     // 30 mins
 ];
 
+function maskRecipient(channel: string, recipient: string): string {
+  if (channel !== 'EMAIL') return recipient;
+  const [local, domain] = recipient.split('@');
+  if (!domain) return '[invalid-email]';
+  return `${local.slice(0, 1)}***@${domain}`;
+}
 function classifyNotificationError(error: any): string {
   if (error?.errorCode === 429 || error?.status === 429) return 'RATE_LIMITED';
   if (error?.errorCode === 401 || error?.errorCode === 404) return 'TELEGRAM_CONFIGURATION';
@@ -188,11 +194,16 @@ export class OutboxProcessor {
         const attempt = (delivery.attempts || 0) + 1;
         const orderReference = payload.orderNumber || payload.orderId || 'unknown';
         const logPrefix = delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL';
+        const recipient = maskRecipient(delivery.channel, delivery.recipientKey);
+        let providerMessageId: string | null = null;
         console.info(`[${logPrefix}_NOTIFICATION_ATTEMPTED]`, JSON.stringify({
-          orderReference,
-          recipient: delivery.recipientKey,
           eventId: delivery.event.id,
+          eventType: delivery.event.eventType,
+          templateId: delivery.event.eventType,
+          orderReference,
+          recipient,
           attempt,
+          channel: delivery.channel,
         }));
 
         if (delivery.channel === 'TELEGRAM') {
@@ -200,10 +211,7 @@ export class OutboxProcessor {
           const messageText = this.formatTelegramMessage(delivery.event.eventType, payload);
           if (messageText) {
             const result = await telegramService.notifyRecipient(delivery.recipientKey, messageText);
-            await prisma.notificationDelivery.update({
-              where: { id: delivery.id },
-              data: { providerMessageId: result.messageId || null },
-            });
+            providerMessageId = result.messageId || null;
           }
         } else if (delivery.channel === 'EMAIL') {
           // Send transactional Email
@@ -214,7 +222,7 @@ export class OutboxProcessor {
           if (!emailContent) {
             throw new Error(`EMAIL_TEMPLATE_MISSING: ${delivery.event.eventType}`);
           }
-          await transporter.sendMail({
+          const smtpResult = await transporter.sendMail({
             from: `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>`,
             replyTo: smtpConfig.replyTo,
             to: delivery.recipientKey,
@@ -222,6 +230,7 @@ export class OutboxProcessor {
             html: emailContent.html,
             text: emailContent.text,
           });
+          providerMessageId = smtpResult.messageId || null;
         }
 
         // Mark SENT
@@ -233,13 +242,18 @@ export class OutboxProcessor {
             lockedAt: null,
             lockToken: null,
             lastError: null,
+            providerMessageId,
           },
         });
         console.info(`[${logPrefix}_NOTIFICATION_ACCEPTED]`, JSON.stringify({
-          orderReference,
-          recipient: delivery.recipientKey,
           eventId: delivery.event.id,
+          eventType: delivery.event.eventType,
+          templateId: delivery.event.eventType,
+          orderReference,
+          recipient,
           attempt,
+          channel: delivery.channel,
+          providerMessageId,
         }));
         sent++;
       } catch (err: any) {
@@ -262,10 +276,13 @@ export class OutboxProcessor {
             },
           });
           console.error(`[${delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL'}_NOTIFICATION_FAILED]`, JSON.stringify({
-            orderReference,
-            recipient: delivery.recipientKey,
             eventId: delivery.event.id,
+            eventType: delivery.event.eventType,
+            templateId: delivery.event.eventType,
+            orderReference,
+            recipient: maskRecipient(delivery.channel, delivery.recipientKey),
             attempt: nextAttempts,
+            channel: delivery.channel,
             errorClassification,
             error: errorMsg,
           }));
@@ -286,10 +303,13 @@ export class OutboxProcessor {
             },
           });
           console.warn(`[${delivery.channel === 'TELEGRAM' ? 'TELEGRAM' : 'EMAIL'}_NOTIFICATION_RETRY]`, JSON.stringify({
-            orderReference,
-            recipient: delivery.recipientKey,
             eventId: delivery.event.id,
+            eventType: delivery.event.eventType,
+            templateId: delivery.event.eventType,
+            orderReference,
+            recipient: maskRecipient(delivery.channel, delivery.recipientKey),
             attempt: nextAttempts,
+            channel: delivery.channel,
             errorClassification,
             nextAttemptAt: nextAttemptAt.toISOString(),
           }));
