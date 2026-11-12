@@ -434,8 +434,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const explicitVariantIsCurrent = Boolean(
       explicitVariantId && catalogProduct.variants?.some((variant) => variant.id === explicitVariantId)
     );
+    const selectedColor = (colorName || catalogProduct.colors?.[0]?.name || 'Default').toLowerCase().trim();
+    const selectedSize = (size || catalogProduct.sizes?.[0] || 'M').toLowerCase().trim();
+    const selectedLiveVariant = catalogProduct.variants?.find((variant) =>
+      variant.size.toLowerCase().trim() === selectedSize &&
+      (variant.colour.toLowerCase().trim() === selectedColor ||
+        variant.colour.toLowerCase().includes(selectedColor) ||
+        selectedColor.includes(variant.colour.toLowerCase().trim()))
+    );
+    if (catalogProduct.variants?.length && !explicitVariantIsCurrent && !selectedLiveVariant) {
+      showToast('That colour and size combination is currently unavailable.');
+      return false;
+    }
     const variantId = explicitVariantIsCurrent ? explicitVariantId! : resolved.id;
-    const selectedSize = resolved.size;
+    const resolvedSize = resolved.size;
 
     setIsCartLoading(true);
     try {
@@ -457,7 +469,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
           quantity,
         });
 
-        showToast(`Added ${catalogProduct.name} (${selectedSize}) to bag`);
+        showToast(`Added ${catalogProduct.name} (${resolvedSize}) to bag`);
         setIsCartOpen(true);
         setIsCartLoading(false);
         return true;
