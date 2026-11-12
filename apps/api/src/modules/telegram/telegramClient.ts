@@ -71,6 +71,10 @@ export class TelegramClient {
   async getMe() {
     return this.call('getMe', {});
   }
+
+  async getChat(chatId: string) {
+    return this.call('getChat', { chat_id: chatId });
+  }
 }
 
 export const telegramClient = new TelegramClient();

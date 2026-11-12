@@ -165,6 +165,28 @@ export class TelegramService {
 
     return { sent, failed };
   }
+
+  /**
+   * Sends one outbox delivery to exactly one recipient. Errors propagate so
+   * the outbox can retry this recipient without affecting other recipients.
+   */
+  async notifyRecipient(chatId: string, text: string): Promise<{ messageId?: string }> {
+    if (!telegramClient.isConfigured) {
+      throw new Error('Telegram bot token is not configured');
+    }
+    const result = await telegramClient.sendMessage({ chatId, text });
+    try {
+      await prisma.telegramRecipient.updateMany({
+        where: { chatId, isActive: true },
+        data: { lastSeenAt: new Date() },
+      });
+    } catch (error) {
+      // Telegram already accepted the message; bookkeeping must not trigger a duplicate retry.
+      console.warn('[TELEGRAM_RECIPIENT_BOOKKEEPING_FAILED]', JSON.stringify({ chatId, error: String(error) }));
+    }
+    const messageId = (result as any)?.message_id;
+    return { messageId: messageId === undefined ? undefined : String(messageId) };
+  }
 }
 
 export const telegramService = new TelegramService();

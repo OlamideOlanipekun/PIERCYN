@@ -15,14 +15,17 @@ export * from './emailConfig';
 export * from './emailTemplates';
 export * from './notificationQueueService';
 export * from './notificationWorker';
+export * from './outboxProcessor';
 
 /**
  * Registers opportunistic notification work with the Vercel invocation so it
  * can continue after the response without relying on an untracked timer.
  */
 export function triggerNotificationProcessingAsync(): void {
-  const task = import('./notificationWorker')
-    .then(({ NotificationWorker }) => NotificationWorker.processNotifications(2))
+  const task = Promise.allSettled([
+    import('./notificationWorker').then(({ NotificationWorker }) => NotificationWorker.processNotifications(2)),
+    import('./outboxProcessor').then(({ OutboxProcessor }) => OutboxProcessor.processDeliveries(10)),
+  ])
     .catch((err) => {
       console.warn('[NOTIFICATION_ASYNC_DISPATCH_WARN]', err?.message || err);
     });

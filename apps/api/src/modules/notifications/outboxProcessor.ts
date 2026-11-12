@@ -25,6 +25,14 @@ const RETRY_DELAYS_MS = [
   30 * 60 * 1000,     // 30 mins
 ];
 
+function classifyNotificationError(error: any): string {
+  if (error?.errorCode === 429 || error?.status === 429) return 'RATE_LIMITED';
+  if (error?.errorCode === 401 || error?.errorCode === 404) return 'TELEGRAM_CONFIGURATION';
+  if (error?.name === 'AbortError' || error?.code === 'ETIMEDOUT') return 'TIMEOUT';
+  if (error?.code === 'ENOTFOUND' || error?.code === 'ECONNRESET') return 'NETWORK';
+  return 'PROVIDER_ERROR';
+}
+
 export interface OutboxRunResult {
   claimed: number;
   sent: number;
@@ -174,12 +182,24 @@ export class OutboxProcessor {
 
       try {
         const payload = (delivery.event.payload || {}) as Record<string, any>;
+        const attempt = (delivery.attempts || 0) + 1;
+        const orderReference = payload.orderNumber || payload.orderId || 'unknown';
+        console.info('[TELEGRAM_NOTIFICATION_ATTEMPTED]', JSON.stringify({
+          orderReference,
+          recipient: delivery.recipientKey,
+          eventId: delivery.event.id,
+          attempt,
+        }));
 
         if (delivery.channel === 'TELEGRAM') {
           // Send Telegram message to this specific recipient
           const messageText = this.formatTelegramMessage(delivery.event.eventType, payload);
           if (messageText) {
-            await telegramService.notifyAdmins(messageText);
+            const result = await telegramService.notifyRecipient(delivery.recipientKey, messageText);
+            await prisma.notificationDelivery.update({
+              where: { id: delivery.id },
+              data: { providerMessageId: result.messageId || null },
+            });
           }
         } else if (delivery.channel === 'EMAIL') {
           // Send transactional Email
@@ -211,10 +231,19 @@ export class OutboxProcessor {
             lastError: null,
           },
         });
+        console.info('[TELEGRAM_NOTIFICATION_ACCEPTED]', JSON.stringify({
+          orderReference,
+          recipient: delivery.recipientKey,
+          eventId: delivery.event.id,
+          attempt,
+        }));
         sent++;
       } catch (err: any) {
         const errorMsg = sanitizeError(err);
         const nextAttempts = (delivery.attempts || 0) + 1;
+        const payload = (delivery.event.payload || {}) as Record<string, any>;
+        const orderReference = payload.orderNumber || payload.orderId || 'unknown';
+        const errorClassification = classifyNotificationError(err);
         const isMaxExhausted = nextAttempts >= (delivery.maxAttempts || 5);
 
         if (isMaxExhausted) {
@@ -228,6 +257,14 @@ export class OutboxProcessor {
               lastError: errorMsg,
             },
           });
+          console.error('[TELEGRAM_NOTIFICATION_FAILED]', JSON.stringify({
+            orderReference,
+            recipient: delivery.recipientKey,
+            eventId: delivery.event.id,
+            attempt: nextAttempts,
+            errorClassification,
+            error: errorMsg,
+          }));
           failed++;
         } else {
           const delayIndex = Math.min(nextAttempts, RETRY_DELAYS_MS.length - 1);
@@ -244,6 +281,14 @@ export class OutboxProcessor {
               lastError: errorMsg,
             },
           });
+          console.warn('[TELEGRAM_NOTIFICATION_RETRY]', JSON.stringify({
+            orderReference,
+            recipient: delivery.recipientKey,
+            eventId: delivery.event.id,
+            attempt: nextAttempts,
+            errorClassification,
+            nextAttemptAt: nextAttemptAt.toISOString(),
+          }));
           retried++;
         }
       }
@@ -260,6 +305,12 @@ export class OutboxProcessor {
   }
 
   private static formatTelegramMessage(eventType: string, payload: Record<string, any>): string | null {
+    const escapeHtml = (value: unknown) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    const money = (value: unknown) => `₦${(Number(value || 0) / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
     switch (eventType) {
       case 'CUSTOMER_REGISTERED':
         return (
@@ -270,13 +321,22 @@ export class OutboxProcessor {
         );
 
       case 'ORDER_CREATED':
-        return (
-          `📦 <b>PIERCYN — NEW ORDER PLACED</b>\n\n` +
-          `• Order: <b>${payload.orderNumber || payload.orderId}</b>\n` +
-          `• Customer: ${payload.customerName || payload.customerEmail}\n` +
-          `• Amount: ₦${((payload.totalNGN || 0) / 100).toLocaleString()}\n` +
-          `• Status: PENDING PAYMENT`
-        );
+        const items = Array.isArray(payload.items) && payload.items.length > 0
+          ? payload.items.map((item: any) =>
+              `  • ${escapeHtml(item.name)} × ${item.quantity}${item.size ? ` (${escapeHtml(item.size)})` : ''}`
+            ).join('\n')
+          : `  • ${payload.itemCount || 0} item(s)`;
+        return `📦 <b>PIERCYN — NEW ORDER</b>\n\n` +
+          `• Order: <b>${escapeHtml(payload.orderNumber || payload.orderId)}</b>\n` +
+          `• Customer: ${escapeHtml(payload.customerName || payload.customerEmail)}\n` +
+          `• Email: ${escapeHtml(payload.customerEmail || 'N/A')}\n` +
+          (payload.customerPhone ? `• Phone: ${escapeHtml(payload.customerPhone)}\n` : '') +
+          `• Items:\n${items}\n` +
+          `• Products: ${money(payload.subtotalNGN ?? payload.totalNGN)}\n` +
+          `• Delivery: ${payload.deliveryFeePending || payload.quoteStatus === 'PENDING' ? 'Pending quotation' : money(payload.deliveryFeeNGN)}\n` +
+          `• Total: <b>${money(payload.totalNGN)}</b>\n` +
+          `• Payment: ${escapeHtml(payload.paymentStatus || 'PENDING')}\n` +
+          `• Created: ${escapeHtml(payload.createdAt || new Date().toISOString())}`;
 
       case 'RECEIPT_UPLOADED':
         return (

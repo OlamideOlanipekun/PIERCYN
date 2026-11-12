@@ -298,7 +298,22 @@ export class CheckoutService {
           deliveryAddress: order.deliveryAddress,
           deliveryCity: order.deliveryCity,
           deliveryState: order.deliveryState,
+          items: order.items.map((item) => ({
+            name: item.productName,
+            sku: item.sku,
+            size: item.size,
+            colour: item.colour,
+            quantity: item.quantity,
+            unitPriceNGN: item.unitPriceNGN,
+            totalNGN: item.totalNGN,
+          })),
+          subtotalNGN: order.subtotalNGN,
+          deliveryFeeNGN: order.deliveryFeeNGN,
+          discountNGN: order.discountNGN,
           totalNGN: order.totalNGN,
+          paymentStatus: order.paymentStatus,
+          quoteStatus: order.quoteStatus,
+          createdAt: order.createdAt.toISOString(),
           itemCount: order.items.length,
         },
       });
@@ -315,6 +330,17 @@ export class CheckoutService {
 
     // Clear session cart
     await CartService.clearCart(sessionId);
+
+    console.info('[ORDER_CREATED]', JSON.stringify({
+      orderReference: createdOrder.orderNumber,
+      orderId: createdOrder.id,
+      eventKey: `order:${createdOrder.id}:created:v1`,
+    }));
+    console.info('[TELEGRAM_NOTIFICATION_QUEUED]', JSON.stringify({
+      orderReference: createdOrder.orderNumber,
+      orderId: createdOrder.id,
+      eventKey: `order:${createdOrder.id}:created:v1`,
+    }));
 
     // Opportunistically dispatch pending notifications without blocking response
     triggerNotificationProcessingAsync();

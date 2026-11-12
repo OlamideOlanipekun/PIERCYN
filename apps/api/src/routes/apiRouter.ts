@@ -21,6 +21,8 @@ import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import { NotificationWorker } from '../modules/notifications';
 import { telegramWebhookRouter } from '../modules/telegram/telegramRouter';
+import { telegramClient } from '../modules/telegram/telegramClient';
+import { telegramService } from '../modules/telegram/telegramService';
 import { marketingRouter } from '../modules/marketing/marketingRouter';
 import { internalJobsRouter } from '../modules/jobs/internalJobsRouter';
 import { prisma } from '../db/prisma';
@@ -58,6 +60,53 @@ apiRouter.use('/internal', internalJobsRouter);
 apiRouter.use('/', reviewRouter);
 // Authenticated checkout and order lifecycle routes
 apiRouter.use('/', checkoutRouter);
+
+/** Admin-only Telegram health check. Never returns the bot token. */
+apiRouter.post('/admin/telegram/diagnostic', requireAdmin, async (req: Request, res: Response) => {
+  const tokenConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());
+  const recipients = await telegramService.getActiveRecipients();
+  const sendTest = req.body?.sendTest === true;
+  const result: any = {
+    environment: {
+      tokenConfigured,
+      webhookSecretConfigured: Boolean(process.env.TELEGRAM_WEBHOOK_SECRET?.trim()),
+      processingSecretConfigured: Boolean(process.env.TELEGRAM_PROCESSING_SECRET?.trim()),
+      recipientCount: recipients.length,
+    },
+    bot: null,
+    recipients: [],
+  };
+  if (!tokenConfigured) {
+    return res.status(503).json({ success: false, error: 'TELEGRAM_BOT_TOKEN is not configured.', data: result });
+  }
+  try {
+    const bot = await telegramClient.getMe();
+    result.bot = { reachable: true, id: (bot as any)?.id, username: (bot as any)?.username };
+  } catch (error: any) {
+    result.bot = { reachable: false, error: error?.message || 'Telegram getMe failed' };
+  }
+  for (const recipient of recipients) {
+    const recipientResult: any = { chatId: recipient.chatId, label: recipient.label, accessible: false };
+    try {
+      const chat = await telegramClient.getChat(recipient.chatId);
+      recipientResult.accessible = true;
+      recipientResult.chatType = (chat as any)?.type;
+      if (sendTest) {
+        const sent = await telegramClient.sendMessage({
+          chatId: recipient.chatId,
+          text: 'PIERCYN Telegram diagnostic: delivery test accepted.',
+        });
+        recipientResult.testMessageAccepted = true;
+        recipientResult.messageId = String((sent as any)?.message_id ?? '');
+      }
+    } catch (error: any) {
+      recipientResult.error = error?.message || 'Telegram recipient check failed';
+    }
+    result.recipients.push(recipientResult);
+  }
+  const success = result.bot?.reachable === true && result.recipients.every((item: any) => item.accessible && (!sendTest || item.testMessageAccepted));
+  return res.status(success ? 200 : 207).json({ success, data: result });
+});
 
 /** Meta WhatsApp Cloud API webhook verification and signed-event receiver. */
 apiRouter.get('/webhooks/whatsapp', (req: Request, res: Response) => {
