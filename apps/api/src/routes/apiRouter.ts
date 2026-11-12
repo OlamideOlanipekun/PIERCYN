@@ -297,8 +297,23 @@ apiRouter.get('/cart', optionalAuth, async (req: Request, res: Response) => {
     const cart = await CartService.calculateCart(sessionId, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
+    // Log the actual error for diagnosis in Vercel function logs.
     console.error('[CART_GET_ERROR]', err?.code, err?.message, err?.meta);
-    res.status(500).json({ success: false, error: err.message });
+    // Return a valid empty-cart shape instead of 500 so the storefront UI
+    // can render gracefully even when the DB is temporarily unreachable.
+    const sessionId = getSessionId(req);
+    res.json({
+      success: true,
+      data: {
+        sessionId,
+        items: [],
+        itemCount: 0,
+        subtotalNGN: 0,
+        currency: 'NGN',
+        isValid: false,
+        validationErrors: ['Cart temporarily unavailable'],
+      },
+    });
   }
 });
 
@@ -310,7 +325,9 @@ apiRouter.post('/cart/items', optionalAuth, async (req: Request, res: Response) 
     const cart = await CartService.addItem(sessionId, validated.variantId, validated.quantity, customerId);
     res.json({ success: true, data: cart });
   } catch (err: any) {
-    const msg = err.errors ? err.errors[0].message : err.message;
+    // Log to Vercel function logs so we can diagnose variant resolution issues
+    console.error('[CART_ADD_ERROR]', err?.code, err?.message, JSON.stringify(req.body));
+    const msg = err.issues ? err.issues[0]?.message : (err.errors ? err.errors[0]?.message : err.message);
     res.status(400).json({ success: false, error: msg });
   }
 });

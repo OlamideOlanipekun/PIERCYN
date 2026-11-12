@@ -4,21 +4,17 @@ import '@prisma/adapter-pg';
 import 'pg';
 
 let cachedApp: any = null;
-let bootError: any = null;
 
 async function getApp() {
   if (cachedApp) return cachedApp;
-  if (bootError) throw bootError;
-  try {
-    // @ts-ignore — resolved from the esbuild bundle produced by build:server
-    const mod = await import('../build/serverless.js');
-    cachedApp = mod.app;
-    return cachedApp;
-  } catch (err: any) {
-    bootError = err;
-    console.error('[SERVERLESS_BOOT_ERROR]', err);
-    throw err;
-  }
+  // Do NOT cache boot errors — allow each cold start to retry module load.
+  // Caching bootError permanently bricks the serverless instance for the
+  // remainder of its lifetime (until the next cold start) on any transient
+  // failure, including a missing env var on first request.
+  // @ts-ignore — resolved from the esbuild bundle produced by build:server
+  const mod = await import('../build/serverless.js');
+  cachedApp = mod.app;
+  return cachedApp;
 }
 
 export default async function handler(req: any, res: any) {
