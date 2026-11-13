@@ -620,6 +620,26 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const handleVerifyCustomerReceived = async () => {
+    if (!order) return;
+    if (!window.confirm(`Confirm that customer ${order.customerName} has received order #${order.orderNumber}? This will release any pending affiliate commission for payout.`)) {
+      return;
+    }
+
+    try {
+      setUpdatingStatus(true);
+      setError(null);
+      await AdminApi.markOrderDelivered(order.id);
+      setQuoteSuccessMsg('Customer receipt verified. Order marked DELIVERED and affiliate commission released for payout.');
+      await fetchOrder();
+      if (onOrderUpdated) onOrderUpdated();
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify customer receipt.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   // ── Status Updates & Receipts ───────────────────────────────────────────────
 
   const handleUpdateStatus = async (newStatus: string) => {
@@ -754,8 +774,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           { label: 'Cancel & Refund', targetStatus: 'REFUNDED', variant: 'danger' },
         ];
       case 'SHIPPED':
+      case 'DISPATCHED':
         return [
-          { label: 'Mark as Delivered', targetStatus: 'DELIVERED', variant: 'primary' },
+          { label: 'Verify Customer Received Order', targetStatus: 'DELIVERED', variant: 'primary' },
           { label: 'Delivery Failed', targetStatus: 'FAILED', variant: 'warning' },
         ];
       case 'DELIVERED':
@@ -862,6 +883,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       onClick={() => {
                         if (act.requiresShipment && !order.shipment) {
                           setShowShippingForm(true);
+                        } else if (act.targetStatus === 'DELIVERED') {
+                          handleVerifyCustomerReceived();
                         } else {
                           handleUpdateStatus(act.targetStatus);
                         }

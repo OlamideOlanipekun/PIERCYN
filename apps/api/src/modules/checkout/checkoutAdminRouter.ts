@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { requireAdmin } from '../admin/adminMiddleware';
 import { prisma } from '../../db/prisma';
 import { InventoryService } from '../inventory/inventoryService';
+import { CommissionService } from '../affiliate/commissionService';
 import { WhatsAppService } from '../../services/whatsappService';
 import {
   NotificationQueueService,
@@ -622,8 +623,8 @@ checkoutAdminRouter.post('/orders/:id/delivered', requireAdmin, async (req: Requ
     const order = await loadAdminOrder(req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
-    if (order.status !== 'DISPATCHED') {
-      return res.status(400).json({ success: false, error: `Order must be in DISPATCHED status to mark as delivered. Current: ${order.status}` });
+    if (!['DISPATCHED', 'SHIPPED'].includes(order.status)) {
+      return res.status(400).json({ success: false, error: `Order must be dispatched before it can be verified as delivered. Current: ${order.status}` });
     }
 
     const now = new Date();
@@ -635,7 +636,7 @@ checkoutAdminRouter.post('/orders/:id/delivered', requireAdmin, async (req: Requ
       });
       await tx.orderStatusHistory.create({
         data: {
-          orderId: order.id, fromStatus: 'DISPATCHED', toStatus: 'DELIVERED',
+          orderId: order.id, fromStatus: order.status, toStatus: 'DELIVERED',
           changedBy: adminId, note: 'Order marked as delivered',
         },
       });
@@ -664,6 +665,15 @@ checkoutAdminRouter.post('/orders/:id/delivered', requireAdmin, async (req: Requ
         },
       });
     });
+
+    // Delivery verification is the affiliate commission release point. Keep
+    // this side effect after the order transaction so a notification/commission
+    // issue cannot roll back the factual delivery status.
+    try {
+      await CommissionService.handleOrderDelivered(order.id);
+    } catch (commissionError: any) {
+      console.error(`[COMMISSION_ERROR] Failed to release commission for delivered order ${order.id}:`, commissionError.message);
+    }
 
     await WhatsAppService.sendMessage({
       to: order.customerPhone,
@@ -778,4 +788,3 @@ checkoutAdminRouter.get('/orders/:id', requireAdmin, async (req: Request, res: R
     return res.status(500).json({ success: false, error: err.message });
   }
 });
-

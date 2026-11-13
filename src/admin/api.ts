@@ -262,6 +262,12 @@ class AdminApiClient {
     });
   }
 
+  public async markOrderDelivered(orderId: string): Promise<{ status: string; deliveredAt: string }> {
+    return this.request(`/orders/${orderId}/delivered`, {
+      method: 'POST',
+    });
+  }
+
   public async getPaymentWhatsAppMessage(
     orderId: string
   ): Promise<{ whatsappUrl: string; message: string; customerPhone: string; quoteVersion: number }> {
