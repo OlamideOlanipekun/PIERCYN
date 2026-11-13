@@ -32,6 +32,27 @@ describe('Telegram transactional outbox', () => {
     expect(message).not.toContain('Ada <Admin>');
   });
 
+  it('renders receipt uploads as actionable product or delivery Telegram alerts', () => {
+    const productMessage = (OutboxProcessor as any).formatTelegramMessage('RECEIPT_UPLOADED', {
+      orderNumber: 'PCY-RECEIPT-1',
+      customerName: 'Ada <Customer>',
+      totalNGN: 125000,
+      paymentType: 'PRODUCT',
+    });
+    const deliveryMessage = (OutboxProcessor as any).formatTelegramMessage('RECEIPT_UPLOADED', {
+      orderNumber: 'PCY-RECEIPT-2',
+      customerName: 'Bola & Co',
+      totalNGN: 350000,
+      paymentType: 'DELIVERY',
+    });
+
+    expect(productMessage).toContain('PIERCYN — RECEIPT UPLOADED');
+    expect(productMessage).toContain('Ada &lt;Customer&gt;');
+    expect(productMessage).toContain('Review required in Admin Dashboard');
+    expect(deliveryMessage).toContain('PIERCYN — DELIVERY RECEIPT UPLOADED');
+    expect(deliveryMessage).toContain('₦3,500');
+  });
+
   it('sends each Telegram delivery to its own recipient instead of broadcasting', async () => {
     vi.spyOn(OutboxProcessor, 'recoverStaleLocks').mockResolvedValue(0);
     vi.spyOn(OutboxProcessor, 'fanOutEvents').mockResolvedValue(0);

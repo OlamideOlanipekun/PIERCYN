@@ -364,9 +364,9 @@ export class OutboxProcessor {
 
       case 'RECEIPT_UPLOADED':
         return (
-          `🧾 <b>PIERCYN — RECEIPT UPLOADED</b>\n\n` +
-          `• Order: <b>${payload.orderNumber}</b>\n` +
-          `• Customer: ${payload.customerName}\n` +
+          `🧾 <b>PIERCYN — ${payload.paymentType === 'DELIVERY' ? 'DELIVERY ' : ''}RECEIPT UPLOADED</b>\n\n` +
+          `• Order: <b>${escapeHtml(payload.orderNumber)}</b>\n` +
+          `• Customer: ${escapeHtml(payload.customerName)}\n` +
           `• Amount: ₦${((payload.totalNGN || 0) / 100).toLocaleString()}\n` +
           `• Action: Review required in Admin Dashboard`
         );

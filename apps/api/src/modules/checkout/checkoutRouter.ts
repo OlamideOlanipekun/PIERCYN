@@ -316,9 +316,14 @@ checkoutRouter.post('/orders/:id/product-payment/receipt', optionalAuth, async (
           customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
           customerEmail: order.customerEmail,
           totalNGN: productPayment.amountDueNGN,
+          paymentType: 'PRODUCT',
         },
       });
     });
+
+    // The event is durable in the transactional outbox above; kick the worker
+    // immediately so admins do not have to open the receipt or wait for cron.
+    triggerNotificationProcessingAsync();
 
     // Notify admin
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
@@ -551,16 +556,36 @@ checkoutRouter.post('/orders/:id/delivery-payment/receipt', optionalAuth, async 
 
     const receiptPath = await uploadReceipt(order.id, buffer, validated.mimeType);
 
-    await prisma.payment.update({
-      where: { id: deliveryPayment.id },
-      data: {
-        status: 'SUBMITTED',
-        submittedAt: new Date(),
-        receiptPath,
-        receiptMimeType: validated.mimeType,
-        receiptUploadedAt: new Date(),
-      },
+    const uploadedAt = new Date();
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: deliveryPayment.id },
+        data: {
+          status: 'SUBMITTED',
+          submittedAt: uploadedAt,
+          receiptPath,
+          receiptMimeType: validated.mimeType,
+          receiptUploadedAt: uploadedAt,
+        },
+      });
+
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:delivery-receipt:uploaded:v1`,
+        eventType: PIERCYN_EVENTS.RECEIPT_UPLOADED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          totalNGN: deliveryPayment.amountDueNGN,
+          paymentType: 'DELIVERY',
+        },
+      });
     });
+
+    // Start delivery immediately; the outbox remains retryable if Telegram is
+    // temporarily unavailable or the serverless invocation ends early.
+    triggerNotificationProcessingAsync();
 
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     await WhatsAppService.sendToMerchant(
@@ -582,4 +607,3 @@ checkoutRouter.post('/orders/:id/delivery-payment/receipt', optionalAuth, async 
     return res.status(400).json({ success: false, error: msg });
   }
 });
-
