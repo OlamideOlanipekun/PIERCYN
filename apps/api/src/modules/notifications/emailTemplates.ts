@@ -31,6 +31,10 @@ function escapeHtml(value: unknown): string {
   })[character] as string);
 }
 
+function getAppBaseUrl(): string {
+  return (process.env.APP_BASE_URL || process.env.APP_URL || 'https://piercyn.vercel.app').replace(/\/+$/, '');
+}
+
 const BASE_STYLES = `
   body { margin: 0; padding: 0; background-color: #F2F0EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #141414; -webkit-font-smoothing: antialiased; }
   .wrapper { width: 100%; max-width: 600px; margin: 0 auto; padding: 40px 20px; box-sizing: border-box; }
@@ -59,7 +63,7 @@ const BASE_STYLES = `
 
 export function renderWelcomeEmail(payload: { firstName?: string; email: string }): { subject: string; html: string; text: string } {
   const name = payload.firstName ? payload.firstName.trim() : 'Valued Client';
-  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const siteUrl = getAppBaseUrl();
   const subject = 'Welcome to PIERCYN';
 
   const html = `<!DOCTYPE html>
@@ -80,7 +84,7 @@ export function renderWelcomeEmail(payload: { firstName?: string; email: string 
         Your profile is activated. You can track orders in real time, manage delivery addresses, and explore limited seasonal releases.
       </p>
       <div style="text-align: center; margin: 28px 0 20px 0;">
-        <a href="${siteUrl}/products" class="button">Explore Collections</a>
+        <a href="${escapeHtml(siteUrl)}/products" class="button">Explore Collections</a>
       </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier • piercyn@gmail.com</div>
@@ -168,7 +172,7 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
       }
 
       <div style="text-align: center; margin: 24px 0 12px 0;">
-        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order Details</a>
+        <a href="${escapeHtml(getAppBaseUrl())}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order Details</a>
       </div>
     </div>
     <div class="footer">PIERCYN Automated Commercial Dispatch • Ref: ${escapeHtml(p.orderNumber)}</div>
@@ -372,7 +376,7 @@ export function renderPaymentDecisionEmail(
       </table>
 
       <div style="text-align: center; margin: 24px 0 12px 0;">
-        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order</a>
+        <a href="${escapeHtml(getAppBaseUrl())}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">View Order</a>
       </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier</div>
@@ -396,7 +400,7 @@ export function renderDeliveryQuoteCreatedEmail(
   p: QuoteNotificationPayload
 ): { subject: string; html: string; text: string } {
   const subject = `[PIERCYN] Delivery Quotation Available - Order #${p.orderNumber}`;
-  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const siteUrl = getAppBaseUrl();
   const ctaUrl = p.decisionUrl || `${siteUrl}/account/orders/${p.orderId}/delivery`;
 
   const html = `<!DOCTYPE html>
@@ -421,7 +425,7 @@ export function renderDeliveryQuoteCreatedEmail(
       </table>
 
       <div style="text-align: center; margin: 24px 0 16px 0;">
-        <a href="${ctaUrl}" class="button">Review Delivery Quote</a>
+        <a href="${escapeHtml(ctaUrl)}" class="button">Review Delivery Quote</a>
       </div>
     </div>
     <div class="footer">PIERCYN Commercial Engine • piercyn@gmail.com</div>
@@ -510,7 +514,7 @@ export function renderFulfilmentEmail(
       </table>
 
       <div style="text-align: center; margin: 24px 0 12px 0;">
-        <a href="${process.env.APP_BASE_URL || 'https://piercyn.vercel.app'}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">Track Order</a>
+        <a href="${escapeHtml(getAppBaseUrl())}/account/orders/${escapeHtml(p.orderId || p.orderNumber)}" class="button">Track Order</a>
       </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier</div>
@@ -542,7 +546,7 @@ export function renderReceiptSubmittedCustomerEmail(p: ReceiptUploadedPayload): 
   text: string;
 } {
   const subject = `[PIERCYN] Payment Receipt Received — Order #${p.orderNumber}`;
-  const siteUrl = process.env.APP_BASE_URL || 'https://piercyn.vercel.app';
+  const siteUrl = getAppBaseUrl();
   const orderUrl = `${siteUrl}/account/orders/${escapeHtml(p.orderId)}`;
 
   const html = `<!DOCTYPE html>
@@ -571,7 +575,7 @@ export function renderReceiptSubmittedCustomerEmail(p: ReceiptUploadedPayload): 
       </table>
 
       <div style="text-align: center; margin: 24px 0 12px 0;">
-        <a href="${orderUrl}" class="button">View Order</a>
+        <a href="${escapeHtml(orderUrl)}" class="button">View Order</a>
       </div>
     </div>
     <div class="footer">PIERCYN Luxury Atelier • piercyn@gmail.com</div>

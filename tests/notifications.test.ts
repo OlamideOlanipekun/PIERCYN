@@ -6,6 +6,7 @@ import {
   renderReceiptSubmittedCustomerEmail,
   renderPaymentVerifiedEmail,
   renderOutOfStockEmail,
+  renderQuoteDecisionEmail,
 } from '../apps/api/src/modules/notifications/emailTemplates';
 import {
   sanitizeError,
@@ -18,9 +19,32 @@ import {
   ReceiptUploadedPayload,
   PaymentVerifiedPayload,
   ProductOutOfStockPayload,
+  QuoteNotificationPayload,
 } from '../apps/api/src/modules/notifications/types';
 
 describe('PIERCYN Notification Engine - Email Template Rendering', () => {
+  it('renders an expired delivery quotation email with a plain-text alternative', () => {
+    const payload: QuoteNotificationPayload = {
+      orderId: 'ord_expired_1',
+      orderNumber: 'PCY-EXPIRED-1',
+      customerName: 'Test Customer',
+      customerEmail: 'customer@example.com',
+      customerPhone: '+2348012345678',
+      deliveryFeeNGN: 3500,
+      subtotalNGN: 45000,
+      totalNGN: 48500,
+      quoteId: 'quote_expired_1',
+      expiresAt: new Date().toISOString(),
+      decisionUrl: 'https://piercyn.vercel.app/account/orders/ord_expired_1/delivery',
+    };
+
+    const rendered = renderQuoteDecisionEmail(payload, 'EXPIRED');
+
+    expect(rendered.subject).toContain('EXPIRED');
+    expect(rendered.html).toContain('Quotation EXPIRED');
+    expect(rendered.text).toContain('DELIVERY QUOTATION EXPIRED');
+  });
+
   it('renders ORDER_CREATED email with luxury styling and accurate line items', () => {
     const payload: OrderCreatedPayload = {
       orderId: 'ord_test_123',

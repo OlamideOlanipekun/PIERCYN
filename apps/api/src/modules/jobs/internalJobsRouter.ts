@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '@piercyn/db';
 import { OutboxProcessor } from '../notifications/outboxProcessor';
+import { NotificationWorker } from '../notifications/notificationWorker';
 import { InventoryService } from '../inventory/inventoryService';
 import { CommissionService } from '../affiliate/commissionService';
 import { DeliveryQuoteCron } from '../checkout/quoteCron';
@@ -31,7 +32,8 @@ internalJobsRouter.use(requireCronSecret);
  * 1. Delivery quote lifecycle & reminders/expiries
  * 2. Mature affiliate commission qualification
  * 3. Stale inventory reservation expiry
- * 4. Notification delivery outbox processing
+ * 4. Customer/Telegram notification outbox processing
+ * 5. Legacy admin notification queue processing
  */
 const handleDailyCron = async (_req: Request, res: Response) => {
   const summary: Record<string, any> = {};
@@ -63,6 +65,15 @@ const handleDailyCron = async (_req: Request, res: Response) => {
     summary.outbox = await OutboxProcessor.processDeliveries(30);
   } catch (err: any) {
     errors.push(`OutboxProcessor: ${err.message}`);
+  }
+
+  // 5. Process legacy admin notification jobs as well. These jobs contain
+  // internal alerts such as receipt review and low-stock notifications and
+  // are intentionally separate from customer-facing outbox deliveries.
+  try {
+    summary.adminNotifications = await NotificationWorker.processNotifications(20);
+  } catch (err: any) {
+    errors.push(`NotificationWorker: ${err.message}`);
   }
 
   const success = errors.length === 0;

@@ -121,6 +121,21 @@ describe('Telegram transactional outbox', () => {
     }));
   });
 
+  it('escapes affiliate names and reasons in queued HTML', async () => {
+    vi.restoreAllMocks();
+    const upsertSpy = vi.spyOn(prisma.notificationEvent, 'upsert').mockResolvedValue({ id: 'affiliate_event_2' } as any);
+
+    await AffiliateNotificationService.notifyApplicationRejected(
+      { email: 'creator@example.com', firstName: '<img src=x onerror=alert(1)>' },
+      '<script>alert(1)</script>'
+    );
+
+    const create = upsertSpy.mock.calls.at(-1)?.[0]?.create as any;
+    expect(create.payload.html).not.toContain('<img');
+    expect(create.payload.html).not.toContain('<script>');
+    expect(create.payload.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
   it('masks email recipients in logs and stores the SMTP message ID on acceptance', async () => {
     vi.restoreAllMocks();
     vi.spyOn(OutboxProcessor, 'recoverStaleLocks').mockResolvedValue(0);

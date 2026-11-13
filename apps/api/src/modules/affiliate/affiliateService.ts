@@ -676,17 +676,16 @@ export class AffiliateService {
       requestedAt: payout.requestedAt.toISOString(),
     };
 
-    prisma.affiliate.findUnique({
+    const affiliateForNotification = await prisma.affiliate.findUnique({
       where: { id: affiliateId },
       select: { email: true, firstName: true },
-    }).then((aff) => {
-      if (aff) {
-        AffiliateNotificationService.notifyWithdrawalRequested(
-          aff,
-          { amountNGN: requestedKobo / 100, bankName: payout.bankName, accountNumber: payout.accountNumber }
-        ).catch(() => null);
-      }
-    }).catch(() => null);
+    });
+    if (affiliateForNotification) {
+      await AffiliateNotificationService.notifyWithdrawalRequested(
+        affiliateForNotification,
+        { amountNGN: requestedKobo / 100, bankName: payout.bankName, accountNumber: payout.accountNumber }
+      );
+    }
 
     return result;
   }
@@ -1254,25 +1253,22 @@ export class AffiliateService {
       }
     });
 
-    // Fire-and-forget notification
-    prisma.affiliate.findUnique({
+    const affiliateForNotification = await prisma.affiliate.findUnique({
       where: { id: payout.affiliateId },
       select: { email: true, firstName: true },
-    }).then((aff) => {
-      if (!aff) return;
-      if (action === 'PAID') {
-        AffiliateNotificationService.notifyWithdrawalPaid(aff, {
+    });
+    if (affiliateForNotification && action === 'PAID') {
+      await AffiliateNotificationService.notifyWithdrawalPaid(affiliateForNotification, {
           amountNGN: payout.amountKobo / 100,
           paymentReference: paymentReference || updated.paymentReference,
-        }).catch(() => null);
-      } else if (action === 'REJECTED' || action === 'FAILED') {
-        AffiliateNotificationService.notifyWithdrawalRejected(
-          aff,
-          { amountNGN: payout.amountKobo / 100 },
-          notes
-        ).catch(() => null);
-      }
-    }).catch(() => null);
+      });
+    } else if (affiliateForNotification && (action === 'REJECTED' || action === 'FAILED')) {
+      await AffiliateNotificationService.notifyWithdrawalRejected(
+        affiliateForNotification,
+        { amountNGN: payout.amountKobo / 100 },
+        notes
+      );
+    }
 
     return updated;
   }

@@ -493,6 +493,9 @@ export class OutboxProcessor {
       case 'DELIVERY_QUOTE_REJECTED':
         return renderQuoteDecisionEmail(payload as any, 'REJECTED');
 
+      case 'DELIVERY_QUOTE_EXPIRED':
+        return renderQuoteDecisionEmail(payload as any, 'EXPIRED');
+
       case 'ORDER_DISPATCHED':
       case 'ORDER_DELIVERED': {
         const stage = eventType === 'ORDER_DISPATCHED' ? 'DISPATCHED' : 'DELIVERED';

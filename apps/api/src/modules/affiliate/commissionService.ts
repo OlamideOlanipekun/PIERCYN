@@ -215,22 +215,20 @@ export class CommissionService {
           qualifiedCount++;
         });
 
-        // Fire-and-forget notification
-        prisma.affiliate.findUnique({
+        const affiliateForNotification = await prisma.affiliate.findUnique({
           where: { id: comm.affiliateId },
           select: { email: true, firstName: true },
-        }).then((aff) => {
-          if (!aff) return;
-          prisma.order.findUnique({
-            where: { id: comm.orderId },
-            select: { orderNumber: true },
-          }).then((ord) => {
-            AffiliateNotificationService.notifyCommissionAvailable(aff, {
-              orderNumber: ord?.orderNumber || comm.orderId,
-              amountNGN: comm.amountKobo / 100,
-            }).catch(() => null);
-          }).catch(() => null);
-        }).catch(() => null);
+        });
+        const orderForNotification = await prisma.order.findUnique({
+          where: { id: comm.orderId },
+          select: { orderNumber: true },
+        });
+        if (affiliateForNotification) {
+          await AffiliateNotificationService.notifyCommissionAvailable(affiliateForNotification, {
+            orderNumber: orderForNotification?.orderNumber || comm.orderId,
+            amountNGN: comm.amountKobo / 100,
+          });
+        }
       } catch (err: any) {
         console.error(`[COMMISSION_QUALIFY_ERROR] Failed to qualify commission ${comm.id}:`, err.message);
       }
@@ -365,23 +363,21 @@ export class CommissionService {
         });
       });
 
-      // Fire-and-forget reversal notification — never blocks the reversal itself
-      prisma.affiliate.findUnique({
+      const affiliateForNotification = await prisma.affiliate.findUnique({
         where: { id: comm.affiliateId },
         select: { email: true, firstName: true },
-      }).then((aff) => {
-        if (!aff) return;
-        prisma.order.findUnique({
-          where: { id: comm.orderId },
-          select: { orderNumber: true },
-        }).then((ord) => {
-          AffiliateNotificationService.notifyCommissionReversed(aff, {
-            orderNumber: ord?.orderNumber || comm.orderId,
-            amountNGN: comm.amountKobo / 100,
-            reason,
-          }).catch(() => null);
-        }).catch(() => null);
-      }).catch(() => null);
+      });
+      const orderForNotification = await prisma.order.findUnique({
+        where: { id: comm.orderId },
+        select: { orderNumber: true },
+      });
+      if (affiliateForNotification) {
+        await AffiliateNotificationService.notifyCommissionReversed(affiliateForNotification, {
+          orderNumber: orderForNotification?.orderNumber || comm.orderId,
+          amountNGN: comm.amountKobo / 100,
+          reason,
+        });
+      }
     }
   }
 

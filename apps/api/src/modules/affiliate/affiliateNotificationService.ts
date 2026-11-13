@@ -14,7 +14,7 @@ export function escapeAffiliateHtml(value: unknown): string {
 }
 
 function appBaseUrl(): string {
-  return (process.env.APP_BASE_URL || 'https://piercyn.vercel.app').replace(/\/$/, '');
+  return (process.env.APP_BASE_URL || process.env.APP_URL || process.env.PUBLIC_APP_URL || 'https://piercyn.vercel.app').replace(/\/$/, '');
 }
 
 
@@ -25,7 +25,7 @@ function emailWrapper(title: string, bodyContent: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${escapeAffiliateHtml(title)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F2F0EB; color: #141414; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
     .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; box-sizing: border-box; }
@@ -122,11 +122,11 @@ export class AffiliateNotificationService {
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Your Primary Referral Code</p>
         <p style="margin: 6px 0 0; font-family: monospace; font-size: 18px; color: #141414; font-weight: 700;">${escapeAffiliateHtml(referralCode)}</p>
-        <p style="margin: 8px 0 0; font-size: 12px; color: #78716C;">Link: ${portalUrl}/?ref=${escapeAffiliateHtml(referralCode)}</p>
+        <p style="margin: 8px 0 0; font-size: 12px; color: #78716C;">Link: ${escapeAffiliateHtml(portalUrl)}/?ref=${encodeURIComponent(referralCode)}</p>
       </div>
       <p>Log into your Creator Portal to track real-time orders, manage custom campaigns, and withdraw your earnings with zero minimum restrictions.</p>
       <div style="text-align: center; margin: 25px 0;">
-        <a href="${portalUrl}/affiliate" class="btn">Launch Creator Portal</a>
+        <a href="${escapeAffiliateHtml(portalUrl)}/affiliate" class="btn">Launch Creator Portal</a>
       </div>
       `
     );
@@ -190,7 +190,7 @@ export class AffiliateNotificationService {
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Requested Amount</p>
         <p style="margin: 2px 0 10px; color: #141414; font-size: 20px; font-weight: 700;">₦${escapeAffiliateHtml(payout.amountNGN.toLocaleString())}</p>
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; font-weight: 700;">Destination Account</p>
-        <p style="margin: 2px 0 0; color: #44403C; font-size: 13px;">${escapeAffiliateHtml(payout.bankName)} • ****${payout.accountNumber.slice(-4)}</p>
+        <p style="margin: 2px 0 0; color: #44403C; font-size: 13px;">${escapeAffiliateHtml(payout.bankName)} • ****${escapeAffiliateHtml(payout.accountNumber.slice(-4))}</p>
       </div>
       <p>Payouts are reviewed and disbursed weekly. You will receive an email confirmation once the transfer is completed.</p>
       `
@@ -266,7 +266,7 @@ export class AffiliateNotificationService {
       </div>
       <p>Your available balance has been updated. Please log into your Creator Portal to review your current earnings.</p>
       <div style="text-align: center; margin: 25px 0;">
-        <a href="${portalUrl}/affiliate" class="btn">View Affiliate Dashboard</a>
+        <a href="${escapeAffiliateHtml(portalUrl)}/affiliate" class="btn">View Affiliate Dashboard</a>
       </div>
       `
     );

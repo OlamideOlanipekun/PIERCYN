@@ -10,6 +10,7 @@
 
 import { prisma } from '../../db/prisma';
 import { WhatsAppService } from '../../services/whatsappService';
+import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
 
 const APP_URL = (process.env.APP_URL || 'https://piercyn.vercel.app').replace(/\/+$/, '');
 const REMINDER_HOURS = 24;
@@ -124,6 +125,24 @@ export class DeliveryQuoteCron {
             });
             result.refundCasesCreated++;
           }
+
+          await recordEvent(tx, {
+            eventKey: `order:${quote.orderId}:quote-expired:v${quote.version}`,
+            eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_EXPIRED,
+            payload: {
+              orderId: quote.orderId,
+              orderNumber: quote.order.orderNumber,
+              customerName: `${quote.order.customerFirstName} ${quote.order.customerLastName}`.trim(),
+              customerEmail: quote.order.customerEmail,
+              customerPhone: quote.order.customerPhone,
+              deliveryFeeNGN: quote.amountNGN,
+              subtotalNGN: quote.order.subtotalNGN,
+              totalNGN: quote.order.totalNGN + quote.amountNGN,
+              quoteId: quote.id,
+              expiresAt: quote.expiresAt?.toISOString() || now.toISOString(),
+              decisionUrl: `${APP_URL}/account/orders/${quote.orderId}/delivery`,
+            },
+          });
         });
 
         // Notify customer
@@ -151,4 +170,3 @@ export class DeliveryQuoteCron {
     return result;
   }
 }
-
