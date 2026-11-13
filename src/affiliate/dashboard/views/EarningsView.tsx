@@ -102,7 +102,7 @@ export const EarningsView: React.FC<EarningsViewProps> = ({
           <div className="text-2xl sm:text-3xl font-serif font-bold text-[#141414]">
             {formatNGN(summary.pendingNGN)}
           </div>
-          <div className="text-[11px] text-[#737373]">In 14-day return review window</div>
+          <div className="text-[11px] text-[#737373]">Awaiting delivery verification</div>
         </div>
 
         {/* Total Earned */}

@@ -69,14 +69,14 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClos
           <section className="space-y-3">
             <div className="flex items-center gap-2 text-[#141414] font-medium">
               <Clock className="w-4 h-4 text-[#141414]" />
-              <h3 className="uppercase text-xs tracking-widest font-bold">2. Delivery Validation & Return Window</h3>
+              <h3 className="uppercase text-xs tracking-widest font-bold">2. Delivery Verification & Immediate Clearance</h3>
             </div>
             <p>
-              To protect the brand and ensure fair payouts, commissions enter a <strong>14-day clearance hold</strong> following successful order delivery.
+              Commissions become <strong>immediately approved and withdrawable</strong> once an authorized administrator verifies that the order has been successfully delivered to the customer.
             </p>
             <ul className="list-disc pl-5 space-y-1 text-[#555555]">
-              <li>If an order is returned, cancelled before fulfillment, or flagged for fraudulent activity, commission is reversed.</li>
-              <li>Once the 14-day validation window elapses without return, the commission status automatically changes to <strong>AVAILABLE</strong> in your wallet.</li>
+              <li>If an order is returned or cancelled before verified delivery, commission is not approved or reversed.</li>
+              <li>There is zero post-delivery holding period: once delivered, the commission status immediately changes to <strong>AVAILABLE</strong> in your wallet for withdrawal.</li>
             </ul>
           </section>
 

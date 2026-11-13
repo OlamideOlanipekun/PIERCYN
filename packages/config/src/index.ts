@@ -7,7 +7,7 @@ export const AFFILIATE_CONFIG = {
   commissionPerOrderKobo: 100_000, // ₦1,000 per qualifying order (in kobo)
   attributionWindowDays: 30, // 30-day last-valid-click attribution
   minimumWithdrawalKobo: 0, // No minimum withdrawal threshold for approved earnings
-  returnWindowDays: 7, // 7-day post-delivery cooling window
+  returnWindowDays: 0, // 0-day: Immediate withdrawal eligibility upon delivery verification
   referralCodePrefixLength: 4,
   currency: 'NGN',
 } as const;

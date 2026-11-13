@@ -388,7 +388,7 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                       >
                         PIERCYN Affiliate Operating Guidelines
                       </button>
-                      , including the ₦1,000 per delivered order commission structure, 14-day clearance policy, and prohibition of self-referrals.
+                      , including the ₦1,000 per delivered order commission structure, immediate post-delivery withdrawal eligibility, and prohibition of self-referrals.
                     </span>
                   </label>
                 </div>

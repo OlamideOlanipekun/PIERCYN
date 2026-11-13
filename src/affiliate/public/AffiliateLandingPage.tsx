@@ -153,7 +153,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
     },
     {
       q: 'When do I get paid for qualifying referrals?',
-      a: 'Commissions clear 14 days after the customer takes delivery of their order (our standard return window). Once cleared, the balance moves immediately to your Available Wallet for one-click withdrawal directly to your Nigerian bank account.',
+      a: 'Commissions clear immediately when an administrator verifies successful customer delivery. Once verified delivered, the commission moves directly to your Available Wallet for immediate withdrawal into your Nigerian bank account.',
     },
     {
       q: 'Is there a minimum withdrawal threshold?',

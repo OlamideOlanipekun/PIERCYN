@@ -20,9 +20,9 @@ describe('Affiliate Commission Engine (₦1,000 Order-Level)', () => {
       expect(CommissionService.getCommissionPerProductNGN()).toBe(1000);
     });
 
-    it('enforces 7-day return cooling window', () => {
-      expect(AFFILIATE_CONFIG.returnWindowDays).toBe(7);
-      expect(CommissionService.getReturnWindowDays()).toBe(7);
+    it('enforces 0-day return cooling window for immediate post-delivery withdrawal', () => {
+      expect(AFFILIATE_CONFIG.returnWindowDays).toBe(0);
+      expect(CommissionService.getReturnWindowDays()).toBe(0);
     });
 
     it('enforces zero minimum withdrawal requirement', () => {
@@ -151,41 +151,26 @@ describe('Affiliate Commission Engine (₦1,000 Order-Level)', () => {
     });
   });
 
-  describe('Cooling Window & Maturity Lifecycle', () => {
-    it('sets 7-day cooling window on order delivery', async () => {
-      let updatedData: any = null;
-      vi.spyOn(prisma.affiliateCommission as any, 'updateMany').mockImplementation(async (args: any) => {
-        updatedData = args.data;
-        return { count: 1 } as any;
-      });
-
-      const before = new Date();
-      await CommissionService.handleOrderDelivered('ord_delivered_1');
-
-      expect(updatedData).toBeDefined();
-      expect(updatedData.eligibleAt).toBeInstanceOf(Date);
-
-      // Verify eligibleAt is approximately 7 days from now
-      const daysDiff = (updatedData.eligibleAt.getTime() - before.getTime()) / (1000 * 60 * 60 * 24);
-      expect(daysDiff).toBeGreaterThanOrEqual(6.99);
-      expect(daysDiff).toBeLessThanOrEqual(7.01);
-    });
-
-    it('promotes mature pending commissions to available with atomic wallet update', async () => {
-      const matureCommissions = [
-        { id: 'comm_m1', affiliateId: 'aff_1', amountKobo: 100_000, orderId: 'ord_m1' },
+  describe('Delivery Verification & Immediate Withdrawal Lifecycle', () => {
+    it('immediately approves commission and makes funds available on order delivery', async () => {
+      const pendingCommissions = [
+        { id: 'comm_deliv_1', affiliateId: 'aff_1', amountKobo: 100_000, orderId: 'ord_deliv_1' },
       ];
 
-      vi.spyOn(prisma.affiliateCommission, 'findMany').mockResolvedValue(matureCommissions as any);
+      vi.spyOn(prisma.affiliateCommission, 'findMany').mockResolvedValue(pendingCommissions as any);
 
+      const commissionUpdates: any[] = [];
       const walletUpdates: any[] = [];
       const ledgerEntries: any[] = [];
 
       vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => {
         const tx = {
           affiliateCommission: {
-            findUnique: vi.fn().mockResolvedValue({ id: 'comm_m1', status: 'PENDING' }),
-            update: vi.fn().mockResolvedValue({ id: 'comm_m1', status: 'AVAILABLE' }),
+            findUnique: vi.fn().mockResolvedValue({ id: 'comm_deliv_1', status: 'PENDING' }),
+            update: vi.fn().mockImplementation((args) => {
+              commissionUpdates.push(args);
+              return { id: 'comm_deliv_1', status: 'AVAILABLE', ...args.data };
+            }),
           },
           affiliateWallet: {
             findUnique: vi.fn().mockResolvedValue({ pendingKobo: 100_000, availableKobo: 0 }),
@@ -197,16 +182,19 @@ describe('Affiliate Commission Engine (₦1,000 Order-Level)', () => {
           affiliateLedger: {
             create: vi.fn().mockImplementation((args) => {
               ledgerEntries.push(args.data);
-              return { id: 'led_mature', ...args.data };
+              return { id: 'led_deliv', ...args.data };
             }),
           },
         };
         return cb(tx);
       });
 
-      const count = await CommissionService.qualifyMatureCommissions();
+      await CommissionService.handleOrderDelivered('ord_deliv_1');
 
-      expect(count).toBe(1);
+      expect(commissionUpdates).toHaveLength(1);
+      expect(commissionUpdates[0].data.status).toBe('AVAILABLE');
+      expect(commissionUpdates[0].data.eligibleAt).toBeInstanceOf(Date);
+
       expect(walletUpdates).toHaveLength(1);
       expect(walletUpdates[0].update.pendingKobo.decrement).toBe(100_000);
       expect(walletUpdates[0].update.availableKobo.increment).toBe(100_000);
@@ -214,6 +202,36 @@ describe('Affiliate Commission Engine (₦1,000 Order-Level)', () => {
       expect(ledgerEntries).toHaveLength(1);
       expect(ledgerEntries[0].type).toBe('COMMISSION_AVAILABLE');
       expect(ledgerEntries[0].amountKobo).toBe(100_000);
+    });
+
+    it('is strictly idempotent on duplicate delivery verification', async () => {
+      // If commission is already AVAILABLE or not PENDING, no duplicate wallet updates occur
+      vi.spyOn(prisma.affiliateCommission, 'findMany').mockResolvedValue([
+        { id: 'comm_already_avail', affiliateId: 'aff_1', amountKobo: 100_000, orderId: 'ord_dup' },
+      ] as any);
+
+      const walletUpdates: any[] = [];
+
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => {
+        const tx = {
+          affiliateCommission: {
+            findUnique: vi.fn().mockResolvedValue({ id: 'comm_already_avail', status: 'AVAILABLE' }), // already available
+            update: vi.fn(),
+          },
+          affiliateWallet: {
+            upsert: vi.fn().mockImplementation((args) => walletUpdates.push(args)),
+          },
+          affiliateLedger: {
+            create: vi.fn(),
+          },
+        };
+        return cb(tx);
+      });
+
+      await CommissionService.handleOrderDelivered('ord_dup');
+
+      // Zero wallet updates because commission was not PENDING
+      expect(walletUpdates).toHaveLength(0);
     });
   });
 });

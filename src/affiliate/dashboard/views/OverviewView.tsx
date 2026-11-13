@@ -210,7 +210,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div className="text-xl sm:text-2xl font-serif font-bold text-[#141414]">
             {formatNGN(earnings.pendingNGN)}
           </div>
-          <div className="text-[11px] text-[#737373]">14-day delivery validation hold</div>
+          <div className="text-[11px] text-[#737373]">Awaiting delivery verification</div>
         </div>
 
         <div className="bg-white border border-[#E5E2DC] p-5 space-y-1">

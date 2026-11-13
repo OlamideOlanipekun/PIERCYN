@@ -135,7 +135,7 @@ export class CommissionService {
             balanceAfterKobo: wallet.availableKobo,
             referenceType: 'ORDER',
             referenceId: order.id,
-            description: `Commission (cooling window) for order #${order.orderNumber}`,
+            description: `Commission (pending delivery verification) for order #${order.orderNumber}`,
           },
         });
 
@@ -151,21 +151,11 @@ export class CommissionService {
 
   /**
    * Called when an order transitions to DELIVERED status.
-   * Starts the 7-day cooling window countdown (eligibleAt = now + 7 days).
+   * Immediately marks commissions AVAILABLE and approves them for immediate withdrawal.
+   * Idempotent: Only operates on PENDING commissions.
    */
   public static async handleOrderDelivered(orderId: string): Promise<void> {
-    const returnWindowMs = this.getReturnWindowDays() * 24 * 60 * 60 * 1000;
-    const eligibleAt = new Date(Date.now() + returnWindowMs);
-
-    await prisma.affiliateCommission.updateMany({
-      where: {
-        orderId,
-        status: 'PENDING',
-      },
-      data: {
-        eligibleAt,
-      },
-    });
+    await this.markCommissionsAvailable(orderId);
   }
 
   /**
@@ -250,7 +240,8 @@ export class CommissionService {
   }
 
   /**
-   * Direct override: immediately marks commissions AVAILABLE for an order.
+   * Approves commissions and makes them immediately available for withdrawal upon delivery verification.
+   * Idempotent: checks inside the transaction to avoid duplicate balance increments.
    */
   public static async markCommissionsAvailable(orderId: string): Promise<void> {
     const commissions = await prisma.affiliateCommission.findMany({
@@ -258,7 +249,14 @@ export class CommissionService {
     });
 
     for (const comm of commissions) {
+      let walletUpdated = false;
       await prisma.$transaction(async (tx) => {
+        // Atomic check inside transaction to guarantee idempotency
+        const current = await tx.affiliateCommission.findUnique({
+          where: { id: comm.id },
+        });
+        if (!current || current.status !== 'PENDING') return;
+
         await tx.affiliateCommission.update({
           where: { id: comm.id },
           data: { status: 'AVAILABLE', eligibleAt: new Date() },
@@ -286,10 +284,30 @@ export class CommissionService {
             balanceAfterKobo: wallet.availableKobo,
             referenceType: 'ORDER',
             referenceId: comm.orderId,
-            description: `Commission made available for order ${comm.orderId}`,
+            description: `Commission approved & withdrawable for delivered order ${comm.orderId}`,
           },
         });
+        walletUpdated = true;
       });
+
+      if (walletUpdated) {
+        // Fire-and-forget notification to affiliate that funds are now withdrawable
+        prisma.affiliate.findUnique({
+          where: { id: comm.affiliateId },
+          select: { email: true, firstName: true },
+        }).then((aff) => {
+          if (!aff) return;
+          prisma.order.findUnique({
+            where: { id: comm.orderId },
+            select: { orderNumber: true },
+          }).then((ord) => {
+            AffiliateNotificationService.notifyCommissionAvailable(aff, {
+              orderNumber: ord?.orderNumber || comm.orderId,
+              amountNGN: comm.amountKobo / 100,
+            }).catch(() => null);
+          }).catch(() => null);
+        }).catch(() => null);
+      }
     }
   }
 

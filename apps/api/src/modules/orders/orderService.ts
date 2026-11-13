@@ -250,13 +250,13 @@ export class OrderService {
     if (COMMERCE_CONFIG.AFFILIATE.ENABLED) {
       try {
         if (newStatus === 'PAID') {
-          // Create commission record + start 7-day cooling window
+          // Create commission record in PENDING state awaiting delivery verification
           await CommissionService.processOrderCommission(updated.id);
         } else if (newStatus === 'DELIVERED') {
-          // Record delivery timestamp so the cooling countdown can begin
+          // Immediately approve commission and make available for withdrawal
           await CommissionService.handleOrderDelivered(updated.id);
         } else if (newStatus === 'COMPLETED') {
-          // Order complete with no return: immediately clear cooling period
+          // Order complete: ensure commission is available (idempotent)
           await CommissionService.markCommissionsAvailable(updated.id);
         } else if (['CANCELLED', 'REFUNDED', 'RETURNED'].includes(newStatus)) {
           // Reverse any pending or available commissions
