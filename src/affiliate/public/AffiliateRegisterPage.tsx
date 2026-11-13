@@ -36,7 +36,6 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
     instagram: '',
     tiktok: '',
     promotionChannels: 'Instagram Stories & Reels',
-    audienceSize: '5K - 25K',
     promotionExperience: '',
     agreedToTerms: true,
   });
@@ -75,7 +74,6 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
         instagram: form.instagram.trim() || undefined,
         tiktok: form.tiktok.trim() || undefined,
         promotionChannels: form.promotionChannels,
-        audienceSize: form.audienceSize,
         promotionExperience: form.promotionExperience.trim() || undefined,
         agreedToTerms: true,
       });
@@ -318,42 +316,24 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                   </div>
                 </div>
 
-                {/* Channels & Audience Size */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] uppercase tracking-wider font-semibold text-[#141414]">
-                      Primary Promotion Channel
-                    </label>
-                    <select
-                      value={form.promotionChannels}
-                      onChange={(e) => setForm({ ...form, promotionChannels: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E5E2DC] focus:border-[#141414] focus:outline-none text-sm text-[#141414] transition-colors"
-                    >
-                      <option value="Instagram Stories & Reels">Instagram Stories & Reels</option>
-                      <option value="TikTok Fashion Content">TikTok Fashion Content</option>
-                      <option value="X (Twitter) & Threads">X (Twitter) & Threads</option>
-                      <option value="YouTube Fashion Vlogs">YouTube Fashion Vlogs</option>
-                      <option value="WhatsApp Community / Broadcast">WhatsApp Community / Broadcast</option>
-                      <option value="Styling & Wardrobe Consulting">Styling & Wardrobe Consulting</option>
-                      <option value="Other">Other Media / Blog</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] uppercase tracking-wider font-semibold text-[#141414]">
-                      Estimated Combined Audience Size
-                    </label>
-                    <select
-                      value={form.audienceSize}
-                      onChange={(e) => setForm({ ...form, audienceSize: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E5E2DC] focus:border-[#141414] focus:outline-none text-sm text-[#141414] transition-colors"
-                    >
-                      <option value="Under 1K">Under 1,000</option>
-                      <option value="1K - 5K">1,000 – 5,000</option>
-                      <option value="5K - 25K">5,000 – 25,000</option>
-                      <option value="25K - 100K">25,000 – 100,000</option>
-                      <option value="100K+">100,000+</option>
-                    </select>
-                  </div>
+                {/* Primary Promotion Channel */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-wider font-semibold text-[#141414]">
+                    Primary Promotion Channel
+                  </label>
+                  <select
+                    value={form.promotionChannels}
+                    onChange={(e) => setForm({ ...form, promotionChannels: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E5E2DC] focus:border-[#141414] focus:outline-none text-sm text-[#141414] transition-colors"
+                  >
+                    <option value="Instagram Stories & Reels">Instagram Stories & Reels</option>
+                    <option value="TikTok Fashion Content">TikTok Fashion Content</option>
+                    <option value="X (Twitter) & Threads">X (Twitter) & Threads</option>
+                    <option value="YouTube Fashion Vlogs">YouTube Fashion Vlogs</option>
+                    <option value="WhatsApp Community / Broadcast">WhatsApp Community / Broadcast</option>
+                    <option value="Styling & Wardrobe Consulting">Styling & Wardrobe Consulting</option>
+                    <option value="Other">Other Media / Blog</option>
+                  </select>
                 </div>
 
                 {/* Experience / Notes */}
