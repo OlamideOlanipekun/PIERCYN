@@ -12,6 +12,7 @@ import { EventService } from '../services/eventService';
 import { AuthService } from '../services/authService';
 import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
+import { affiliateAdminRouter } from '../modules/affiliate/affiliateAdminRouter';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
 import {
@@ -30,6 +31,7 @@ export const apiRouter = Router();
 
 // Mount admin, affiliate, and review routes
 apiRouter.use('/admin', adminRouter);
+apiRouter.use('/admin/affiliates', affiliateAdminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/', reviewRouter);
 

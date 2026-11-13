@@ -676,15 +676,19 @@ export class AffiliateService {
       requestedAt: payout.requestedAt.toISOString(),
     };
 
-    const affiliateForNotification = await prisma.affiliate.findUnique({
-      where: { id: affiliateId },
-      select: { email: true, firstName: true },
-    });
-    if (affiliateForNotification) {
-      await AffiliateNotificationService.notifyWithdrawalRequested(
-        affiliateForNotification,
-        { amountNGN: requestedKobo / 100, bankName: payout.bankName, accountNumber: payout.accountNumber }
-      );
+    try {
+      const affiliateForNotification = await prisma.affiliate.findUnique({
+        where: { id: affiliateId },
+        select: { email: true, firstName: true },
+      });
+      if (affiliateForNotification) {
+        await AffiliateNotificationService.notifyWithdrawalRequested(
+          affiliateForNotification,
+          { amountNGN: requestedKobo / 100, bankName: payout.bankName, accountNumber: payout.accountNumber }
+        );
+      }
+    } catch (err: any) {
+      console.warn(`[AFFILIATE_NOTIFICATION_DEFERRED] Withdrawal request ${payout.id}: ${err.message}`);
     }
 
     return result;
@@ -1253,21 +1257,25 @@ export class AffiliateService {
       }
     });
 
-    const affiliateForNotification = await prisma.affiliate.findUnique({
-      where: { id: payout.affiliateId },
-      select: { email: true, firstName: true },
-    });
-    if (affiliateForNotification && action === 'PAID') {
-      await AffiliateNotificationService.notifyWithdrawalPaid(affiliateForNotification, {
-          amountNGN: payout.amountKobo / 100,
-          paymentReference: paymentReference || updated.paymentReference,
+    try {
+      const affiliateForNotification = await prisma.affiliate.findUnique({
+        where: { id: payout.affiliateId },
+        select: { email: true, firstName: true },
       });
-    } else if (affiliateForNotification && (action === 'REJECTED' || action === 'FAILED')) {
-      await AffiliateNotificationService.notifyWithdrawalRejected(
-        affiliateForNotification,
-        { amountNGN: payout.amountKobo / 100 },
-        notes
-      );
+      if (affiliateForNotification && action === 'PAID') {
+        await AffiliateNotificationService.notifyWithdrawalPaid(affiliateForNotification, {
+            amountNGN: payout.amountKobo / 100,
+            paymentReference: paymentReference || updated.paymentReference,
+        });
+      } else if (affiliateForNotification && (action === 'REJECTED' || action === 'FAILED')) {
+        await AffiliateNotificationService.notifyWithdrawalRejected(
+          affiliateForNotification,
+          { amountNGN: payout.amountKobo / 100 },
+          notes
+        );
+      }
+    } catch (err: any) {
+      console.warn(`[AFFILIATE_NOTIFICATION_DEFERRED] Payout ${payout.id} ${action}: ${err.message}`);
     }
 
     return updated;

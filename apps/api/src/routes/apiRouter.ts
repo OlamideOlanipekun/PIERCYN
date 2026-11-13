@@ -16,6 +16,7 @@ import { ShippingService } from '../modules/shipping/shippingService';
 import { EventService } from '../services/eventService';
 import { adminRouter } from '../modules/admin/adminRouter';
 import { affiliateRouter } from '../modules/affiliate/affiliateRouter';
+import { affiliateAdminRouter } from '../modules/affiliate/affiliateAdminRouter';
 import { CommissionService } from '../modules/affiliate/commissionService';
 import { reviewRouter } from '../modules/reviews/reviewRouter';
 import { ReviewService } from '../modules/reviews/reviewService';
@@ -51,6 +52,7 @@ export const apiRouter = Router();
 apiRouter.use('/seo', seoFallbackRouter);
 // Mount checkoutAdminRouter first so canonical order lifecycle takes precedence over legacy handlers
 apiRouter.use('/admin', checkoutAdminRouter);
+apiRouter.use('/admin/affiliates', affiliateAdminRouter);
 apiRouter.use('/admin', adminRouter);
 apiRouter.use('/affiliate', affiliateRouter);
 apiRouter.use('/auth', authRouter);
