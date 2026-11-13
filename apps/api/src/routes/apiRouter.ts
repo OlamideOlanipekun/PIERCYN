@@ -379,10 +379,10 @@ apiRouter.post('/cart/items', optionalAuth, async (req: Request, res: Response) 
     const msg = err.issues ? err.issues[0]?.message : (err.errors ? err.errors[0]?.message : err.message);
     const isValidationError = Boolean(err?.issues || err?.errors);
     const isNotFound = typeof msg === 'string' && /variant .* not found/i.test(msg);
-    const isStockError = typeof msg === 'string' && /insufficient stock/i.test(msg);
+    const isStockError = typeof msg === 'string' && (/insufficient stock/i.test(msg) || /unavailable/i.test(msg) || /reserved/i.test(msg) || /sold out/i.test(msg));
     const isDatabaseUnavailable = err?.name === 'CatalogUnavailableError' || err?.code === 'P1001' || err?.code === 'P2024';
     const status = isDatabaseUnavailable ? 503 : isStockError ? 409 : isNotFound ? 404 : isValidationError ? 400 : 500;
-    res.status(status).json({ success: false, error: msg || 'Unable to add item to cart.' });
+    res.status(status).json({ success: false, error: msg || 'Unable to add item to cart.', code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -395,7 +395,8 @@ apiRouter.put('/cart/items', optionalAuth, async (req: Request, res: Response) =
     res.json({ success: true, data: cart });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -438,7 +439,8 @@ apiRouter.post('/checkout/quote', async (req: Request, res: Response) => {
     res.json({ success: true, data: quote });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -468,7 +470,8 @@ apiRouter.post('/orders', requireAuth, async (req: Request, res: Response) => {
     res.status(201).json({ success: true, data: { ...order, orderAccessToken: createOrderAccessToken(order.id) } });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -559,7 +562,8 @@ apiRouter.post('/payments/verify', async (req: Request, res: Response) => {
     res.json({ success: true, data: result });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -584,7 +588,8 @@ apiRouter.post('/orders/:id/payment-receipt', async (req: Request, res: Response
     res.status(202).json({ success: true, data: result });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 
@@ -653,7 +658,8 @@ apiRouter.post('/events', async (req: Request, res: Response) => {
     res.json({ success: true, data: event });
   } catch (err: any) {
     const msg = err.errors ? err.errors[0].message : err.message;
-    res.status(400).json({ success: false, error: msg });
+    const isStockError = typeof msg === 'string' && (/stock reservation failed/i.test(msg) || /sold out/i.test(msg) || /insufficient stock/i.test(msg) || /unavailable/i.test(msg));
+    res.status(isStockError ? 409 : 400).json({ success: false, error: msg, code: isStockError ? 'OUT_OF_STOCK' : undefined });
   }
 });
 

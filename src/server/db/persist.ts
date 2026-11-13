@@ -23,6 +23,7 @@ export interface PersistedInventoryState {
  * Called after every stock adjustment.
  */
 export function saveInventoryState(inventory: Map<string, DbInventory>): void {
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) return;
   try {
     const state: PersistedInventoryState = {
       savedAt: new Date().toISOString(),

@@ -157,6 +157,8 @@ export class InventoryService {
       createdAt: new Date().toISOString(),
     });
 
+    InventoryService.syncProductSoldOutFlag(variantId);
+
     return true;
   }
 
@@ -196,6 +198,8 @@ export class InventoryService {
         createdAt: new Date().toISOString(),
       });
     }
+
+    InventoryService.syncProductSoldOutFlag(targetRes.variantId);
 
     return true;
   }
@@ -263,6 +267,8 @@ export class InventoryService {
       reason: `Sale finalized for order ${orderNumber}`,
       createdAt: new Date().toISOString(),
     });
+
+    InventoryService.syncProductSoldOutFlag(variantId);
 
     return true;
   }
@@ -680,5 +686,22 @@ export class InventoryService {
       where: { variantId },
       include: { variant: { select: { sku: true } } },
     });
+  }
+
+  public static syncProductSoldOutFlag(variantId: string): void {
+    const variant = dbStore.variants.get(variantId);
+    if (!variant) return;
+    const product = dbStore.products.get(variant.productId);
+    if (!product) return;
+    let totalAvailable = 0;
+    for (const v of dbStore.variants.values()) {
+      if (v.productId === product.id && v.active) {
+        const inv = dbStore.inventory.get(v.id);
+        if (inv) {
+          totalAvailable += Math.max(0, inv.availableStock);
+        }
+      }
+    }
+    product.isSoldOut = totalAvailable <= 0;
   }
 }

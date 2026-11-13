@@ -167,6 +167,10 @@ export class InventoryService {
         },
       });
 
+      // Synchronize product-level isSoldOut flag immediately so reserved stock
+      // is reflected in storefront catalog queries and cannot be selected by others
+      await InventoryService.syncProductSoldOutFlag(variantId, tx);
+
       return true;
     };
 

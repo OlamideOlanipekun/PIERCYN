@@ -154,6 +154,11 @@ export class CartService {
             await prisma.cart.delete({ where: { id: guestCart.id } });
           }
 
+          // Clear any conflicting cart record holding this sessionId to avoid unique constraint collision
+          await prisma.cart.deleteMany({
+            where: { sessionId, id: { not: customerCart.id } },
+          });
+
           // Point the customer cart to this active session
           customerCart = await prisma.cart.update({
             where: { id: customerCart.id },
@@ -223,7 +228,11 @@ export class CartService {
 
     if (!isAvailable) {
       const stock = await InventoryService.getStockStatus(variant.id);
-      throw new Error(`Insufficient stock. Only ${stock?.available || 0} unit(s) available.`);
+      const available = stock?.available || 0;
+      if (available <= 0) {
+        throw new Error('This piece is currently unavailable or reserved by another customer.');
+      }
+      throw new Error(`Insufficient stock. Only ${available} unit(s) available.`);
     }
 
     if (existingItem) {
@@ -265,7 +274,11 @@ export class CartService {
       const isAvailable = await InventoryService.checkAvailability(variant.id, quantity);
       if (!isAvailable) {
         const stock = await InventoryService.getStockStatus(variant.id);
-        throw new Error(`Insufficient stock. Only ${stock?.available || 0} unit(s) available.`);
+        const available = stock?.available || 0;
+        if (available <= 0) {
+          throw new Error('This piece is currently unavailable or reserved by another customer.');
+        }
+        throw new Error(`Insufficient stock. Only ${available} unit(s) available.`);
       }
 
       await prisma.cartItem.upsert({
