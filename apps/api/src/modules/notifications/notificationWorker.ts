@@ -155,7 +155,7 @@ export class NotificationWorker {
         retried: 0,
         recovered,
         skipped: true,
-        message: 'SMTP credentials are not configured in environment variables (SMTP_USER, SMTP_APP_PASSWORD).',
+        message: 'SMTP credentials are not configured in environment variables (SMTP_USER, SMTP_PASSWORD).',
       };
     }
 
