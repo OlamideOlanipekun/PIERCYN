@@ -35,7 +35,6 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
     confirmPassword: '',
     instagram: '',
     tiktok: '',
-    promotionChannels: 'Instagram Stories & Reels',
     promotionExperience: '',
     agreedToTerms: true,
   });
@@ -73,7 +72,6 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
         password: form.password,
         instagram: form.instagram.trim() || undefined,
         tiktok: form.tiktok.trim() || undefined,
-        promotionChannels: form.promotionChannels,
         promotionExperience: form.promotionExperience.trim() || undefined,
         agreedToTerms: true,
       });
@@ -314,26 +312,6 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                       className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E5E2DC] focus:border-[#141414] focus:outline-none text-sm text-[#141414] transition-colors"
                     />
                   </div>
-                </div>
-
-                {/* Primary Promotion Channel */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider font-semibold text-[#141414]">
-                    Primary Promotion Channel
-                  </label>
-                  <select
-                    value={form.promotionChannels}
-                    onChange={(e) => setForm({ ...form, promotionChannels: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#FAF8F5] border border-[#E5E2DC] focus:border-[#141414] focus:outline-none text-sm text-[#141414] transition-colors"
-                  >
-                    <option value="Instagram Stories & Reels">Instagram Stories & Reels</option>
-                    <option value="TikTok Fashion Content">TikTok Fashion Content</option>
-                    <option value="X (Twitter) & Threads">X (Twitter) & Threads</option>
-                    <option value="YouTube Fashion Vlogs">YouTube Fashion Vlogs</option>
-                    <option value="WhatsApp Community / Broadcast">WhatsApp Community / Broadcast</option>
-                    <option value="Styling & Wardrobe Consulting">Styling & Wardrobe Consulting</option>
-                    <option value="Other">Other Media / Blog</option>
-                  </select>
                 </div>
 
                 {/* Experience / Notes */}
