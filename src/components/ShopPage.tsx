@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Product, ProductCategory } from '../types';
 import { useShop } from '../context/ShopContext';
-import { Filter, SlidersHorizontal, X, Check, Search, ArrowUpDown } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, Check, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { eventTracker } from '../services/eventTracker';
 import { ProductCard } from './ProductCard';
 import { catalogService } from '../services/catalogService';
@@ -18,6 +18,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   initialCategory = 'all',
 }) => {
   const { addToCart, toggleWishlist, isWishlisted, isLoadingProducts, catalogError, refreshProducts } = useShop();
+  const PAGE_SIZE = 24;
 
   // Resolve the initial category from the prop, falling back to the URL query param
   const urlCategoryParam = new URLSearchParams(window.location.search).get('category');
@@ -31,6 +32,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   const [availability, setAvailability] = useState<'all' | 'in-stock' | 'unavailable'>('all');
   const [sortBy, setSortBy] = useState<'featured' | 'newest' | 'price-low' | 'price-high'>('featured');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [page, setPage] = useState<number>(() => {
+    const parsed = Number(new URLSearchParams(window.location.search).get('page'));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+  });
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [resultTotal, setResultTotal] = useState(products.length);
@@ -72,6 +77,10 @@ export const ShopPage: React.FC<ShopPageProps> = ({
   useEffect(() => { setSelectedCategory(initialCategory || 'all'); }, [initialCategory]);
 
   useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery]);
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => {
       let cancelled = false;
       const request = {
@@ -86,11 +95,11 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             ? false
             : undefined,
         sort: sortBy === 'price-low' ? 'price-asc' as const : sortBy === 'price-high' ? 'price-desc' as const : sortBy,
-        page: 1,
-        limit: 48,
+        page,
+        limit: PAGE_SIZE,
       };
       const url = new URL(window.location.href);
-      Object.entries({ category: request.category, size: selectedSize || undefined, minPrice: request.minPrice, maxPrice: request.maxPrice, search: request.search, availability: availability === 'all' ? undefined : availability, orderability: selectedAvailability === 'all' ? undefined : selectedAvailability, sort: sortBy === 'featured' ? undefined : sortBy }).forEach(([key, value]) => {
+      Object.entries({ page: page > 1 ? page : undefined, category: request.category, size: selectedSize || undefined, minPrice: request.minPrice, maxPrice: request.maxPrice, search: request.search, availability: availability === 'all' ? undefined : availability, orderability: selectedAvailability === 'all' ? undefined : selectedAvailability, sort: sortBy === 'featured' ? undefined : sortBy }).forEach(([key, value]) => {
         if (value === undefined || value === '') url.searchParams.delete(key);
         else url.searchParams.set(key, String(value));
       });
@@ -116,7 +125,8 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                 (p) => p.name.toLowerCase().includes(s) || p.description.toLowerCase().includes(s)
               );
             }
-            setFilteredProducts(matched);
+            const start = (page - 1) * PAGE_SIZE;
+            setFilteredProducts(matched.slice(start, start + PAGE_SIZE));
             setResultTotal(matched.length);
           } else {
             setFilteredProducts([]);
@@ -128,7 +138,21 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       return () => { cancelled = true; };
     }, searchQuery ? 250 : 0);
     return () => window.clearTimeout(timeout);
-  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery, products]);
+  }, [selectedCategory, selectedAvailability, selectedSize, minPrice, maxPrice, availability, sortBy, searchQuery, products, page]);
+
+  const totalPages = Math.max(1, Math.ceil(resultTotal / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (nextPage: number) => {
+    const safePage = Math.min(totalPages, Math.max(1, nextPage));
+    if (safePage !== page) {
+      setPage(safePage);
+      document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleCategorySelect = (cat: string) => {
     setSelectedCategory(cat);
@@ -193,7 +217,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs font-mono text-[#141414]/70">
-              {isLoadingCatalog ? 'UPDATING PIECES...' : `SHOWING ${filteredProducts.length} OF ${resultTotal} PIECES`}
+              {isLoadingCatalog ? 'UPDATING PIECES...' : `SHOWING ${resultTotal === 0 ? 0 : ((page - 1) * PAGE_SIZE) + 1}–${Math.min(page * PAGE_SIZE, resultTotal)} OF ${resultTotal} PIECES`}
             </span>
           </div>
         </div>
@@ -429,6 +453,25 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   />
                 ))}
               </div>
+            )}
+
+            {!isLoadingCatalog && !isLoadingProducts && !catalogError && resultTotal > 0 && totalPages > 1 && (
+              <nav className="mt-10 flex flex-col items-center gap-4 border-t border-[#DAD8D1] pt-6 sm:flex-row sm:justify-between" aria-label="Product listing pagination">
+                <p className="text-xs font-mono text-[#141414]/60">PAGE {page} OF {totalPages}</p>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => goToPage(page - 1)} disabled={page === 1} aria-label="Previous page" className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#DAD8D1] text-[#141414] transition-colors hover:bg-[#141414] hover:text-[#F2F0EB] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#141414]">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                    <button type="button" key={pageNumber} onClick={() => goToPage(pageNumber)} aria-label={`Go to page ${pageNumber}`} aria-current={pageNumber === page ? 'page' : undefined} className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-xs font-mono transition-colors ${pageNumber === page ? 'bg-[#141414] text-[#F2F0EB]' : 'border border-[#DAD8D1] text-[#141414] hover:bg-[#E8E6E1]'}`}>
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => goToPage(page + 1)} disabled={page === totalPages} aria-label="Next page" className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#DAD8D1] text-[#141414] transition-colors hover:bg-[#141414] hover:text-[#F2F0EB] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#141414]">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </nav>
             )}
           </main>
         </div>
