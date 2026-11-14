@@ -46,6 +46,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
   const [deliveryReceiptFile, setDeliveryReceiptFile] = useState<File | null>(null);
   const [deliveryReceiptState, setDeliveryReceiptState] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [deliveryReceiptError, setDeliveryReceiptError] = useState('');
+  const [paymentReviewNotice, setPaymentReviewNotice] = useState<'product' | 'delivery' | null>(null);
 
   // Delivery quotation decision state
   const [isAcceptingQuote, setIsAcceptingQuote] = useState(false);
@@ -181,6 +182,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
 
       setProductReceiptFile(null);
       setProductReceiptState('idle');
+      setPaymentReviewNotice('product');
       await loadOrder();
     } catch (err: any) {
       setProductReceiptState('error');
@@ -225,6 +227,7 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
 
       setDeliveryReceiptFile(null);
       setDeliveryReceiptState('idle');
+      setPaymentReviewNotice('delivery');
       await loadOrder();
     } catch (err: any) {
       setDeliveryReceiptState('error');
@@ -873,6 +876,54 @@ export const OrderPage: React.FC<OrderPageProps> = ({ orderId: propOrderId, mode
       </div>
 
       {/* Rejection Modal */}
+      {paymentReviewNotice && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-review-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[#DAD6CC] bg-[#F2F0EB] p-6 shadow-2xl sm:p-7">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 id="payment-review-title" className="font-editorial text-2xl italic text-[#141414]">
+                  Payment Under Review
+                </h3>
+                <p className="mt-1 text-[11px] font-mono uppercase tracking-wider text-amber-800">
+                  Receipt submitted successfully
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-sm leading-relaxed text-[#55524D]">
+              <p>
+                Your {paymentReviewNotice === 'delivery' ? 'delivery' : 'merchandise'} payment receipt has been received.
+                Our admin team is now verifying the payment.
+              </p>
+              <p>
+                Your payment is not confirmed until this review is complete. Once the admin verifies your receipt,
+                your payment will be accepted and your order will move to the next stage.
+              </p>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+              Please do not send the payment again. You can safely close this message and return to your order page.
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPaymentReviewNotice(null)}
+              className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#141414] px-5 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-black"
+            >
+              Continue to Order
+            </button>
+          </div>
+        </div>
+      )}
+
       {showRejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-[#F2F0EB] border border-[#DAD6CC] rounded-2xl p-6 max-w-md w-full shadow-2xl font-sans">
