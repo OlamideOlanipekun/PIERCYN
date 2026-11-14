@@ -379,27 +379,24 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               <div
                 key={step.num}
                 onMouseEnter={() => setActiveStepTab(idx)}
-                className={`p-8 border transition-all duration-300 relative flex flex-col justify-between cursor-pointer ${
-                  activeStepTab === idx
+                className={`p-8 border transition-all duration-300 relative flex flex-col justify-between cursor-pointer ${activeStepTab === idx
                     ? 'bg-[#141414] text-white border-[#141414] shadow-xl -translate-y-1'
                     : 'bg-[#FAF8F5] text-[#141414] border-[#E5E2DC] hover:border-[#141414]'
-                }`}
+                  }`}
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-4xl font-serif font-bold ${
-                        activeStepTab === idx ? 'text-[#A48B71]' : 'text-[#141414]'
-                      }`}
+                      className={`text-4xl font-serif font-bold ${activeStepTab === idx ? 'text-[#A48B71]' : 'text-[#141414]'
+                        }`}
                     >
                       {step.num}
                     </span>
                     <span
-                      className={`text-[9px] uppercase tracking-widest px-2 py-0.5 font-bold ${
-                        activeStepTab === idx
+                      className={`text-[9px] uppercase tracking-widest px-2 py-0.5 font-bold ${activeStepTab === idx
                           ? 'bg-white/10 text-white border border-white/20'
                           : 'bg-white text-[#737373] border border-[#E5E2DC]'
-                      }`}
+                        }`}
                     >
                       {step.subtitle}
                     </span>
@@ -410,18 +407,16 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   </h3>
 
                   <p
-                    className={`text-xs sm:text-sm leading-relaxed ${
-                      activeStepTab === idx ? 'text-[#D4D2CD]' : 'text-[#555555]'
-                    }`}
+                    className={`text-xs sm:text-sm leading-relaxed ${activeStepTab === idx ? 'text-[#D4D2CD]' : 'text-[#555555]'
+                      }`}
                   >
                     {step.desc}
                   </p>
                 </div>
 
                 <div
-                  className={`pt-6 mt-6 border-t text-[11px] font-semibold uppercase tracking-wider flex items-center justify-between ${
-                    activeStepTab === idx ? 'border-white/15 text-[#A48B71]' : 'border-[#E5E2DC] text-[#737373]'
-                  }`}
+                  className={`pt-6 mt-6 border-t text-[11px] font-semibold uppercase tracking-wider flex items-center justify-between ${activeStepTab === idx ? 'border-white/15 text-[#A48B71]' : 'border-[#E5E2DC] text-[#737373]'
+                    }`}
                 >
                   <span>{step.metric}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -459,17 +454,15 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   <div className="inline-flex p-0.5 bg-[#E5E2DC] rounded-none text-[9px] uppercase font-bold">
                     <button
                       onClick={() => setCalcTimeframe('monthly')}
-                      className={`px-2 py-0.5 transition-colors ${
-                        calcTimeframe === 'monthly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
-                      }`}
+                      className={`px-2 py-0.5 transition-colors ${calcTimeframe === 'monthly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
+                        }`}
                     >
                       Monthly
                     </button>
                     <button
                       onClick={() => setCalcTimeframe('weekly')}
-                      className={`px-2 py-0.5 transition-colors ${
-                        calcTimeframe === 'weekly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
-                      }`}
+                      className={`px-2 py-0.5 transition-colors ${calcTimeframe === 'weekly' ? 'bg-[#141414] text-white' : 'text-[#555555]'
+                        }`}
                     >
                       Weekly
                     </button>
@@ -501,11 +494,10 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                     <button
                       key={preset}
                       onClick={() => setOrdersPerMonth(preset)}
-                      className={`px-2.5 py-1 text-[11px] font-mono font-semibold border transition-all ${
-                        ordersPerMonth === preset
+                      className={`px-2.5 py-1 text-[11px] font-mono font-semibold border transition-all ${ordersPerMonth === preset
                           ? 'bg-[#141414] text-white border-[#141414]'
                           : 'bg-[#FAF8F5] text-[#555555] border-[#E5E2DC] hover:border-[#141414]'
-                      }`}
+                        }`}
                     >
                       {preset}
                     </button>
@@ -775,9 +767,8 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   >
                     <span>{faq.q}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-[#737373] shrink-0 transition-transform duration-300 ${
-                        isOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`w-4 h-4 text-[#737373] shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''
+                        }`}
                     />
                   </button>
                   {isOpen && (
