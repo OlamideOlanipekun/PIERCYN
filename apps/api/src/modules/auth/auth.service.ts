@@ -1,6 +1,7 @@
 import { prisma } from '../../db/prisma';
 import type { AuthenticatedUser } from '../../middleware/authenticate';
 import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
+import { triggerNotificationProcessingAsync } from '../notifications';
 
 export interface SyncInput {
   user: AuthenticatedUser;
@@ -148,6 +149,10 @@ export class AuthService {
 
       return created;
     });
+
+    // The registration event is committed at this point; process it now
+    // instead of waiting for the maintenance cron fallback.
+    triggerNotificationProcessingAsync();
 
     // Check if there are past guest orders matching this new customer's email
     if (user.email) {

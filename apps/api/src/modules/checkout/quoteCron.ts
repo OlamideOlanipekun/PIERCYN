@@ -11,6 +11,7 @@
 import { prisma } from '../../db/prisma';
 import { WhatsAppService } from '../../services/whatsappService';
 import { recordEvent, PIERCYN_EVENTS } from '../notifications/events';
+import { triggerNotificationProcessingAsync } from '../notifications';
 
 const APP_URL = (process.env.APP_URL || 'https://piercyn.vercel.app').replace(/\/+$/, '');
 const REMINDER_HOURS = 24;
@@ -167,6 +168,11 @@ export class DeliveryQuoteCron {
       }
     }
 
+    // Expiry events are committed inside the loop transactions. Start the
+    // outbox after those commits so customer/admin notifications are prompt.
+    if (result.expired > 0) {
+      triggerNotificationProcessingAsync();
+    }
     return result;
   }
 }
