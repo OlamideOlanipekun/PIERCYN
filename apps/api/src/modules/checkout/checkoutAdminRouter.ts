@@ -61,6 +61,7 @@ checkoutAdminRouter.post('/orders/:id/product-payment/verify', requireAdmin, asy
 
     const note = typeof req.body.note === 'string' ? req.body.note : '';
     const now = new Date();
+    const customerName = `${order.customerFirstName} ${order.customerLastName}`.trim();
 
     // Aggregate by variant to finalize sales
     const shortfalls: string[] = [];
@@ -149,13 +150,16 @@ checkoutAdminRouter.post('/orders/:id/product-payment/verify', requireAdmin, asy
           customerEmail: order.customerEmail,
           customerPhone: order.customerPhone,
           amountNGN: productPayment.amountDueNGN,
+          paymentMethod: order.paymentMethod,
+          providerReference: productPayment.providerReference,
+          verifiedAt: now.toISOString(),
+          verificationSource: 'ADMIN_APPROVAL',
           verifiedBy: adminId,
         },
       });
     });
 
     // WhatsApp + Email to customer
-    const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     const waMsg =
       `✅ *PIERCYN* — Payment Verified!\n\n` +
       `Hi ${order.customerFirstName},\n\n` +
@@ -262,58 +266,63 @@ checkoutAdminRouter.post('/orders/:id/delivery/quote', requireAdmin, async (req:
     const latestQuote = order.deliveryQuotes[0];
     const newVersion = latestQuote ? latestQuote.version + 1 : 1;
 
-    // Expire any open SENT quotes first
-    if (latestQuote && latestQuote.status === 'SENT') {
-      await prisma.deliveryQuote.update({
-        where: { id: latestQuote.id },
-        data: { status: 'REQUOTE_REQUIRED' },
-      });
-    }
-
-    const quote = await prisma.deliveryQuote.create({
-      data: {
-        orderId: order.id,
-        version: newVersion,
-        amountNGN: validated.amountNGN,
-        status: 'SENT',
-        createdByAdmin: adminId,
-        sentAt: now,
-        expiresAt,
-      },
-    });
-
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { quoteStatus: 'SENT', quoteSentAt: now, quoteSentByAdmin: adminId, quoteDeliveryFeeNGN: validated.amountNGN },
-    });
-
-    await prisma.orderStatusHistory.create({
-      data: {
-        orderId: order.id, fromStatus: order.status, toStatus: order.status,
-        changedBy: adminId, note: `Delivery quotation v${newVersion} sent: ${formatNGN(validated.amountNGN)}`,
-      },
-    });
-
-    // Send official WhatsApp quotation message to customer
     const decisionUrl = `${APP_URL}/account/orders/${order.id}/delivery`;
+    const quote = await prisma.$transaction(async (tx) => {
+      // Expire any open SENT quotes first and commit the quote, order state,
+      // history, and notification intent atomically.
+      if (latestQuote && latestQuote.status === 'SENT') {
+        await tx.deliveryQuote.update({
+          where: { id: latestQuote.id },
+          data: { status: 'REQUOTE_REQUIRED' },
+        });
+      }
 
-    await recordEvent(prisma as any, {
-      eventKey: `order:${order.id}:quote:v${newVersion}`,
-      eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_CREATED,
-      payload: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
-        customerEmail: order.customerEmail,
-        customerPhone: order.customerPhone,
-        deliveryFeeNGN: validated.amountNGN,
-        subtotalNGN: order.subtotalNGN,
-        totalNGN: order.totalNGN + validated.amountNGN,
-        quoteId: quote.id,
-        expiresAt: expiresAt.toISOString(),
-        decisionUrl,
-      },
+      const createdQuote = await tx.deliveryQuote.create({
+        data: {
+          orderId: order.id,
+          version: newVersion,
+          amountNGN: validated.amountNGN,
+          status: 'SENT',
+          createdByAdmin: adminId,
+          sentAt: now,
+          expiresAt,
+        },
+      });
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { quoteStatus: 'SENT', quoteSentAt: now, quoteSentByAdmin: adminId, quoteDeliveryFeeNGN: validated.amountNGN },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id, fromStatus: order.status, toStatus: order.status,
+          changedBy: adminId, note: `Delivery quotation v${newVersion} sent: ${formatNGN(validated.amountNGN)}`,
+        },
+      });
+
+      await recordEvent(tx, {
+        eventKey: `order:${order.id}:quote:v${newVersion}`,
+        eventType: PIERCYN_EVENTS.DELIVERY_QUOTE_CREATED,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.customerFirstName} ${order.customerLastName}`.trim(),
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          deliveryFeeNGN: validated.amountNGN,
+          subtotalNGN: order.subtotalNGN,
+          totalNGN: order.totalNGN + validated.amountNGN,
+          quoteId: createdQuote.id,
+          expiresAt: expiresAt.toISOString(),
+          decisionUrl,
+        },
+      });
+      return createdQuote;
     });
+
+    // Send official WhatsApp quotation message to customer after the
+    // transactional state and notification intent have committed.
     const customerMsg =
       `📦 *PIERCYN DELIVERY QUOTATION*\n\n` +
       `Order: *${order.orderNumber}*\n\n` +

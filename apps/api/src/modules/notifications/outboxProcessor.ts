@@ -216,7 +216,22 @@ export class OutboxProcessor {
         } else if (delivery.channel === 'EMAIL') {
           // Send transactional Email
           if (!transporter || !smtpConfig) {
-            throw new Error('SMTP_UNCONFIGURED: customer email transporter is unavailable');
+            // Do not mark the delivery SENT when no message was submitted.
+            // Keep it pending without consuming an attempt so configuration
+            // recovery does not require manual database intervention.
+            await prisma.notificationDelivery.update({
+              where: { id: delivery.id },
+              data: {
+                status: 'PENDING',
+                nextAttemptAt: new Date(Date.now() + 10 * 60 * 1000),
+                lockedAt: null,
+                lockToken: null,
+                lastError: 'SMTP_UNCONFIGURED: customer email transporter is unavailable',
+              },
+            });
+            console.warn('[OUTBOX_SMTP_UNCONFIGURED] Email delivery deferred; SMTP not configured');
+            retried++;
+            continue;
           }
           const emailContent = this.formatEmailMessage(delivery.event.eventType, payload);
           if (!emailContent) {
