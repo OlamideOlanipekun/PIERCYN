@@ -141,6 +141,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
               )}
             </button>
+
+            <button
+              id="nav-affiliate"
+              onClick={() => handleNavClick('affiliate')}
+              className={`relative py-2 transition-opacity duration-300 cursor-pointer uppercase font-sans ${
+                activePage === 'affiliate'
+                  ? 'font-bold text-[#F2F0EB]'
+                  : 'text-[#F2F0EB]/65 hover:text-[#F2F0EB] hover:opacity-100'
+              }`}
+            >
+              <span>AFFILIATE</span>
+              {activePage === 'affiliate' && (
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full bg-[#F2F0EB]" />
+              )}
+            </button>
           </nav>
 
           {/* Right: Search + Cart */}
