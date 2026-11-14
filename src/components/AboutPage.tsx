@@ -27,11 +27,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onSelectPage }) => {
         </h1>
 
         {/* Hero image */}
-        <div className="w-full aspect-[16/9] sm:aspect-[21/9] bg-[#141414] overflow-hidden mb-12 sm:mb-16 rounded-none">
+        <div className="w-full aspect-[1942/809] bg-[#141414] overflow-hidden mb-12 sm:mb-16 rounded-none">
           <img
-            src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?q=80&w=1600&auto=format&fit=crop"
-            alt="PIERCYN — Modern Nigerian fashion brand"
-            className="w-full h-full object-cover object-center filter brightness-[0.88] contrast-[1.05]"
+            src="/images/about-piercyn-banner.png"
+            alt="PIERCYN — Modern fashion made to stand out"
+            className="w-full h-full object-contain object-center"
             loading="lazy"
           />
         </div>
