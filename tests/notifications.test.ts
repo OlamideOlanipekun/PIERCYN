@@ -115,6 +115,28 @@ describe('PIERCYN Notification Engine - Email Template Rendering', () => {
     expect(rendered.html).not.toContain('<svg onload=alert(1)>');
   });
 
+  it('renders legacy ORDER_CREATED payloads without crashing when items are missing', () => {
+    const rendered = renderOrderCreatedEmail({
+      orderId: 'ord_legacy_1',
+      orderNumber: 'PCY-LEGACY-1',
+      customerName: 'Legacy Customer',
+      customerEmail: 'legacy@example.com',
+      customerPhone: '+2348000000000',
+      deliveryAddress: '1 Test Street',
+      deliveryCity: 'Lagos',
+      deliveryState: 'Lagos State',
+      subtotalNGN: 1000,
+      deliveryFeeNGN: 0,
+      discountNGN: 0,
+      totalNGN: 1000,
+      paymentMethod: 'TRANSFER',
+      createdAt: new Date().toISOString(),
+    } as OrderCreatedPayload);
+
+    expect(rendered.html).toContain('Order items are available in the PIERCYN dashboard.');
+    expect(rendered.text).toContain('Order items are available in the PIERCYN dashboard.');
+  });
+
   it('renders RECEIPT_UPLOADED email with payment proof & review requirements', () => {
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const payload: ReceiptUploadedPayload = {

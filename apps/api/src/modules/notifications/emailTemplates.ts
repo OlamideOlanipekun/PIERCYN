@@ -98,8 +98,9 @@ export function renderWelcomeEmail(payload: { firstName?: string; email: string 
 
 export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: string; html: string; text: string } {
   const subject = `[PIERCYN] New Order #${p.orderNumber} - ${formatNGN(p.totalNGN)}`;
+  const items = Array.isArray(p.items) ? p.items : [];
 
-  const itemsHtml = p.items
+  const itemsHtml = items
     .map(
       (item) => `
       <tr>
@@ -112,11 +113,11 @@ export function renderOrderCreatedEmail(p: OrderCreatedPayload): { subject: stri
         <td style="text-align: right; font-weight: 600;">${escapeHtml(formatNGN(item.totalNGN))}</td>
       </tr>`
     )
-    .join('');
+    .join('') || '<tr><td colspan="4" style="color: #78716C;">Order items are available in the PIERCYN dashboard.</td></tr>';
 
-  const itemsText = p.items
+  const itemsText = items
     .map((i) => `- ${i.name} (${i.sku}, ${i.size}/${i.colour}) x${i.quantity} = ${formatNGN(i.totalNGN)}`)
-    .join('\n');
+    .join('\n') || '- Order items are available in the PIERCYN dashboard.';
 
   const html = `<!DOCTYPE html>
 <html>
