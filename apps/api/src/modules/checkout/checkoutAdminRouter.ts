@@ -226,6 +226,7 @@ checkoutAdminRouter.post('/orders/:id/product-payment/reject', requireAdmin, asy
         },
       });
     });
+    triggerNotificationProcessingAsync();
 
     // Notify customer
     const waMsg =
@@ -320,6 +321,7 @@ checkoutAdminRouter.post('/orders/:id/delivery/quote', requireAdmin, async (req:
       });
       return createdQuote;
     });
+    triggerNotificationProcessingAsync();
 
     // Send official WhatsApp quotation message to customer after the
     // transactional state and notification intent have committed.
@@ -459,6 +461,8 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/reject', requireAdmin, as
         },
       });
     });
+
+    triggerNotificationProcessingAsync();
 
     await WhatsAppService.sendMessage({
       to: order.customerPhone,

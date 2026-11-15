@@ -8,11 +8,21 @@ export interface SendWhatsAppMessageParams {
   to: string; // E.164 phone number e.g. +2348012345678
   body: string;
 }
+export interface WhatsAppSendResult {
+  success: boolean;
+  messageId?: string;
+  simulated?: boolean;
+  disabled?: boolean;
+  error?: string;
+}
 
 export class WhatsAppService {
   private static phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   private static accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
   private static merchantPhone = process.env.MERCHANT_WHATSAPP_PHONE || '+2348140000000';
+  // Outbound WhatsApp is deliberately disabled until explicitly enabled.
+  // Email/Telegram notification paths remain unaffected.
+  private static enabled = process.env.WHATSAPP_NOTIFICATIONS_ENABLED === 'true';
 
   /**
    * Normalize any Nigerian or international phone to E.164.
@@ -41,7 +51,11 @@ export class WhatsAppService {
   /**
    * Send text message via Meta Cloud API
    */
-  public static async sendMessage(params: SendWhatsAppMessageParams): Promise<{ success: boolean; messageId?: string; simulated?: boolean; error?: string }> {
+  public static async sendMessage(params: SendWhatsAppMessageParams): Promise<WhatsAppSendResult> {
+    if (!this.enabled) {
+      console.info('[WHATSAPP_DISABLED] Outbound WhatsApp notification suppressed; use SMTP/Telegram notification paths.');
+      return { success: true, disabled: true };
+    }
     const normalizedTo = this.normalizePhone(params.to);
     if (!normalizedTo) {
       console.warn(`[WHATSAPP_SEND_SKIPPED] Invalid recipient phone: "${params.to}"`);
@@ -97,4 +111,3 @@ export class WhatsAppService {
     });
   }
 }
-

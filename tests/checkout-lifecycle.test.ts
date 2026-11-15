@@ -40,13 +40,13 @@ describe('PIERCYN Consolidated Checkout System', () => {
       expect(WhatsAppService.normalizePhone('not-a-number')).toBeNull();
     });
 
-    it('simulates message dispatch safely when Meta Cloud API credentials are unset', async () => {
+    it('suppresses outbound WhatsApp until explicitly enabled', async () => {
       const result = await WhatsAppService.sendMessage({
         to: '08012345678',
         body: 'PIERCYN DELIVERY QUOTATION\n\nOrder: #PC-000001\nDelivery Fee: ₦3,500',
       });
       expect(result.success).toBe(true);
-      expect(result.simulated).toBe(true);
+      expect(result.disabled).toBe(true);
     });
   });
 

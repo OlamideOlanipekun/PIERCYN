@@ -443,6 +443,10 @@ checkoutRouter.post('/orders/:id/delivery/quote/accept', optionalAuth, async (re
       });
     });
 
+    // The outbox event is committed; dispatch it immediately rather than
+    // waiting for the five-minute maintenance cron.
+    triggerNotificationProcessingAsync();
+
     // Notify merchant
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     await WhatsAppService.sendToMerchant(
@@ -515,6 +519,10 @@ checkoutRouter.post('/orders/:id/delivery/quote/reject', optionalAuth, async (re
         },
       });
     });
+
+    // The outbox event is committed; dispatch it immediately rather than
+    // waiting for the five-minute maintenance cron.
+    triggerNotificationProcessingAsync();
 
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     await WhatsAppService.sendToMerchant(
