@@ -21,11 +21,12 @@ export * from './outboxProcessor';
  * Registers opportunistic notification work with the Vercel invocation so it
  * can continue after the response without relying on an untracked timer.
  */
-export function triggerNotificationProcessingAsync(): void {
+export function triggerNotificationProcessingAsync(): Promise<void> {
   const task = Promise.allSettled([
     import('./notificationWorker').then(({ NotificationWorker }) => NotificationWorker.processNotifications(2)),
     import('./outboxProcessor').then(({ OutboxProcessor }) => OutboxProcessor.processDeliveries(10)),
   ])
+    .then(() => undefined)
     .catch((err) => {
       console.warn('[NOTIFICATION_ASYNC_DISPATCH_WARN]', err?.message || err);
     });
@@ -37,4 +38,6 @@ export function triggerNotificationProcessingAsync(): void {
     // its rejection handler; production Vercel requests register it above.
     console.warn('[NOTIFICATION_WAITUNTIL_UNAVAILABLE]', err?.message || err);
   }
+
+  return task;
 }

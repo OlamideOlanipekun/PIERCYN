@@ -724,7 +724,7 @@ export class InventoryService {
     const result = txPrisma ? await execute(txPrisma) : await prisma.$transaction(execute);
 
     if (result && !txPrisma) {
-      triggerNotificationProcessingAsync();
+      await triggerNotificationProcessingAsync();
     }
 
     return result;

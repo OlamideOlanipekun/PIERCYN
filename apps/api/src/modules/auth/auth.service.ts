@@ -150,9 +150,9 @@ export class AuthService {
       return created;
     });
 
-    // The registration event is committed at this point; process it now
-    // instead of waiting for the maintenance cron fallback.
-    triggerNotificationProcessingAsync();
+    // The registration event is committed at this point; drain it before the
+    // request ends instead of relying only on the maintenance cron fallback.
+    await triggerNotificationProcessingAsync();
 
     // Check if there are past guest orders matching this new customer's email
     if (user.email) {

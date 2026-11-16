@@ -165,7 +165,7 @@ checkoutRouter.post('/checkout', requireAuth, async (req: Request, res: Response
       },
     });
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     return res.status(201).json({
       success: true,
@@ -323,7 +323,7 @@ checkoutRouter.post('/orders/:id/product-payment/receipt', optionalAuth, async (
 
     // The event is durable in the transactional outbox above; kick the worker
     // immediately so admins do not have to open the receipt or wait for cron.
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     // Notify admin
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
@@ -445,7 +445,7 @@ checkoutRouter.post('/orders/:id/delivery/quote/accept', optionalAuth, async (re
 
     // The outbox event is committed; dispatch it immediately rather than
     // waiting for the five-minute maintenance cron.
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     // Notify merchant
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
@@ -522,7 +522,7 @@ checkoutRouter.post('/orders/:id/delivery/quote/reject', optionalAuth, async (re
 
     // The outbox event is committed; dispatch it immediately rather than
     // waiting for the five-minute maintenance cron.
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     await WhatsAppService.sendToMerchant(
@@ -593,7 +593,7 @@ checkoutRouter.post('/orders/:id/delivery-payment/receipt', optionalAuth, async 
 
     // Start delivery immediately; the outbox remains retryable if Telegram is
     // temporarily unavailable or the serverless invocation ends early.
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     const customerName = `${order.customerFirstName} ${order.customerLastName}`;
     await WhatsAppService.sendToMerchant(

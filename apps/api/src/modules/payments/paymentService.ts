@@ -504,8 +504,8 @@ export class PaymentService {
       await removeReceipt(replacedPath);
     }
 
-    // Opportunistically dispatch pending notifications
-    triggerNotificationProcessingAsync();
+    // Drain committed notifications before the serverless invocation ends.
+    await triggerNotificationProcessingAsync();
 
     return {
       status: 'AWAITING_PAYMENT_VERIFICATION',

@@ -342,8 +342,8 @@ export class CheckoutService {
       eventKey: `order:${createdOrder.id}:created:v1`,
     }));
 
-    // Opportunistically dispatch pending notifications without blocking response
-    triggerNotificationProcessingAsync();
+    // Drain committed notifications before the serverless invocation ends.
+    await triggerNotificationProcessingAsync();
 
     return createdOrder;
   }

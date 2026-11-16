@@ -496,8 +496,8 @@ export class OrderService {
       return updatedOrder;
     });
 
-    // Opportunistically dispatch pending notifications
-    triggerNotificationProcessingAsync();
+    // Drain committed notifications before the serverless invocation ends.
+    await triggerNotificationProcessingAsync();
 
     if (!COMMERCE_CONFIG.AFFILIATE.ENABLED) {
       return orderRes;

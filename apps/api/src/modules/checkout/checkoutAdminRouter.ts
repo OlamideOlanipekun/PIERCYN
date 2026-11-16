@@ -174,7 +174,7 @@ checkoutAdminRouter.post('/orders/:id/product-payment/verify', requireAdmin, asy
       `✅ *Product payment verified*\nOrder: *${order.orderNumber}* | ${customerName}\nAmount: ${formatNGN(productPayment.amountDueNGN)}\nVerified by: ${adminId}`
     );
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     return res.json({ success: true, data: { status: 'VERIFIED', verifiedAt: now } });
   } catch (err: any) {
@@ -226,7 +226,7 @@ checkoutAdminRouter.post('/orders/:id/product-payment/reject', requireAdmin, asy
         },
       });
     });
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     // Notify customer
     const waMsg =
@@ -321,7 +321,7 @@ checkoutAdminRouter.post('/orders/:id/delivery/quote', requireAdmin, async (req:
       });
       return createdQuote;
     });
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     // Send official WhatsApp quotation message to customer after the
     // transactional state and notification intent have committed.
@@ -409,7 +409,7 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/verify', requireAdmin, as
       `✅ *Delivery payment verified*\nOrder: *${order.orderNumber}*\nAmount: ${formatNGN(deliveryPayment.amountDueNGN)}\nStatus → READY_FOR_DISPATCH`
     );
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     return res.json({ success: true, data: { status: 'VERIFIED', orderStatus: 'READY_FOR_DISPATCH', verifiedAt: now } });
   } catch (err: any) {
@@ -462,7 +462,7 @@ checkoutAdminRouter.post('/orders/:id/delivery-payment/reject', requireAdmin, as
       });
     });
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     await WhatsAppService.sendMessage({
       to: order.customerPhone,
@@ -617,7 +617,7 @@ checkoutAdminRouter.post('/orders/:id/dispatch', requireAdmin, async (req: Reque
       `🚚 *Order dispatched*\nOrder: *${order.orderNumber}*\nLogistics: ${provider}\n${validated.dispatchReference ? `Ref: ${validated.dispatchReference}\n` : ''}By: ${adminId}`
     );
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     return res.json({ success: true, data: { status: 'DISPATCHED', dispatchedAt: now, logisticsProvider: provider } });
   } catch (err: any) {
@@ -702,7 +702,7 @@ checkoutAdminRouter.post('/orders/:id/delivered', requireAdmin, async (req: Requ
       `✅ *Order delivered*\nOrder: *${order.orderNumber}*\nCustomer: ${order.customerFirstName} ${order.customerLastName}\nBy: ${adminId}`
     );
 
-    triggerNotificationProcessingAsync();
+    await triggerNotificationProcessingAsync();
 
     return res.json({ success: true, data: { status: 'DELIVERED', deliveredAt: now } });
   } catch (err: any) {
