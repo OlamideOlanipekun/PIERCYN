@@ -29,6 +29,7 @@ import { Product } from '../../types';
 import { formatNGN } from '../types';
 import { GuidelinesModal } from '../components/GuidelinesModal';
 import { SupportModal } from '../components/SupportModal';
+import { AffiliateOnboardingModal } from '../components/AffiliateOnboardingModal';
 
 interface AffiliateLandingPageProps {
   onNavigate: (route: 'landing' | 'register' | 'login' | 'application') => void;
@@ -37,7 +38,7 @@ interface AffiliateLandingPageProps {
 
 const tickerMessages = [
   'PIERCYN CREATOR NETWORK',
-  '₦1,000 COMMISSION PER QUALIFYING DELIVERED ORDER',
+  '₦1,000 COMMISSION AFTER DELIVERY & CUSTOMER ACCEPTANCE',
   '30-DAY COOKIE ATTRIBUTION',
   '₦0 MINIMUM WITHDRAWAL',
   'CONTEMPORARY AFRICAN STREETWEAR',
@@ -54,9 +55,25 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [copiedLinkIndex, setCopiedLinkIndex] = useState<string | null>(null);
   const [activeStepTab, setActiveStepTab] = useState<number>(0);
   const landingRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem('piercyn-plug-onboarding-v1')) {
+      setIsOnboardingOpen(true);
+    }
+  }, []);
+
+  const closeOnboarding = () => {
+    window.localStorage.setItem('piercyn-plug-onboarding-v1', 'skipped');
+    setIsOnboardingOpen(false);
+  };
+
+  const completeOnboarding = () => {
+    window.localStorage.setItem('piercyn-plug-onboarding-v1', 'completed');
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -139,7 +156,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
     return {
       name: 'Emerging Tastemaker',
       badge: 'Starter',
-      perk: '₦1,000 flat per delivered order · No minimum withdrawal',
+      perk: '₦1,000 flat after delivery & acceptance · No minimum withdrawal',
       color: '#737373',
     };
   };
@@ -149,11 +166,11 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
   const faqs = [
     {
       q: 'How does the PIERCYN Affiliate Program work?',
-      a: 'When accepted into the PIERCYN Creator Network, you receive a dedicated tracking code and custom links for the storefront, collections, or individual pieces. Whenever a customer orders through your link and the piece is delivered, you earn a flat ₦1,000 commission.',
+      a: 'When accepted into the PIERCYN Creator Network, you receive a dedicated tracking code and custom links for the storefront, collections, or individual pieces. When a customer orders through your link, receives the piece, and confirms it is okay, you earn a flat ₦1,000 commission.',
     },
     {
       q: 'When do I get paid for qualifying referrals?',
-      a: 'Commissions clear immediately when an administrator verifies successful customer delivery. Once verified delivered, the commission moves directly to your Available Wallet for immediate withdrawal into your Nigerian bank account.',
+      a: 'Commissions remain pending until delivery and customer acceptance are verified. Once the customer confirms the order is okay, the commission moves to your Available Wallet for withdrawal into your Nigerian bank account.',
     },
     {
       q: 'Is there a minimum withdrawal threshold?',
@@ -192,7 +209,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
       num: '03',
       title: 'Earn ₦1,000 Per Order',
       subtitle: '₦0 Minimum Payout',
-      desc: 'For every qualifying delivered order attributed to your links, receive ₦1,000 directly into your wallet. Withdraw anytime directly to your bank account.',
+      desc: 'For every qualifying order attributed to your links and accepted by the customer after delivery, receive ₦1,000 in your wallet. Withdraw available earnings directly to your bank account.',
       metric: 'Direct NIP bank transfer',
     },
   ];
@@ -209,7 +226,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
       {/* Editorial Live Ticker Tape */}
       <div className="affiliate-marquee bg-[#141414] text-[#F2F0EB] overflow-hidden py-2.5 border-b border-[#2B2B2B]">
         <span className="sr-only">
-          PIERCYN Creator Network. ₦1,000 commission per qualifying delivered order. 30-day cookie attribution. ₦0 minimum withdrawal. Contemporary African streetwear. Direct Nigerian bank payouts.
+          PIERCYN Creator Network. ₦1,000 commission after delivery and customer acceptance. 30-day cookie attribution. ₦0 minimum withdrawal. Contemporary African streetwear. Direct Nigerian bank payouts.
         </span>
         <div aria-hidden="true" className="affiliate-marquee-track flex whitespace-nowrap text-[11px] font-semibold tracking-[0.25em] uppercase">
           {[0, 1].map((copy) => (
@@ -248,6 +265,12 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               Affiliate Login
             </button>
             <button
+              onClick={() => setIsOnboardingOpen(true)}
+              className="hidden px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#737373] transition-colors hover:text-[#141414] sm:inline-flex"
+            >
+              How It Works
+            </button>
+            <button
               onClick={() => onNavigate('register')}
               className="px-5 py-2.5 bg-[#141414] hover:bg-[#262626] text-white text-xs font-semibold uppercase tracking-widest transition-all shadow-sm active:scale-95"
             >
@@ -280,7 +303,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
               <p className="text-base sm:text-lg text-[#555555] max-w-xl leading-relaxed font-normal">
                 Turn your style, community, and creativity into earnings. Share PIERCYN, connect people with pieces
                 they love, and earn <span className="text-[#141414] font-bold border-b border-[#141414] pb-0.5">₦1,000</span> for every qualifying
-                delivered referral.
+                accepted delivered referral.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
@@ -342,7 +365,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                         <span>Live Referral Reward</span>
                       </div>
                       <div className="text-base font-serif font-bold text-[#141414] mt-0.5">
-                        ₦1,000 per delivered piece
+                        ₦1,000 after acceptance
                       </div>
                     </div>
                     <button
@@ -441,7 +464,7 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                   Commission Potential Calculator
                 </h2>
                 <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  Simulate your projected revenue based on <strong>₦1,000 per delivered order</strong>.
+                  Simulate your projected revenue based on <strong>₦1,000 per accepted order</strong>.
                 </p>
               </div>
 
@@ -562,8 +585,8 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
                 <h2 className="text-3xl sm:text-4xl font-serif text-[#141414] font-medium mt-1">
                   Pieces Ready for Your Curation
                 </h2>
-                <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  High-converting streetwear staples crafted in Lagos, Nigeria. Every piece pays <strong>₦1,000</strong> per qualifying referral.
+                  <p className="text-xs sm:text-sm text-[#666666] mt-1">
+                  High-converting streetwear staples crafted in Lagos, Nigeria. Every accepted qualifying referral pays <strong>₦1,000</strong>.
                 </p>
               </div>
               <button
@@ -783,6 +806,12 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
 
           <div className="text-center pt-8">
             <button
+              onClick={() => setIsOnboardingOpen(true)}
+              className="mr-5 text-xs uppercase tracking-widest font-semibold text-[#141414] hover:underline cursor-pointer"
+            >
+              How It Works →
+            </button>
+            <button
               onClick={() => setIsGuidelinesOpen(true)}
               className="text-xs uppercase tracking-widest font-semibold text-[#141414] hover:underline cursor-pointer"
             >
@@ -854,6 +883,13 @@ export const AffiliateLandingPage: React.FC<AffiliateLandingPageProps> = ({
       </footer>
 
       {/* Guidelines & Support Modals */}
+      <AffiliateOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={closeOnboarding}
+        onComplete={completeOnboarding}
+        onRegister={() => onNavigate('register')}
+        onLogin={() => onNavigate('login')}
+      />
       <GuidelinesModal isOpen={isGuidelinesOpen} onClose={() => setIsGuidelinesOpen(false)} />
       <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
     </div>

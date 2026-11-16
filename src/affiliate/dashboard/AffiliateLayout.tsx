@@ -18,11 +18,13 @@ import {
   Copy,
   Check,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { AffiliateUser } from '../../services/affiliateApi';
 import { AffiliateDashboardTab } from '../types';
 import { GuidelinesModal } from '../components/GuidelinesModal';
 import { SupportModal } from '../components/SupportModal';
+import { AffiliateOnboardingModal } from '../components/AffiliateOnboardingModal';
 
 interface AffiliateLayoutProps {
   user: AffiliateUser;
@@ -48,6 +50,7 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const primaryUrl = `https://piercyn.vercel.app/?ref=${primaryReferralCode || user.id.slice(0, 8)}`;
@@ -178,6 +181,13 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-[#E5E2DC] space-y-1 text-xs">
+          <button
+            onClick={() => setIsOnboardingOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-[#737373] hover:text-[#141414] hover:bg-[#F2F0EB] transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>How It Works</span>
+          </button>
           <button
             onClick={() => setIsGuidelinesOpen(true)}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-[#737373] hover:text-[#141414] hover:bg-[#F2F0EB] transition-colors"
@@ -416,6 +426,15 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
+                  setIsOnboardingOpen(true);
+                }}
+                className="w-full text-left py-2 text-[#737373] hover:text-[#141414]"
+              >
+                How It Works
+              </button>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
                   setIsGuidelinesOpen(true);
                 }}
                 className="w-full text-left py-2 text-[#737373] hover:text-[#141414]"
@@ -456,7 +475,12 @@ export const AffiliateLayout: React.FC<AffiliateLayoutProps> = ({
         affiliateEmail={user.email}
         affiliateCode={primaryReferralCode}
       />
+      <AffiliateOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onRegister={() => setIsOnboardingOpen(false)}
+        onLogin={() => setIsOnboardingOpen(false)}
+      />
     </div>
   );
 };
-

@@ -142,7 +142,7 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-[#141414] shrink-0 mt-0.5" />
                   <span>
-                    <strong className="text-[#141414]">₦1,000 Flat Commission</strong> per qualifying delivered referral order.
+                    <strong className="text-[#141414]">₦1,000 Flat Commission</strong> per qualifying referral order accepted after delivery.
                   </span>
                 </div>
                 <div className="flex items-start gap-3">
@@ -386,4 +386,3 @@ export const AffiliateRegisterPage: React.FC<AffiliateRegisterPageProps> = ({
     </div>
   );
 };
-

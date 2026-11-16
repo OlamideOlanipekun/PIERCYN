@@ -47,7 +47,7 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClos
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#141414] shrink-0 mt-0.5" />
                 <span>
-                  <strong>₦1,000 Flat Commission</strong> per qualifying delivered referral order.
+                  <strong>₦1,000 Flat Commission</strong> per qualifying referral order accepted after delivery.
                 </span>
               </div>
               <div className="flex items-start gap-2">
@@ -72,11 +72,11 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClos
               <h3 className="uppercase text-xs tracking-widest font-bold">2. Delivery Verification & Immediate Clearance</h3>
             </div>
             <p>
-              Commissions become <strong>immediately approved and withdrawable</strong> once an authorized administrator verifies that the order has been successfully delivered to the customer.
+              Commissions remain pending until the order is delivered and customer acceptance is verified. They then become <strong>approved and withdrawable</strong>.
             </p>
             <ul className="list-disc pl-5 space-y-1 text-[#555555]">
-              <li>If an order is returned or cancelled before verified delivery, commission is not approved or reversed.</li>
-              <li>There is zero post-delivery holding period: once delivered, the commission status immediately changes to <strong>AVAILABLE</strong> in your wallet for withdrawal.</li>
+              <li>If an order is returned, cancelled, or not accepted by the customer, commission is not approved or is reversed.</li>
+              <li>There is zero post-acceptance holding period: once delivery and customer acceptance are verified, the commission status changes to <strong>AVAILABLE</strong> in your wallet.</li>
             </ul>
           </section>
 
@@ -143,4 +143,3 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ isOpen, onClos
     </div>
   );
 };
-
