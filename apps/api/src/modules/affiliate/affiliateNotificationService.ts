@@ -6,6 +6,7 @@
 
 import crypto from 'crypto';
 import { prisma } from '../../db/prisma';
+import { triggerNotificationProcessingAsync } from '../notifications';
 
 export function escapeAffiliateHtml(value: unknown): string {
   return String(value ?? '').replace(/[&<>"\\']/g, (char) => ({
@@ -60,7 +61,12 @@ function emailWrapper(title: string, bodyContent: string): string {
 }
 
 export class AffiliateNotificationService {
-  private static async sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  private static async sendEmail(
+    to: string,
+    subject: string,
+    html: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<boolean> {
     try {
       const text = html
         .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -80,10 +86,18 @@ export class AffiliateNotificationService {
             subject: `PIERCYN · ${subject}`,
             html,
             text,
-            notifyTelegram: false,
+            // Affiliate lifecycle events are customer-facing by email and
+            // operationally important for admins via Telegram. The outbox
+            // fans this single durable event out to both channels.
+            notifyTelegram: true,
+            affiliateNotification: true,
+            ...metadata,
           },
         },
       });
+      // The event is committed before the immediate attempt. Cron remains the
+      // durable retry/recovery path when this invocation or a provider fails.
+      await triggerNotificationProcessingAsync();
       return true;
     } catch (err: any) {
       console.warn(`[AFFILIATE_NOTIFICATION_QUEUE_ERROR] Failed to queue email to ${to}:`, err.message);
@@ -105,7 +119,9 @@ export class AffiliateNotificationService {
       <p>Once approved, you will receive an invitation to access your Creator Portal and begin generating branded referral links.</p>
       `
     );
-    return this.sendEmail(affiliate.email, 'Application Received', html);
+    return this.sendEmail(affiliate.email, 'Application Received', html, {
+      firstName: affiliate.firstName,
+    });
   }
 
   public static async notifyApplicationApproved(

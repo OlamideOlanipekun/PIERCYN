@@ -351,6 +351,14 @@ export class OutboxProcessor {
       .replace(/"/g, '&quot;');
     const money = (value: unknown) => `₦${(Number(value || 0) / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
     switch (eventType) {
+      case 'AFFILIATE_EMAIL':
+        return (
+          `🤝 <b>PIERCYN — AFFILIATE UPDATE</b>\n\n` +
+          `• Subject: <b>${escapeHtml(payload.subject || 'Affiliate notification')}</b>\n` +
+          (payload.firstName ? `• Applicant: <b>${escapeHtml(payload.firstName)}</b>\n` : '') +
+          `• Email: <code>${escapeHtml(payload.email || 'N/A')}</code>\n` +
+          `• Action: Review the application in the admin dashboard.`
+        );
       case 'CUSTOMER_REGISTERED':
         return (
           `🛍️ <b>PIERCYN — NEW CUSTOMER</b>\n\n` +
