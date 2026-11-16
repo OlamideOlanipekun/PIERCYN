@@ -11,6 +11,10 @@ validateAffiliateConfig();
 
 export const app = express();
 
+// Vercel terminates TLS and forwards the original client IP to this app.
+// Trust the single hosting proxy so rate limiting can identify clients safely.
+app.set('trust proxy', 1);
+
 // Security Headers via Helmet
 app.use(
   helmet({

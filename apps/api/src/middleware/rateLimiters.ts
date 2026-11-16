@@ -1,9 +1,19 @@
-import rateLimit from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
+import type { Request } from 'express';
+
+/**
+ * Vercel places the API behind a proxy and supplies Forwarded/X-Forwarded-For.
+ * Use Express's trusted `req.ip` and the library IPv6 helper instead of the
+ * default key generator, whose strict proxy validation rejects those headers.
+ */
+const clientKeyGenerator = (req: Request) =>
+  ipKeyGenerator(req.ip || 'unknown');
 
 // Global API limiter: 300 requests per 15 minutes per IP
 export const globalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
+  keyGenerator: clientKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -16,6 +26,7 @@ export const globalRateLimiter = rateLimit({
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
+  keyGenerator: clientKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -28,6 +39,7 @@ export const authRateLimiter = rateLimit({
 export const checkoutRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 20,
+  keyGenerator: clientKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -40,6 +52,7 @@ export const checkoutRateLimiter = rateLimit({
 export const quoteRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 45,
+  keyGenerator: clientKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -47,4 +60,3 @@ export const quoteRateLimiter = rateLimit({
     error: 'Rate limit exceeded for delivery calculation requests.',
   },
 });
-

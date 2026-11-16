@@ -115,7 +115,10 @@ describe('Telegram transactional outbox', () => {
       data: expect.objectContaining({ status: 'PROCESSING' }),
     }));
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ status: 'PENDING', attempts: 1 }),
+      data: expect.objectContaining({
+        status: 'PENDING',
+        lastError: 'SMTP_UNCONFIGURED: customer email transporter is unavailable',
+      }),
     }));
     expect(updateSpy).not.toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'SENT' }),
