@@ -5,6 +5,7 @@
 // ============================================================
 
 import crypto from 'crypto';
+import { AFFILIATE_CONFIG } from '@piercyn/config';
 import { prisma } from '../../db/prisma';
 import { triggerNotificationProcessingAsync } from '../notifications';
 
@@ -16,6 +17,10 @@ export function escapeAffiliateHtml(value: unknown): string {
 
 function appBaseUrl(): string {
   return (process.env.APP_BASE_URL || process.env.APP_URL || process.env.PUBLIC_APP_URL || 'https://piercyn.vercel.app').replace(/\/$/, '');
+}
+
+function commissionPerOrderNGN(): string {
+  return (AFFILIATE_CONFIG.commissionPerOrderKobo / 100).toLocaleString('en-NG');
 }
 
 
@@ -134,7 +139,7 @@ export class AffiliateNotificationService {
       `
       <h2 style="color: #141414; font-weight: 600; font-size: 20px; margin-top: 0;">Welcome to the Creator Club</h2>
       <p>Dear ${escapeAffiliateHtml(affiliate.firstName)},</p>
-      <p>We are delighted to approve your application to the PIERCYN Creator Partner Program. You can now earn flat ₦800 commissions on every qualifying customer order referred through your links.</p>
+      <p>We are delighted to approve your application to the PIERCYN Creator Partner Program. You can now earn flat ₦${commissionPerOrderNGN()} commissions on every qualifying customer order referred through your links.</p>
       <div class="card">
         <p style="margin: 0; color: #78716C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Your Primary Referral Code</p>
         <p style="margin: 6px 0 0; font-family: monospace; font-size: 18px; color: #141414; font-weight: 700;">${escapeAffiliateHtml(referralCode)}</p>
